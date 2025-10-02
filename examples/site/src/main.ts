@@ -40,6 +40,7 @@ let currentHandlers = {
   invertTwist: false,
   invertPanY: false,
   recenterOnDown: false,
+  invertInertiaY: false,
 };
 
 function buildController() {
@@ -57,6 +58,7 @@ function buildController() {
       mousePan: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnPointerDown: currentHandlers.recenterOnDown,
+        inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
       },
       mouseRotatePitch: {
         pitchSign: currentHandlers.invertPitch ? -1 : 1,
@@ -99,6 +101,7 @@ const toolbar = {
   invertTwist: document.getElementById('invert-twist') as HTMLInputElement,
   invertPanY: document.getElementById('invert-pany') as HTMLInputElement,
   recenterOnDown: document.getElementById('recenter-down') as HTMLInputElement,
+  invertInertiaY: document.getElementById('invert-inertia-y') as HTMLInputElement,
   fly: document.getElementById('btn-fly')!,
   fit: document.getElementById('btn-fit')!,
 };
@@ -120,6 +123,7 @@ toolbar.invertPitch.addEventListener('change', () => { currentHandlers.invertPit
 toolbar.invertTwist.addEventListener('change', () => { currentHandlers.invertTwist = toolbar.invertTwist.checked; buildController(); });
 toolbar.invertPanY.addEventListener('change', () => { currentHandlers.invertPanY = toolbar.invertPanY.checked; buildController(); });
 toolbar.recenterOnDown.addEventListener('change', () => { currentHandlers.recenterOnDown = toolbar.recenterOnDown.checked; buildController(); });
+toolbar.invertInertiaY.addEventListener('change', () => { currentHandlers.invertInertiaY = toolbar.invertInertiaY.checked; buildController(); });
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };

@@ -12,6 +12,7 @@ export interface MousePanOptions {
   panXSign?: 1 | -1;
   panYSign?: 1 | -1;
   recenterOnPointerDown?: boolean;
+  inertiaPanYSign?: 1 | -1;
 }
 
 export class MousePanHandler {
@@ -45,6 +46,7 @@ export class MousePanHandler {
       panXSign: 1,
       panYSign: 1,
       recenterOnPointerDown: false,
+      inertiaPanYSign: 1,
       ...opts,
     };
   }
@@ -129,8 +131,11 @@ export class MousePanHandler {
     // Velocity for inertia (px/s)
     if (dt > 0) {
       const alpha = 0.3;
-      this.vx = this.vx * (1 - alpha) + (dx / dt) * alpha;
-      this.vy = this.vy * (1 - alpha) + (dy / dt) * alpha;
+      // Use sign-adjusted screen deltas for velocity to align with damping + inversion
+      const sdx = dx * (this.opts.panXSign ?? 1);
+      const sdy = dy * (this.opts.panYSign ?? 1);
+      this.vx = this.vx * (1 - alpha) + (sdx / dt) * alpha;
+      this.vy = this.vy * (1 - alpha) + (sdy / dt) * alpha;
     }
   };
 
@@ -159,7 +164,7 @@ export class MousePanHandler {
         return;
       }
       let dx = this.vx * dt;
-      let dy = this.vy * dt;
+      let dy = this.vy * dt * (this.opts.inertiaPanYSign ?? 1);
       // Rubberband damping near/outside panBounds
       const bounds = (this.transform as any).getPanBounds?.();
       if (bounds) {

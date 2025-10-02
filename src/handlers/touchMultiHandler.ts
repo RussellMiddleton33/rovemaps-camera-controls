@@ -187,7 +187,10 @@ export class TouchMultiHandler {
       } else {
         this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
       }
-      this.vpx = dxPan / dt; this.vpy = dyPan / dt; axes.pan = true;
+      // Velocity aligned with applied (sign-adjusted) deltas after damping
+      const vdx = (dxPan * (this.opts.panXSign ?? 1)) / dt;
+      const vdy = (dyPan * (this.opts.panYSign ?? 1)) / dt;
+      this.vpx = vdx; this.vpy = vdy; axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
       const ptr = this.opts.around === 'pinch' ? center : null;
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
