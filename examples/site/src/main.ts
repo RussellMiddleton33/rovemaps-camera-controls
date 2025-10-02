@@ -67,6 +67,8 @@ let currentHandlers = {
   invertInertiaX: false,
   anchorTightness: 1,
   antialias: true,
+  maxPitch: 80,
+  maxZoom: 12,
 };
 
 function buildController() {
@@ -76,6 +78,8 @@ function buildController() {
   controller = new CameraController({
     camera,
     domElement: renderer.domElement,
+    maxPitch: currentHandlers.maxPitch,
+    maxZoom: currentHandlers.maxZoom,
     handlers: {
       scrollZoom: {
         around: currentHandlers.around ? 'pointer' : 'center',
@@ -139,6 +143,8 @@ const toolbar = {
   showDebug: document.getElementById('show-debug') as HTMLInputElement,
   fly: document.getElementById('btn-fly')!,
   fit: document.getElementById('btn-fit')!,
+  maxPitch: document.getElementById('max-pitch') as HTMLInputElement,
+  maxZoom: document.getElementById('max-zoom') as HTMLInputElement,
 };
 
 toolbar.zoomIn.addEventListener('click', () => controller.zoomIn(0.5, { around: toolbar.aroundPointer.checked ? 'pointer' : 'center' }));
@@ -163,6 +169,8 @@ toolbar.invertInertiaY.addEventListener('change', () => { currentHandlers.invert
 toolbar.invertInertiaX.addEventListener('change', () => { currentHandlers.invertInertiaX = toolbar.invertInertiaX.checked; buildController(); });
 toolbar.anchorTight.addEventListener('input', () => { currentHandlers.anchorTightness = parseFloat(toolbar.anchorTight.value); buildController(); });
 toolbar.showDebug.addEventListener('change', () => { updateDebugVisibility(toolbar.showDebug.checked); });
+toolbar.maxPitch.addEventListener('change', () => { currentHandlers.maxPitch = Math.max(1, Math.min(89, parseFloat(toolbar.maxPitch.value))); buildController(); });
+toolbar.maxZoom.addEventListener('change', () => { currentHandlers.maxZoom = parseFloat(toolbar.maxZoom.value); buildController(); });
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };
