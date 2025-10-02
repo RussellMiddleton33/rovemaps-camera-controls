@@ -68,14 +68,12 @@ MIT
 
 This project aims for 1:1 MapLibre camera feel. While iterating with a real Mac trackpad and different browsers, we uncovered several subtle sources of “almost right” behavior. This section documents the issues observed, changes made, and what remains to be tuned so others can reproduce and validate.
 
-What was off (symptoms reported)
-- Pointer-anchored zoom felt “random”—zoom appeared around center, not under the cursor.
-- Pan at non‑zero bearing felt reversed in one axis.
-- Right‑drag rotate/pitch popped a context menu (“Save image as”).
+What is still  off (symptoms reported)
+
 - Vertical/horizontal inertia sometimes glided opposite the direction of the drag (especially on Mac trackpads with natural scrolling).
 - Trackpad twist/pinch anchoring weaker than pan anchoring.
-- Demo blur while dragging (antialias vs DPR).
-- Demo/Docs caching on Pages produced stale bundles or runtime TDZ errors unrelated to the demo.
+- Demo blur while dragging (DPR issue).
+
 
 What we changed (so far)
 - Pointer anchoring: Zoom/rotate/pitch/pan now preserve the exact ground point under the pointer/centroid by shifting center with groundBefore − groundAfter deltas (MapLibre‑style setLocationAtPoint). This eliminated drift and made “grab the map” behavior precise.

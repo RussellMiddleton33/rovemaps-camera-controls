@@ -49,6 +49,8 @@ export class TouchMultiHandler {
   private vp = 0; // pitch deg/s
   private vpx = 0; // pan px/s
   private vpy = 0;
+  private instVpx = 0; // last instantaneous pan px/s
+  private instVpy = 0;
   private inertiaHandle: number | null = null;
   private lastTs = 0;
 
@@ -201,6 +203,7 @@ export class TouchMultiHandler {
       // dxPan/dyPan already include panXSign/panYSign; do not apply signs again
       const vdx = dxPan / dt;
       const vdy = dyPan / dt;
+      this.instVpx = vdx; this.instVpy = vdy;
       const alpha = 0.3; // low-pass filter to stabilize inertia
       this.vpx = this.vpx * (1 - alpha) + vdx * alpha;
       this.vpy = this.vpy * (1 - alpha) + vdy * alpha;
@@ -276,6 +279,9 @@ export class TouchMultiHandler {
 
   private startInertia() {
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
+    // Directional clamp for pan inertia to avoid backslide at release
+    const d = this.vpx * this.instVpx + this.vpy * this.instVpy;
+    if (d <= 0) { this.vpx = 0; this.vpy = 0; }
     let last = performance.now();
     const friction = 7; // 1/s
     const step = () => {

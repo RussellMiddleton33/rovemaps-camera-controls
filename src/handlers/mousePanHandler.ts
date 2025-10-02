@@ -31,6 +31,8 @@ export class MousePanHandler {
   private lastTs = 0;
   private vx = 0; // px/s
   private vy = 0; // px/s
+  private instVx = 0; // last instantaneous px/s
+  private instVy = 0;
   private inertiaHandle: number | null = null;
   private lastGround: { gx: number; gz: number } | null = null;
   private rectCache: DOMRect | null = null;
@@ -141,8 +143,12 @@ export class MousePanHandler {
       // dx,dy already include panXSign/panYSign above; do not apply signs again
       const sdx = dx;
       const sdy = dy;
-      this.vx = this.vx * (1 - alpha) + (sdx / dt) * alpha;
-      this.vy = this.vy * (1 - alpha) + (sdy / dt) * alpha;
+      const ivx = sdx / dt;
+      const ivy = sdy / dt;
+      this.instVx = ivx;
+      this.instVy = ivy;
+      this.vx = this.vx * (1 - alpha) + ivx * alpha;
+      this.vy = this.vy * (1 - alpha) + ivy * alpha;
     }
   };
 
@@ -151,6 +157,9 @@ export class MousePanHandler {
     this.unbindMoveUp = null;
     if (!this.dragging) return;
     this.dragging = false;
+    // Directional clamp: prevent backslide if filtered velocity opposes last motion direction
+    const dot = this.vx * this.instVx + this.vy * this.instVy;
+    if (dot <= 0) { this.vx = 0; this.vy = 0; }
     this.rectCache = null;
     // Start inertia
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
