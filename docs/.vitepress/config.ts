@@ -1,9 +1,11 @@
 import { defineConfig } from 'vitepress';
 
+const base = (typeof process !== 'undefined' && (process as any).env && (process as any).env.DOCS_BASE) || '/';
+
 export default defineConfig({
   title: 'Three RoveMaps Camera Controls',
   description: 'RoveMaps GL JS-compatible camera controls for Three.js',
-  base: '/',
+  base,
   themeConfig: {
     nav: [
       { text: 'Overview', link: '/' },
@@ -25,4 +27,3 @@ export default defineConfig({
     footer: { message: 'MIT Licensed' }
   }
 });
-

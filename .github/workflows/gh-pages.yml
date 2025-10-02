@@ -19,12 +19,13 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - name: Build docs
-        run: npm run docs:build
+        run: |
+          DOCS_BASE=/rovemaps-camera-controls/ npm run docs:build
       - name: Build demo site
         working-directory: examples/site
         run: |
           npm ci
-          VITE_BASE=/demo/ npm run build
+          VITE_BASE=/rovemaps-camera-controls/demo/ npm run build
       - name: Assemble publish directory
         run: |
           rm -rf public
