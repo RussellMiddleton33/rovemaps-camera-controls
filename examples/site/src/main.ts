@@ -84,6 +84,7 @@ function buildController() {
         zoomSign: currentHandlers.invertZoom ? -1 : 1,
         anchorTightness: currentHandlers.anchorTightness,
       },
+      rightButtonPan: true,
       mousePan: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnPointerDown: currentHandlers.recenterOnDown,
@@ -91,12 +92,7 @@ function buildController() {
         inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
         anchorTightness: currentHandlers.anchorTightness,
       },
-      mouseRotatePitch: {
-        pitchSign: currentHandlers.invertPitch ? -1 : 1,
-        rotateSign: currentHandlers.invertTwist ? -1 : 1,
-        recenterOnPointerDown: currentHandlers.recenterOnDown && currentHandlers.around,
-        anchorTightness: currentHandlers.anchorTightness,
-      },
+      // mouseRotatePitch is disabled when rightButtonPan is true
       touch: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnGestureStart: currentHandlers.recenterOnDown,

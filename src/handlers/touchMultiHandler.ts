@@ -124,7 +124,10 @@ export class TouchMultiHandler {
     this.active = true;
     this.lastTs = performance.now();
     this.mode = 'idle';
-    this.lastGroundCenter = null;
+    // Seed ground center so first movement immediately pans (grab feel)
+    const rect = this.rectCache ?? this.el.getBoundingClientRect();
+    const gp = (this.transform as any).groundFromScreen?.({ x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top }) ?? null;
+    this.lastGroundCenter = gp;
     this.rectCache = this.el.getBoundingClientRect();
     if (this.opts.recenterOnGestureStart && this.opts.around === 'pinch') {
       const rect = this.el.getBoundingClientRect();

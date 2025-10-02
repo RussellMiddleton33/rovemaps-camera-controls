@@ -23,6 +23,7 @@ export interface HandlerManagerOptions {
   suppressContextMenu?: boolean;
   safariGestures?: SafariGestureOptions | boolean;
   anchorTightness?: number; // global default for anchor-based corrections
+  rightButtonPan?: boolean; // if true, right button pans instead of rotate/pitch
 }
 
 export class HandlerManager {
@@ -32,6 +33,7 @@ export class HandlerManager {
   private onCtx?: (e: Event) => void;
   private scroll?: ScrollZoomHandler;
   private mousePan?: MousePanHandler;
+  private mousePanSecondary?: MousePanHandler;
   private mouseRotatePitch?: MouseRotatePitchHandler;
   private touch?: TouchMultiHandler;
   private keyboard?: KeyboardHandler;
@@ -69,13 +71,24 @@ export class HandlerManager {
       ...(typeof mpOpts === 'object' ? mpOpts : {}),
     });
     this.mousePan.enable();
-    const mrpOpts = options?.mouseRotatePitch ?? {};
-    this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, {
-      onChange: options?.onChange,
-      anchorTightness: options?.anchorTightness,
-      ...(typeof mrpOpts === 'object' ? mrpOpts : {}),
-    });
-    this.mouseRotatePitch.enable();
+    // Optional: right button pans instead of rotate/pitch
+    if (options?.rightButtonPan) {
+      this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, {
+        onChange: options?.onChange,
+        rubberbandStrength: options?.rubberbandStrength,
+        ...(typeof mpOpts === 'object' ? mpOpts : {}),
+        button: 2,
+      });
+      this.mousePanSecondary.enable();
+    } else {
+      const mrpOpts = options?.mouseRotatePitch ?? {};
+      this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, {
+        onChange: options?.onChange,
+        anchorTightness: options?.anchorTightness,
+        ...(typeof mrpOpts === 'object' ? mrpOpts : {}),
+      });
+      this.mouseRotatePitch.enable();
+    }
     // Touch handler (default enabled)
     const touchOpts = options?.touch ?? {};
     this.touch = new TouchMultiHandler(
@@ -133,6 +146,7 @@ export class HandlerManager {
     }
     this.scroll?.destroy();
     this.mousePan?.destroy();
+    this.mousePanSecondary?.destroy();
     this.mouseRotatePitch?.destroy();
     this.touch?.destroy();
     this.keyboard?.destroy();
