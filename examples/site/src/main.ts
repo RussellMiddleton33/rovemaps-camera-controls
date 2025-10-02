@@ -64,6 +64,7 @@ let currentHandlers = {
   invertPanY: false,
   recenterOnDown: false,
   invertInertiaY: false,
+  invertInertiaX: false,
   anchorTightness: 1,
 };
 
@@ -86,6 +87,7 @@ function buildController() {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnPointerDown: currentHandlers.recenterOnDown,
         inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
+        inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
         anchorTightness: currentHandlers.anchorTightness,
       },
       mouseRotatePitch: {
@@ -133,6 +135,7 @@ const toolbar = {
   invertPanY: document.getElementById('invert-pany') as HTMLInputElement,
   recenterOnDown: document.getElementById('recenter-down') as HTMLInputElement,
   invertInertiaY: document.getElementById('invert-inertia-y') as HTMLInputElement,
+  invertInertiaX: document.getElementById('invert-inertia-x') as HTMLInputElement,
   anchorTight: document.getElementById('anchor-tight') as HTMLInputElement,
   showDebug: document.getElementById('show-debug') as HTMLInputElement,
   fly: document.getElementById('btn-fly')!,
@@ -158,6 +161,7 @@ toolbar.invertTwist.addEventListener('change', () => { currentHandlers.invertTwi
 toolbar.invertPanY.addEventListener('change', () => { currentHandlers.invertPanY = toolbar.invertPanY.checked; buildController(); });
 toolbar.recenterOnDown.addEventListener('change', () => { currentHandlers.recenterOnDown = toolbar.recenterOnDown.checked; buildController(); });
 toolbar.invertInertiaY.addEventListener('change', () => { currentHandlers.invertInertiaY = toolbar.invertInertiaY.checked; buildController(); });
+toolbar.invertInertiaX.addEventListener('change', () => { currentHandlers.invertInertiaX = toolbar.invertInertiaX.checked; buildController(); });
 toolbar.anchorTight.addEventListener('input', () => { currentHandlers.anchorTightness = parseFloat(toolbar.anchorTight.value); buildController(); });
 toolbar.showDebug.addEventListener('change', () => { updateDebugVisibility(toolbar.showDebug.checked); });
 

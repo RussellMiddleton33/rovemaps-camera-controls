@@ -13,6 +13,7 @@ export interface MousePanOptions {
   panYSign?: 1 | -1;
   recenterOnPointerDown?: boolean;
   inertiaPanYSign?: 1 | -1;
+  inertiaPanXSign?: 1 | -1;
 }
 
 export class MousePanHandler {
@@ -47,6 +48,7 @@ export class MousePanHandler {
       panYSign: 1,
       recenterOnPointerDown: false,
       inertiaPanYSign: 1,
+      inertiaPanXSign: 1,
       ...opts,
     };
   }
@@ -164,7 +166,7 @@ export class MousePanHandler {
         return;
       }
       // Convert screen velocity (px/s) to ground velocity (world/s) using bearing and scale
-      const svx = this.vx; // already sign-adjusted via onMove
+      const svx = this.vx * (this.opts.inertiaPanXSign ?? 1); // allow flipping X inertia
       const svy = this.vy * (this.opts.inertiaPanYSign ?? 1);
       const scale = Math.pow(2, this.transform.zoom);
       const rad = (this.transform.bearing * Math.PI) / 180;
