@@ -190,8 +190,9 @@ export class TouchMultiHandler {
         this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
       }
       // Velocity aligned with applied (sign-adjusted) deltas after damping
-      const vdx = (dxPan * (this.opts.panXSign ?? 1)) / dt;
-      const vdy = (dyPan * (this.opts.panYSign ?? 1)) / dt;
+      // dxPan/dyPan already include panXSign/panYSign; do not apply signs again
+      const vdx = dxPan / dt;
+      const vdy = dyPan / dt;
       this.vpx = vdx; this.vpy = vdy; axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
       const ptr = this.opts.around === 'pinch' ? center : null;
@@ -272,19 +273,24 @@ export class TouchMultiHandler {
         if (this.opts.enablePitch && dp) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, 'center'); axes.pitch = true; }
       } else if (this.mode === 'pan') {
         if (this.opts.enablePan && (dx || dy)) {
-          // Rubberband damping near/outside panBounds
+          // Convert screen velocity (px/s) to ground velocity (world/s) using bearing and scale, then integrate
+          const svx = this.vpx; // already aligned with applied pan direction
+          const svy = this.vpy;
+          const scale = Math.pow(2, this.transform.zoom);
+          const rad = (this.transform.bearing * Math.PI) / 180;
+          const cos = Math.cos(rad), sin = Math.sin(rad);
+          let dgx = (-svx * cos + svy * sin) / scale * dt;
+          let dgz = (svx * sin + svy * cos) / scale * dt;
+          // Rubberband damping near/outside panBounds in ground space
           const bounds = (this.transform as any).getPanBounds?.();
           if (bounds) {
-            const scale = Math.pow(2, this.transform.zoom);
-            const dxW = -dx / scale; const dyW = dy / scale;
-            const nx = this.transform.center.x + dxW; const ny = this.transform.center.y + dyW;
+            const nx = this.transform.center.x + dgx; const ny = this.transform.center.y + dgz;
             const overX = nx < bounds.min.x ? bounds.min.x - nx : nx > bounds.max.x ? nx - bounds.max.x : 0;
             const overY = ny < bounds.min.y ? bounds.min.y - ny : ny > bounds.max.y ? ny - bounds.max.y : 0;
-            const s = this.opts.rubberbandStrength;
-            const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
-            dx *= damp(overX); dy *= damp(overY);
+            const s = this.opts.rubberbandStrength; const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
+            dgx *= damp(overX); dgz *= damp(overY);
           }
-          this.helper.handleMapControlsPan(this.transform, dx, dy); axes.pan = true;
+          (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz); axes.pan = true;
         }
       }
       this.opts.onChange({ axes });
