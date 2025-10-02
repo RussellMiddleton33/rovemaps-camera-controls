@@ -207,11 +207,28 @@ export class TouchMultiHandler {
       axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
       const ptr = this.opts.around === 'pinch' ? center : null;
+      const gpCurr = ptr ? this.transform.groundFromScreen(ptr) : null;
+      // First: apply translational pan based on centroid movement to achieve true "grab" feel
+      if (gpCurr && this.lastGroundCenter) {
+        let dgx = (this.lastGroundCenter.gx - gpCurr.gx) * (this.opts.panXSign ?? 1);
+        let dgz = (this.lastGroundCenter.gz - gpCurr.gz) * (this.opts.panYSign ?? 1);
+        const bounds = (this.transform as any).getPanBounds?.();
+        if (bounds) {
+          const nx = this.transform.center.x + dgx; const ny = this.transform.center.y + dgz;
+          const overX = nx < bounds.min.x ? bounds.min.x - nx : nx > bounds.max.x ? nx - bounds.max.x : 0;
+          const overY = ny < bounds.min.y ? bounds.min.y - ny : ny > bounds.max.y ? ny - bounds.max.y : 0;
+          const s = this.opts.rubberbandStrength; const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
+          dgx *= damp(overX); dgz *= damp(overY);
+        }
+        (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
+      }
+      // Then: lock the ground point under the centroid across rotate/zoom
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (this.opts.enableZoom && dzCand) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dzCand, 'center'); this.vz = dzCand / dt; axes.zoom = true; }
       if (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dDeg, 0, 'center'); this.vb = dDeg / dt; axes.rotate = true; }
       if (ptr && groundBefore) { const groundAfter = this.transform.groundFromScreen(ptr); if (groundAfter) { const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1)); const dgx = (groundBefore.gx - groundAfter.gx) * tight; const dgz = (groundBefore.gz - groundAfter.gz) * tight; this.transform.adjustCenterByGroundDelta(dgx, dgz); } }
-      // Optionally, small pan to compensate centroid drift is skipped to better preserve around-point lock
+      // Update last ground center for next frame's translational pan
+      if (gpCurr) this.lastGroundCenter = gpCurr;
     } else if (this.mode === 'pitch' && this.opts.enablePitch) {
       const ptr = this.opts.around === 'pinch' ? center : null;
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;

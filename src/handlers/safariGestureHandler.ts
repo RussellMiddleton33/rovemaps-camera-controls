@@ -22,6 +22,7 @@ export class SafariGestureHandler {
   private bound = false;
   private startScale = 1;
   private startRotation = 0;
+  private lastGround: { gx: number; gz: number } | null = null;
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: SafariGestureOptions) {
     this.el = el; this.transform = transform; this.helper = helper;
@@ -46,6 +47,10 @@ export class SafariGestureHandler {
   private onStart = (e: any) => {
     this.startScale = e.scale || 1;
     this.startRotation = e.rotation || 0;
+    // Seed lastGround for translational pan while twisting
+    const rect = this.el.getBoundingClientRect();
+    const pointer = this.opts.around === 'pointer' ? { x: (e.clientX ?? rect.width / 2) - rect.left, y: (e.clientY ?? rect.height / 2) - rect.top } : null;
+    this.lastGround = pointer ? this.transform.groundFromScreen(pointer) : null;
   };
   private onChange = (e: any) => {
     // Prevent page zoom default
@@ -55,7 +60,15 @@ export class SafariGestureHandler {
     const scale = (e.scale || 1) / (this.startScale || 1);
     const dz = scaleZoom(scale) * (this.opts.zoomSign ?? 1);
     const drot = ((e.rotation || 0) - (this.startRotation || 0)) * (this.opts.rotateSign ?? 1);
-    // Apply zoom around pointer
+    // Translational pan to follow pointer movement across frames (grab feel)
+    const gpNow = pointer ? this.transform.groundFromScreen(pointer) : null;
+    if (gpNow && this.lastGround) {
+      const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
+      const dgxMov = (this.lastGround.gx - gpNow.gx) * tight;
+      const dgzMov = (this.lastGround.gz - gpNow.gz) * tight;
+      this.transform.adjustCenterByGroundDelta(dgxMov, dgzMov);
+    }
+    // Apply zoom/rotate around pointer
     const gpBefore = pointer ? this.transform.groundFromScreen(pointer) : null;
     if (dz) this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, 'center');
     if (drot) this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, drot, 0, 'center');
@@ -66,7 +79,9 @@ export class SafariGestureHandler {
         this.transform.adjustCenterByGroundDelta((gpBefore.gx - gpAfter.gx) * tight, (gpBefore.gz - gpAfter.gz) * tight);
       }
     }
+    // Update for next frame movement
+    this.lastGround = gpNow;
     this.opts.onChange({ axes: { zoom: !!dz, rotate: !!drot } });
   };
-  private onEnd = (_e: any) => {};
+  private onEnd = (_e: any) => { this.lastGround = null; };
 }
