@@ -42,7 +42,8 @@ export class TouchMultiHandler {
   private lastAngle = 0; // radians
   private mode: 'idle' | 'pan' | 'zoomRotate' | 'pitch' = 'idle';
   private lastGroundCenter: { gx: number; gz: number } | null = null;
-  private rectCache: DOMRect | null = null;
+  // For touch on mobile, recompute bounding rect each move to avoid visualViewport shifts
+  private rectCache: DOMRect | null = null; // unused for move; kept for potential future batching
 
   // inertias
   private vz = 0; // zoom units/s
@@ -127,12 +128,14 @@ export class TouchMultiHandler {
     this.lastTs = performance.now();
     this.mode = 'idle';
     // Seed ground center so first movement immediately pans (grab feel)
-    const rect = this.rectCache ?? this.el.getBoundingClientRect();
+    // Use fresh rect per move to avoid iOS visual viewport shifts
+    const rect = this.el.getBoundingClientRect();
     const gp = (this.transform as any).groundFromScreen?.({ x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top }) ?? null;
     this.lastGroundCenter = gp;
     this.rectCache = this.el.getBoundingClientRect();
     if (this.opts.recenterOnGestureStart && this.opts.around === 'pinch') {
-      const rect = this.el.getBoundingClientRect();
+    // Fresh rect per frame
+    const rect = this.el.getBoundingClientRect();
       const gp = (this.transform as any).groundFromScreen?.({ x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top }) ?? null;
       if (gp) (this.transform as any).setGroundCenter?.(gp);
     }
