@@ -24,11 +24,12 @@ class StubTransform implements ITransform {
   setConstraints(): void {}
   deferApply<T>(fn: () => T): T { return fn(); }
   clamp(): void {}
-  worldToScreen(world: { x: number; y: number }): { x: number; y: number } | null {
+  worldToScreen(world: any): { x: number; y: number } | null {
     // Interpret world as ground (x,z) in y-up space
     const s = Math.pow(2, this.zoom);
     const dx = world.x - this.center.x;
-    const dz = world.y - this.center.y; // world.y used as gz
+    const gz = (world.z ?? world.y);
+    const dz = gz - this.center.y; // ground z
     const rad = (this.bearing * Math.PI) / 180;
     const cos = Math.cos(rad), sin = Math.sin(rad);
     const rx = dx * cos - dz * sin; // camera right

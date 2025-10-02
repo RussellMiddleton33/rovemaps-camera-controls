@@ -27,7 +27,8 @@ class StubTransform implements ITransform {
     // Treat world as ground (x,z)
     const s = Math.pow(2, this.zoom);
     const dx = (world.x - this.center.x);
-    const dz = (world.y - this.center.y);
+    const gz = (world.z ?? world.y);
+    const dz = (gz - this.center.y);
     const rad = (this.bearing * Math.PI) / 180;
     const cos = Math.cos(rad), sin = Math.sin(rad);
     const rx = dx * cos - dz * sin;

@@ -240,16 +240,20 @@ export class TouchMultiHandler {
     const dpCand = -avgDy * (this.opts.pitchPerPx ?? 0.25);
 
     // Determine mode if not locked
+    const pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && Math.abs(avgDy) >= (this.opts.pitchThresholdPx ?? 12);
+    const zoomStrong = this.opts.enableZoom && (Math.abs(dzCand) >= (this.opts.zoomThreshold ?? 0.04));
+    const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= (this.opts.rotateThresholdDeg ?? 0.5);
+
     if (this.mode === 'idle') {
-      const pitchScore = Math.abs(avgDy);
-      const zoomScore = Math.abs(dzCand);
-      const rotateScore = Math.abs(dDeg);
-      // Prefer pitch when both fingers move vertically in the same direction over zoom/rotate
-      if (this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && pitchScore >= (this.opts.pitchThresholdPx ?? 12)) {
-        this.mode = 'pitch';
-      } else if (this.opts.enableZoom && (Math.abs(zoomScore) >= (this.opts.zoomThreshold ?? 0.04) || (this.opts.enableRotate && rotateScore >= (this.opts.rotateThresholdDeg ?? 0.5)))) {
-        this.mode = 'zoomRotate';
-      }
+      // Prefer pitch when clearly indicated; otherwise enter zoom/rotate if either is strong
+      if (pitchStrong) this.mode = 'pitch';
+      else if (zoomStrong || rotateStrong) this.mode = 'zoomRotate';
+    } else if (this.mode === 'zoomRotate') {
+      // Allow switching to pitch mid-gesture if both fingers move vertically together
+      if (pitchStrong) this.mode = 'pitch';
+    } else if (this.mode === 'pitch') {
+      // If pitch no longer strong but zoom/rotate is, allow switching back
+      if (!pitchStrong && (zoomStrong || rotateStrong)) this.mode = 'zoomRotate';
     }
 
     // Apply based on locked mode, preserving around-point using centroid when enabled
