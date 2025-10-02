@@ -135,7 +135,10 @@ function buildController() {
         rotateSign: 1,
         ...(touchProfile as any),
       },
-      safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
+      // Safari trackpad twist: event.rotation is clockwise-positive.
+      // Use the opposite mapping from mouse: default to +1 so clockwise rotates clockwise,
+      // and let the invert toggle flip it if desired.
+      safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? 1 : -1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,
       dblclick: currentHandlers.dblclick,
       boxZoom: currentHandlers.boxzoom,
