@@ -47,6 +47,8 @@ export class TouchMultiHandler {
   private lastPinchPointer: { x: number; y: number } | null = null; // screen coords of last pinch centroid
   private lastSinglePt: { x: number; y: number } | null = null;
   private lastSingleGround: { gx: number; gz: number } | null = null;
+  private lastP0: Pt | null = null;
+  private lastP1: Pt | null = null;
 
   // inertias
   private vz = 0; // zoom units/s
@@ -141,6 +143,8 @@ export class TouchMultiHandler {
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     this.lastAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    this.lastP0 = { ...p0 };
+    this.lastP1 = { ...p1 };
     this.active = true;
     this.lastTs = performance.now();
     this.mode = 'idle';
@@ -224,17 +228,28 @@ export class TouchMultiHandler {
     let dAng = angle - this.lastAngle;
     if (dAng > Math.PI) dAng -= Math.PI * 2; else if (dAng < -Math.PI) dAng += Math.PI * 2;
     const dDeg = radToDeg(dAng);
-    const avgDy = ((p0.y - this.lastCenter.y) + (p1.y - this.lastCenter.y)) / 2;
-    const dpCand = -avgDy * this.opts.pitchPerPx;
+    // Per-finger movement vectors since last frame (MapLibre-style pitch detection)
+    const vA = this.lastP0 ? { x: p0.x - this.lastP0.x, y: p0.y - this.lastP0.y } : { x: 0, y: 0 };
+    const vB = this.lastP1 ? { x: p1.x - this.lastP1.x, y: p1.y - this.lastP1.y } : { x: 0, y: 0 };
+    const movedA = Math.hypot(vA.x, vA.y) >= 2;
+    const movedB = Math.hypot(vB.x, vB.y) >= 2;
+    const verticalA = Math.abs(vA.y) > Math.abs(vA.x);
+    const verticalB = Math.abs(vB.y) > Math.abs(vB.x);
+    const sameDir = (vA.y > 0) === (vB.y > 0);
+    const avgDy = (vA.y + vB.y) / 2;
+    const dpCand = -avgDy * (this.opts.pitchPerPx ?? 0.25);
 
     // Determine mode if not locked
     if (this.mode === 'idle') {
       const pitchScore = Math.abs(avgDy);
       const zoomScore = Math.abs(dzCand);
       const rotateScore = Math.abs(dDeg);
-      // Only assign pan for single-finger; two-finger same-direction vertical => pitch
-      if (this.opts.enablePitch && pitchScore >= this.opts.pitchThresholdPx) this.mode = 'pitch';
-      else if (this.opts.enableZoom && (Math.abs(zoomScore) >= this.opts.zoomThreshold || (this.opts.enableRotate && rotateScore >= this.opts.rotateThresholdDeg))) this.mode = 'zoomRotate';
+      // Prefer pitch when both fingers move vertically in the same direction over zoom/rotate
+      if (this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && pitchScore >= (this.opts.pitchThresholdPx ?? 12)) {
+        this.mode = 'pitch';
+      } else if (this.opts.enableZoom && (Math.abs(zoomScore) >= (this.opts.zoomThreshold ?? 0.04) || (this.opts.enableRotate && rotateScore >= (this.opts.rotateThresholdDeg ?? 0.5)))) {
+        this.mode = 'zoomRotate';
+      }
     }
 
     // Apply based on locked mode, preserving around-point using centroid when enabled
@@ -317,6 +332,8 @@ export class TouchMultiHandler {
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastDist = dist;
     this.lastAngle = angle;
+    this.lastP0 = { ...p0 };
+    this.lastP1 = { ...p1 };
     this.opts.onChange({ axes, originalEvent: e });
   };
 
