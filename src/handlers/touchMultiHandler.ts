@@ -171,8 +171,8 @@ export class TouchMultiHandler {
       const gp = (this.transform as any).groundFromScreen?.(center) ?? null;
       if (gp) {
         if (this.lastGroundCenter) {
-          let dgx = this.lastGroundCenter.gx - gp.gx;
-          let dgz = this.lastGroundCenter.gz - gp.gz;
+          let dgx = (this.lastGroundCenter.gx - gp.gx) * (this.opts.panXSign ?? 1);
+          let dgz = (this.lastGroundCenter.gz - gp.gz) * (this.opts.panYSign ?? 1);
           const bounds = (this.transform as any).getPanBounds?.();
           if (bounds) {
             const nx = this.transform.center.x + dgx; const ny = this.transform.center.y + dgz;

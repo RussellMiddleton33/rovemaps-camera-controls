@@ -104,8 +104,8 @@ export class MousePanHandler {
     const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const currGround = (this.transform as any).groundFromScreen?.(pointer) ?? null;
     if (this.lastGround && currGround) {
-      let dgx = this.lastGround.gx - currGround.gx;
-      let dgz = this.lastGround.gz - currGround.gz;
+      let dgx = (this.lastGround.gx - currGround.gx) * (this.opts.panXSign ?? 1);
+      let dgz = (this.lastGround.gz - currGround.gz) * (this.opts.panYSign ?? 1);
       // Rubberband damping near/outside panBounds
       const bounds = this.transform.getPanBounds?.();
       if (bounds) {

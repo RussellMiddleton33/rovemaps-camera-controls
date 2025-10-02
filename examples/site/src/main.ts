@@ -133,9 +133,11 @@ toolbar.fit.addEventListener('click', () => {
 
 function resize() {
   const rect = canvas.getBoundingClientRect();
-  controller.setViewport({ width: rect.width, height: rect.height, devicePixelRatio: window.devicePixelRatio });
+  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  controller.setViewport({ width: rect.width, height: rect.height, devicePixelRatio: dpr });
   camera.aspect = rect.width / rect.height;
   camera.updateProjectionMatrix();
+  renderer.setPixelRatio(dpr);
   renderer.setSize(rect.width, rect.height, false);
 }
 
@@ -153,6 +155,19 @@ function updateOverlay() {
 }
 
 function frame() {
+  // Guard against DPR or CSS size changes mid-gesture (prevents blurry rendering)
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  const needResize =
+    Math.abs(canvas.width - Math.floor(rect.width * dpr)) > 1 ||
+    Math.abs(canvas.height - Math.floor(rect.height * dpr)) > 1;
+  if (needResize) {
+    controller.setViewport({ width: rect.width, height: rect.height, devicePixelRatio: dpr });
+    camera.aspect = rect.width / rect.height;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(rect.width, rect.height, false);
+  }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
