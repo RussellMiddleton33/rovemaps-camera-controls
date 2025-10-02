@@ -1153,7 +1153,7 @@ var TouchMultiHandler = class {
       } else if (this.mode === "zoomRotate") {
         const ptr = this.opts.around === "pinch" ? center : null;
         const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
-        const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? dDeg * ((_Q = this.opts.rotateSign) != null ? _Q : 1) : 0;
+        const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? -dDeg * ((_Q = this.opts.rotateSign) != null ? _Q : 1) : 0;
         const dZoom = this.opts.enableZoom ? dzCand : 0;
         if (dZoom) {
           this.vz = dZoom / dt;

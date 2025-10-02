@@ -346,7 +346,8 @@ export class TouchMultiHandler {
       const ptr = this.opts.around === 'pinch' ? center : null;
       // Preserve the ground point under the centroid across combined rotate/zoom in a single apply
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
-      const dRot = (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) ? (dDeg * (this.opts.rotateSign ?? 1)) : 0;
+      // Negate rotation for touch to match natural gesture (compensates for negated bearing in camera transform)
+      const dRot = (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) ? (-dDeg * (this.opts.rotateSign ?? 1)) : 0;
       const dZoom = this.opts.enableZoom ? dzCand : 0;
       if (dZoom) { this.vz = dZoom / dt; axes.zoom = true; }
       if (dRot) { this.vb = dRot / dt; axes.rotate = true; }
