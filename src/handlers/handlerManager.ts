@@ -29,6 +29,7 @@ export class HandlerManager {
   private readonly el: HTMLElement;
   private readonly transform: ITransform;
   private readonly helper: ICameraHelper;
+  private onCtx?: (e: Event) => void;
   private scroll?: ScrollZoomHandler;
   private mousePan?: MousePanHandler;
   private mouseRotatePitch?: MouseRotatePitchHandler;
@@ -44,12 +45,10 @@ export class HandlerManager {
     this.helper = helper;
 
     // Suppress native context menu to allow two-finger/right-drag rotate+pitch without interruption
-    const onCtx = (e: Event) => e.preventDefault();
-    this.el.addEventListener('contextmenu', onCtx, { capture: true } as any);
-    window.addEventListener('contextmenu', onCtx as any, { capture: true } as any);
-
     if (options?.suppressContextMenu ?? true) {
-      this.el.addEventListener('contextmenu', (e) => e.preventDefault());
+      this.onCtx = (e: Event) => e.preventDefault();
+      this.el.addEventListener('contextmenu', this.onCtx, { capture: true } as any);
+      window.addEventListener('contextmenu', this.onCtx as any, { capture: true } as any);
     }
 
     const scrollOpts = options?.scrollZoom;
@@ -127,6 +126,11 @@ export class HandlerManager {
   }
 
   dispose() {
+    if (this.onCtx) {
+      this.el.removeEventListener('contextmenu', this.onCtx as any, { capture: true } as any);
+      window.removeEventListener('contextmenu', this.onCtx as any, { capture: true } as any);
+      this.onCtx = undefined;
+    }
     this.scroll?.destroy();
     this.mousePan?.destroy();
     this.mouseRotatePitch?.destroy();

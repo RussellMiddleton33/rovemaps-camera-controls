@@ -39,6 +39,7 @@ export class TouchMultiHandler {
   private lastAngle = 0; // radians
   private mode: 'idle' | 'pan' | 'zoomRotate' | 'pitch' = 'idle';
   private lastGroundCenter: { gx: number; gz: number } | null = null;
+  private rectCache: DOMRect | null = null;
 
   // inertias
   private vz = 0; // zoom units/s
@@ -118,6 +119,7 @@ export class TouchMultiHandler {
     this.lastTs = performance.now();
     this.mode = 'idle';
     this.lastGroundCenter = null;
+    this.rectCache = this.el.getBoundingClientRect();
     if (this.opts.recenterOnGestureStart && this.opts.around === 'pinch') {
       const rect = this.el.getBoundingClientRect();
       const gp = (this.transform as any).groundFromScreen?.({ x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top }) ?? null;
@@ -136,7 +138,7 @@ export class TouchMultiHandler {
     if (!this.active && this.pts.size === 2) this.startGesture(e);
     if (!this.active || this.pts.size < 2) return;
 
-    const rect = this.el.getBoundingClientRect();
+    const rect = this.rectCache ?? this.el.getBoundingClientRect();
     const [p0, p1] = [...this.pts.values()];
     const center = { x: (p0.x + p1.x) / 2 - rect.left, y: (p0.y + p1.y) / 2 - rect.top };
     const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
@@ -225,6 +227,7 @@ export class TouchMultiHandler {
         this.active = false;
         this.startInertia();
       }
+      this.rectCache = null;
     }
     if (this.pts.size === 0 && this.unbindMoveUp) {
       this.unbindMoveUp();

@@ -25,6 +25,7 @@ export class MouseRotatePitchHandler {
   private dragging = false;
   private lastX = 0;
   private lastY = 0;
+  private rectCache: DOMRect | null = null;
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: MouseRotatePitchOptions) {
     this.el = el;
@@ -63,6 +64,7 @@ export class MouseRotatePitchHandler {
     this.dragging = true;
     this.lastX = e.clientX;
     this.lastY = e.clientY;
+    this.rectCache = this.el.getBoundingClientRect();
     if (this.opts.recenterOnPointerDown && this.opts.around === 'pointer') {
       const rect = this.el.getBoundingClientRect();
       const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -85,7 +87,7 @@ export class MouseRotatePitchHandler {
     e.preventDefault();
 
     const aroundPointer = this.opts.around === 'pointer';
-    const rect = this.el.getBoundingClientRect();
+    const rect = this.rectCache ?? this.el.getBoundingClientRect();
     const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     // MapLibre-style: right-drag rotates (dx) and pitches (dy) simultaneously.
     // If modifier is held, allow pitch-only for precision.
@@ -111,5 +113,6 @@ export class MouseRotatePitchHandler {
     this.dragging = false;
     this.unbindMoveUp?.();
     this.unbindMoveUp = null;
+    this.rectCache = null;
   };
 }

@@ -189,9 +189,6 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-controller.on('renderFrame', () => updateOverlay());
-controller.on('move', () => updateOverlay());
-
 function updateOverlay() {
   const c = controller.getCenter();
   overlay.textContent = `center: ${c.x.toFixed(2)}, ${c.y.toFixed(2)}\nzoom: ${controller.getZoom().toFixed(2)}\n` +

@@ -33,6 +33,7 @@ export class MousePanHandler {
   private vy = 0; // px/s
   private inertiaHandle: number | null = null;
   private lastGround: { gx: number; gz: number } | null = null;
+  private rectCache: DOMRect | null = null;
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: MousePanOptions) {
     this.el = el;
@@ -75,8 +76,9 @@ export class MousePanHandler {
     this.startX = this.lastX = e.clientX;
     this.startY = this.lastY = e.clientY;
     this.lastTs = performance.now();
+    this.rectCache = this.el.getBoundingClientRect();
     // Initialize ground anchor at pointer
-    const rect = this.el.getBoundingClientRect();
+    const rect = this.rectCache ?? this.el.getBoundingClientRect();
     const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const gp = (this.transform as any).groundFromScreen?.(pointer) ?? null;
     this.lastGround = gp;
@@ -149,6 +151,7 @@ export class MousePanHandler {
     this.unbindMoveUp = null;
     if (!this.dragging) return;
     this.dragging = false;
+    this.rectCache = null;
     // Start inertia
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
     this.inertiaHandle = requestAnimationFrame(() => this.runInertia());
