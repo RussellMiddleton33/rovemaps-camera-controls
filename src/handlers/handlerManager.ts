@@ -37,6 +37,11 @@ export class HandlerManager {
     this.transform = transform;
     this.helper = helper;
 
+    // Suppress native context menu to allow two-finger/right-drag rotate+pitch without interruption
+    const onCtx = (e: Event) => e.preventDefault();
+    this.el.addEventListener('contextmenu', onCtx, { capture: true } as any);
+    window.addEventListener('contextmenu', onCtx as any, { capture: true } as any);
+
     if (options?.suppressContextMenu ?? true) {
       this.el.addEventListener('contextmenu', (e) => e.preventDefault());
     }
