@@ -45,6 +45,8 @@ export class TouchMultiHandler {
   // For touch on mobile, recompute bounding rect each move to avoid visualViewport shifts
   private rectCache: DOMRect | null = null; // unused for move; kept for potential future batching
   private lastPinchPointer: { x: number; y: number } | null = null; // screen coords of last pinch centroid
+  private lastSinglePt: { x: number; y: number } | null = null;
+  private lastSingleGround: { gx: number; gz: number } | null = null;
 
   // inertias
   private vz = 0; // zoom units/s
@@ -109,8 +111,16 @@ export class TouchMultiHandler {
     this.el.setPointerCapture?.(e.pointerId);
     this.pts.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY });
     if (this.pts.size === 1) {
-      // wait for second touch
+      // Single-finger pan: initialize ground anchor at finger
       this.bindMoveUp();
+      const rect = this.el.getBoundingClientRect();
+      const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const gp = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+      this.lastSinglePt = pointer;
+      this.lastSingleGround = gp;
+      this.active = true;
+      this.mode = 'pan';
+      this.lastTs = performance.now();
     } else if (this.pts.size === 2) {
       this.startGesture(e);
     }
@@ -157,6 +167,42 @@ export class TouchMultiHandler {
     pt.x = e.clientX; pt.y = e.clientY;
     if (this.opts.preventDefault) e.preventDefault();
     if (!this.active && this.pts.size === 2) this.startGesture(e);
+    // Single-finger pan path
+    if (this.pts.size === 1) {
+      const now = performance.now();
+      const dt = Math.max(1 / 120, (now - this.lastTs) / 1000);
+      this.lastTs = now;
+      const rect = this.el.getBoundingClientRect();
+      const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const gpNow = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+      if (this.lastSingleGround && gpNow) {
+        let dgx = (this.lastSingleGround.gx - gpNow.gx) * (this.opts.panXSign ?? 1);
+        let dgz = (this.lastSingleGround.gz - gpNow.gz) * (this.opts.panYSign ?? 1);
+        const bounds = (this.transform as any).getPanBounds?.();
+        if (bounds) {
+          const nx = this.transform.center.x + dgx; const ny = this.transform.center.y + dgz;
+          const overX = nx < bounds.min.x ? bounds.min.x - nx : nx > bounds.max.x ? nx - bounds.max.x : 0;
+          const overY = ny < bounds.min.y ? bounds.min.y - ny : ny > bounds.max.y ? ny - bounds.max.y : 0;
+          const s = this.opts.rubberbandStrength; const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
+          dgx *= damp(overX); dgz *= damp(overY);
+        }
+        (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
+        // velocity
+        const alpha = 0.3;
+        const igx = dgx / dt; const igz = dgz / dt;
+        this.igvx = igx; this.igvz = igz;
+        this.gvx = this.gvx * (1 - alpha) + igx * alpha;
+        this.gvz = this.gvz * (1 - alpha) + igz * alpha;
+        const sdx = (pointer.x - (this.lastSinglePt?.x ?? pointer.x));
+        const sdy = (pointer.y - (this.lastSinglePt?.y ?? pointer.y));
+        this.vpx = this.vpx * (1 - alpha) + (sdx / dt) * alpha;
+        this.vpy = this.vpy * (1 - alpha) + (sdy / dt) * alpha;
+      }
+      this.lastSinglePt = pointer;
+      this.lastSingleGround = gpNow;
+      this.opts.onChange({ axes: { pan: true }, originalEvent: e });
+      return;
+    }
     if (!this.active || this.pts.size < 2) return;
 
     const rect = this.el.getBoundingClientRect();
@@ -186,9 +232,9 @@ export class TouchMultiHandler {
       const pitchScore = Math.abs(avgDy);
       const zoomScore = Math.abs(dzCand);
       const rotateScore = Math.abs(dDeg);
+      // Only assign pan for single-finger; two-finger same-direction vertical => pitch
       if (this.opts.enablePitch && pitchScore >= this.opts.pitchThresholdPx) this.mode = 'pitch';
       else if (this.opts.enableZoom && (Math.abs(zoomScore) >= this.opts.zoomThreshold || (this.opts.enableRotate && rotateScore >= this.opts.rotateThresholdDeg))) this.mode = 'zoomRotate';
-      else if (this.opts.enablePan && Math.hypot(dxPan, dyPan) > 0) this.mode = 'pan';
     }
 
     // Apply based on locked mode, preserving around-point using centroid when enabled
