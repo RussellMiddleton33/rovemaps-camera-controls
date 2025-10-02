@@ -4,7 +4,7 @@ title: Overview
 
 ## Overview
 
-Three MapLibre Camera Controls provides MapLibre GL JS-compatible camera controls for Three.js scenes. It aims for 1:1 parity on API, gestures, and semantics: jump/ease/fly/fit, pan/zoom/rotate/pitch/roll, around-point invariants, padding/offset, inertia, reduced motion, and event model.
+RoveMaps Three Camera Controls provides GL JS-compatible camera controls for Three.js scenes. It aims for standard map controls with parity on API, gestures, and semantics: jump/ease/fly/fit, pan/zoom/rotate/pitch/roll, around-point invariants, padding/offset, inertia, reduced motion, and event model.
 
 Key ideas:
 - Transform abstraction maps MapLibre camera semantics to a Three.js camera.

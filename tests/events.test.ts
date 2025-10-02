@@ -66,3 +66,4 @@ describe('CameraController events', () => {
     expect(Math.abs(ctl.getBearing())).toBeLessThanOrEqual(0.001);
   });
 });
+// @vitest-environment jsdom

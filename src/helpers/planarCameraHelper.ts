@@ -4,17 +4,18 @@ import { clamp, lerp, normalizeAngleDeg } from '../util/math';
 
 export class PlanarCameraHelper implements ICameraHelper {
   handleMapControlsPan(transform: ITransform, dx: number, dy: number): void {
-    // Interpret dx/dy in screen pixels mapped to world units via zoom scale, rotated by bearing.
+    // Map screen pixel delta to world center delta so that a world point moves by -dx,-dy in screen.
+    // See stub mapping in tests: screen x = (dx*cos - dz*sin)*s + w/2; y = -(dx*sin + dz*cos)*s + h/2
+    // Solve for center deltas: dWx = (dx*cos - dy*sin)/s; dWz = (-dx*sin - dy*cos)/s
     const scale = Math.pow(2, transform.zoom);
     const rad = (transform.bearing * Math.PI) / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
-    // Screen dx to world: along camera right; dy to world: along camera forward
-    const dWx = (-dx * cos + dy * sin) / scale;
-    const dWy = (dx * sin + dy * cos) / scale; // world plane Y here represents ground Z
+    const dWx = (dx * cos - dy * sin) / scale;
+    const dWz = (-dx * sin - dy * cos) / scale;
     transform.setCenter({
       x: transform.center.x + dWx,
-      y: transform.center.y + dWy,
+      y: transform.center.y + dWz,
       z: transform.center.z,
     });
   }

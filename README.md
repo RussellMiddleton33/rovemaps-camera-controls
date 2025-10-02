@@ -47,6 +47,10 @@ const controller = createControllerForNext(() => ({ camera, domElement }));
 - `examples/`: Next.js stubs
 - `tests/`: unit tests (vitest)
 
+
+git status -sb
+git push origin HEAD:main
+
 ## Roadmap
 
 - M1: Core abstractions (ITransform, Evented, utils) + PlanarCameraHelper stub

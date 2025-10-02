@@ -43,4 +43,4 @@ describe('cancelation semantics', () => {
     expect(seen.lastIndexOf('moveend')).toBeGreaterThan(seen.indexOf('zoomend'));
   });
 });
-
+// @vitest-environment jsdom

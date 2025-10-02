@@ -1,2 +1,2 @@
-Deploy trigger: update to re-run Pages workflow (refresh)
+Deploy trigger: update to re-run Pages workflow (refresh) — $(date -u +%Y-%m-%dT%H:%M:%SZ)
 Timestamp: 2025-10-02T00:00:00Z
