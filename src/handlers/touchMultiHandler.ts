@@ -201,7 +201,10 @@ export class TouchMultiHandler {
       // dxPan/dyPan already include panXSign/panYSign; do not apply signs again
       const vdx = dxPan / dt;
       const vdy = dyPan / dt;
-      this.vpx = vdx; this.vpy = vdy; axes.pan = true;
+      const alpha = 0.3; // low-pass filter to stabilize inertia
+      this.vpx = this.vpx * (1 - alpha) + vdx * alpha;
+      this.vpy = this.vpy * (1 - alpha) + vdy * alpha;
+      axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
       const ptr = this.opts.around === 'pinch' ? center : null;
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
