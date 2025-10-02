@@ -23,6 +23,7 @@ export interface TouchMultiOptions {
   anchorTightness?: number; // 0..1
   inertiaPanXSign?: 1 | -1;
   inertiaPanYSign?: 1 | -1;
+  rotateSign?: 1 | -1;
 }
 
 type Pt = { id: number; x: number; y: number };
@@ -77,6 +78,7 @@ export class TouchMultiHandler {
       anchorTightness: 1,
       inertiaPanXSign: 1,
       inertiaPanYSign: 1,
+      rotateSign: 1,
       ...opts,
     };
   }
@@ -247,7 +249,12 @@ export class TouchMultiHandler {
       // Then: lock the ground point under the centroid across rotate/zoom
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (this.opts.enableZoom && dzCand) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dzCand, 'center'); this.vz = dzCand / dt; axes.zoom = true; }
-      if (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dDeg, 0, 'center'); this.vb = dDeg / dt; axes.rotate = true; }
+      if (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) {
+        const dRot = dDeg * (this.opts.rotateSign ?? 1);
+        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dRot, 0, 'center');
+        this.vb = dRot / dt;
+        axes.rotate = true;
+      }
       if (ptr && groundBefore) { const groundAfter = this.transform.groundFromScreen(ptr); if (groundAfter) { const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1)); const dgx = (groundBefore.gx - groundAfter.gx) * tight; const dgz = (groundBefore.gz - groundAfter.gz) * tight; this.transform.adjustCenterByGroundDelta(dgx, dgz); } }
       // Update last ground center for next frame's translational pan
       if (gpCurr) this.lastGroundCenter = gpCurr;
