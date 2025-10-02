@@ -3,14 +3,14 @@
 Install (WIP publishing):
 
 ```
-npm i three three-maplibre-camera-controls
+npm i three three-rovemaps-camera-controls
 ```
 
 Basic usage:
 
 ```ts
 import * as THREE from 'three';
-import { CameraController } from 'three-maplibre-camera-controls';
+import { CameraController } from 'three-rovemaps-camera-controls';
 
 const renderer = new THREE.WebGLRenderer({ canvas });
 const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 10000);
@@ -30,7 +30,7 @@ frame();
 Next.js SSR-safe:
 
 ```ts
-import { createControllerForNext } from 'three-maplibre-camera-controls';
+import { createControllerForNext } from 'three-rovemaps-camera-controls';
 const controller = createControllerForNext(() => ({ camera, domElement }));
 ```
 

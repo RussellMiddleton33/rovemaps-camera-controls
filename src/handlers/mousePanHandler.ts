@@ -14,6 +14,7 @@ export interface MousePanOptions {
   recenterOnPointerDown?: boolean;
   inertiaPanYSign?: 1 | -1;
   inertiaPanXSign?: 1 | -1;
+  anchorTightness?: number;
 }
 
 export class MousePanHandler {

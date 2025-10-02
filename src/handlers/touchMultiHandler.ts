@@ -54,6 +54,10 @@ export class TouchMultiHandler {
   private vpy = 0;
   private instVpx = 0; // last instantaneous pan px/s
   private instVpy = 0;
+  private gvx = 0; // ground-space pan velocity (world/s)
+  private gvz = 0;
+  private igvx = 0; // instantaneous ground-space velocity
+  private igvz = 0;
   private inertiaHandle: number | null = null;
   private lastTs = 0;
 
@@ -123,6 +127,7 @@ export class TouchMultiHandler {
   private startGesture(_e: PointerEvent) {
     const pts = [...this.pts.values()];
     const [p0, p1] = pts;
+    if (!p0 || !p1) return;
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     this.lastAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
@@ -154,8 +159,9 @@ export class TouchMultiHandler {
     if (!this.active && this.pts.size === 2) this.startGesture(e);
     if (!this.active || this.pts.size < 2) return;
 
-    const rect = this.rectCache ?? this.el.getBoundingClientRect();
+    const rect = this.el.getBoundingClientRect();
     const [p0, p1] = [...this.pts.values()];
+    if (!p0 || !p1) return;
     const center = { x: (p0.x + p1.x) / 2 - rect.left, y: (p0.y + p1.y) / 2 - rect.top };
     this.lastPinchPointer = center;
     const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);

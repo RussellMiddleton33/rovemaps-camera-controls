@@ -114,7 +114,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
     // Handlers (Pointer/Wheel/Touch will be added as we implement)
     this._handlers = new HandlerManager(this._dom, this.transform, this._helper, {
       scrollZoom: opts.handlers?.scrollZoom ?? { around: 'center' },
-      onChange: (ev?: Event) => this._externalChange(ev),
+      onChange: (delta) => this._externalChange(delta),
     });
   }
 
