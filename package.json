@@ -1,7 +1,7 @@
 {
-  "name": "three-maplibre-camera-controls",
+  "name": "three-rovemaps-camera-controls",
   "version": "0.0.0-dev",
-  "description": "MapLibre GL JS-compatible camera controls for Three.js",
+  "description": "RoveMaps GL JS-compatible camera controls for Three.js",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.cjs",
