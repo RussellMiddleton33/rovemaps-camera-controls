@@ -67,9 +67,10 @@ export class TouchMultiHandler {
       enableRotate: true,
       enablePitch: true,
       pitchPerPx: 0.25,
-      rotateThresholdDeg: 0.2,
-      pitchThresholdPx: 8,
-      zoomThreshold: 0.02,
+      // MapLibre-like, reduce accidental mode switching on touch
+      rotateThresholdDeg: 0.5,
+      pitchThresholdPx: 12,
+      zoomThreshold: 0.04,
       onChange: () => {},
       preventDefault: true,
       around: 'pinch',
@@ -310,14 +311,33 @@ export class TouchMultiHandler {
     // Directional clamp for pan inertia to avoid backslide at release
     const d = this.vpx * this.instVpx + this.vpy * this.instVpy;
     if (d <= 0) { this.vpx = 0; this.vpy = 0; }
+    // MapLibre-like gating and caps (touch only)
+    const panSpeed = Math.hypot(this.vpx, this.vpy); // px/s
+    const minPanSpeed = 80; // below this, no pan inertia
+    if (panSpeed < minPanSpeed) { this.vpx = 0; this.vpy = 0; this.gvx = 0; this.gvz = 0; }
+    const maxPanSpeed = 1400; // cap
+    if (panSpeed > maxPanSpeed) {
+      const k = maxPanSpeed / panSpeed; this.vpx *= k; this.vpy *= k; this.gvx *= k; this.gvz *= k;
+    }
+    // Zoom inertia on touch feels negligible in ML; disable
+    this.vz = 0;
+    // Gate rotate/pitch small velocities
+    if (Math.abs(this.vb) < 8) this.vb = 0; // deg/s
+    if (Math.abs(this.vp) < 8) this.vp = 0;
     let last = performance.now();
-    const friction = 7; // 1/s
+    // Separate frictions per axis (stronger than before)
+    const frPan = 12; // pan dies quickly
+    const frZoom = 20; // zoom off
+    const frAng = 12; // rotate/pitch quick
     const step = () => {
       const now = performance.now();
       const dt = (now - last) / 1000;
       last = now;
-      const decay = Math.exp(-friction * dt);
-      this.vz *= decay; this.vb *= decay; this.vp *= decay; this.vpx *= decay; this.vpy *= decay;
+      const decayPan = Math.exp(-frPan * dt);
+      const decayZoom = Math.exp(-frZoom * dt);
+      const decayAng = Math.exp(-frAng * dt);
+      this.vpx *= decayPan; this.vpy *= decayPan;
+      this.vz *= decayZoom; this.vb *= decayAng; this.vp *= decayAng;
       const zAbs = Math.abs(this.vz), bAbs = Math.abs(this.vb), pAbs = Math.abs(this.vp), panAbs = Math.hypot(this.vpx, this.vpy);
       if (zAbs < 1e-3 && bAbs < 1e-2 && pAbs < 1e-2 && panAbs < 2) {
         this.inertiaHandle = null;
@@ -326,10 +346,10 @@ export class TouchMultiHandler {
       const dz = this.vz * dt;
       const db = this.vb * dt;
       const dp = this.vp * dt;
-      let dx = this.vpx * dt;
-      let dy = this.vpy * dt;
+      let dx = this.vpx * dt; let dy = this.vpy * dt;
       const axes: HandlerDelta['axes'] = {};
       if (this.mode === 'zoomRotate') {
+        // We disable zoom inertia (vz zeroed) but keep logic here guarded
         if (this.opts.enableZoom && dz) { this.applyZoomAround(dz, this.lastPinchPointer ?? null); axes.zoom = true; }
         if (this.opts.enableRotate && db) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, db, 0, 'center'); axes.rotate = true; }
       } else if (this.mode === 'pitch') {
