@@ -77,6 +77,16 @@ function buildController() {
   if (controller) controller.dispose();
   // Rebuild renderer based on current handlers (avoid referencing toolbar before init)
   rebuildRenderer(currentHandlers.antialias);
+  // Detect touch-capable device to auto-enable mobile profile on first load
+  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  if (isTouch && (controller == null)) {
+    currentHandlers.mobileProfile = true;
+  }
+  const touchProfile = currentHandlers.mobileProfile ? {
+    rotateThresholdDeg: 0.5,
+    pitchThresholdPx: 12,
+    zoomThreshold: 0.04,
+  } : {} as any;
   controller = new CameraController({
     camera,
     domElement: renderer.domElement,
@@ -113,6 +123,7 @@ function buildController() {
         inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
         inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
         rotateSign: currentHandlers.invertTwist ? -1 : 1,
+        ...(touchProfile as any),
       },
       safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,
@@ -157,6 +168,7 @@ const toolbar = {
   maxPitch: document.getElementById('max-pitch') as HTMLInputElement,
   maxZoom: document.getElementById('max-zoom') as HTMLInputElement,
   minZoom: document.getElementById('min-zoom') as HTMLInputElement,
+  mobileProfile: document.getElementById('mobile-profile') as HTMLInputElement,
 };
 
 toolbar.zoomIn.addEventListener('click', () => controller.zoomIn(0.5, { around: toolbar.aroundPointer.checked ? 'pointer' : 'center' }));
@@ -185,6 +197,7 @@ toolbar.showDebug.addEventListener('change', () => { updateDebugVisibility(toolb
 toolbar.maxPitch.addEventListener('change', () => { currentHandlers.maxPitch = Math.max(1, Math.min(89, parseFloat(toolbar.maxPitch.value))); buildController(); });
 toolbar.maxZoom.addEventListener('change', () => { currentHandlers.maxZoom = parseFloat(toolbar.maxZoom.value); buildController(); });
 toolbar.minZoom.addEventListener('change', () => { currentHandlers.minZoom = parseFloat(toolbar.minZoom.value); buildController(); });
+toolbar.mobileProfile.addEventListener('change', () => { currentHandlers.mobileProfile = toolbar.mobileProfile.checked; buildController(); });
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };
