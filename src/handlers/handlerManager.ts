@@ -17,6 +17,7 @@ export interface HandlerManagerOptions {
   keyboard?: KeyboardOptions | boolean;
   dblclick?: DblclickOptions | boolean;
   boxZoom?: BoxZoomOptions | boolean;
+  suppressContextMenu?: boolean;
 }
 
 export class HandlerManager {
@@ -35,6 +36,10 @@ export class HandlerManager {
     this.el = el;
     this.transform = transform;
     this.helper = helper;
+
+    if (options?.suppressContextMenu ?? true) {
+      this.el.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
 
     const scrollOpts = options?.scrollZoom;
     if (scrollOpts) {

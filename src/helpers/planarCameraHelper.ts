@@ -4,11 +4,17 @@ import { clamp, lerp, normalizeAngleDeg } from '../util/math';
 
 export class PlanarCameraHelper implements ICameraHelper {
   handleMapControlsPan(transform: ITransform, dx: number, dy: number): void {
-    // Interpret dx/dy in screen pixels mapped to world units via zoom scale.
+    // Interpret dx/dy in screen pixels mapped to world units via zoom scale, rotated by bearing.
     const scale = Math.pow(2, transform.zoom);
+    const rad = (transform.bearing * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    // Screen dx to world: along camera right; dy to world: along camera forward
+    const dWx = (-dx * cos + dy * sin) / scale;
+    const dWy = (dx * sin + dy * cos) / scale; // world plane Y here represents ground Z
     transform.setCenter({
-      x: transform.center.x - dx / scale,
-      y: transform.center.y + dy / scale,
+      x: transform.center.x + dWx,
+      y: transform.center.y + dWy,
       z: transform.center.z,
     });
   }

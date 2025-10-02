@@ -35,7 +35,7 @@ export class ScrollZoomHandler {
     this.opts = {
       maxDeltaPerEvent: 0.25,
       preventDefault: true,
-      around: 'center',
+      around: 'pointer',
       onWheelModeChange: () => {},
       onChange: () => {},
       cooperative: false,

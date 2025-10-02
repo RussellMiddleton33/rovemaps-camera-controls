@@ -73,40 +73,21 @@ export class MouseRotatePitchHandler {
     const aroundPointer = this.opts.around === 'pointer';
     const rect = this.el.getBoundingClientRect();
     const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    const wantsPitch = (this.opts.pitchModifier === 'shift' && e.shiftKey) || (this.opts.pitchModifier === 'alt' && (e.altKey || e.metaKey));
-    if (wantsPitch) {
-      const dp = -dy * (this.opts.sensitivity.pitchPerPx / 1.0);
-      if (aroundPointer) {
-        const world = this.transform.screenToWorld(pointer);
-        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, 'center');
-        if (world) {
-          const sp = this.transform.worldToScreen(world);
-          if (sp) {
-            const cdx = sp.x - pointer.x; const cdy = sp.y - pointer.y;
-            this.helper.handleMapControlsPan(this.transform, cdx, cdy);
-          }
-        }
-      } else {
-        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, 'center');
+    // MapLibre-style: right-drag rotates (dx) and pitches (dy) simultaneously.
+    // If modifier is held, allow pitch-only for precision.
+    const wantsPitchOnly = (this.opts.pitchModifier === 'shift' && e.shiftKey) || (this.opts.pitchModifier === 'alt' && (e.altKey || e.metaKey));
+    const db = wantsPitchOnly ? 0 : dx * (this.opts.sensitivity.rotatePerPx / 1.0);
+    const dp = -dy * (this.opts.sensitivity.pitchPerPx / 1.0);
+    const world = aroundPointer ? this.transform.screenToWorld(pointer) : null;
+    this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, db, 0, 'center');
+    if (aroundPointer && world) {
+      const sp = this.transform.worldToScreen(world);
+      if (sp) {
+        const cdx = sp.x - pointer.x; const cdy = sp.y - pointer.y;
+        this.helper.handleMapControlsPan(this.transform, cdx, cdy);
       }
-      this.opts.onChange({ axes: { pitch: true }, originalEvent: e });
-    } else {
-      const db = dx * (this.opts.sensitivity.rotatePerPx / 1.0);
-      if (aroundPointer) {
-        const world = this.transform.screenToWorld(pointer);
-        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, db, 0, 'center');
-        if (world) {
-          const sp = this.transform.worldToScreen(world);
-          if (sp) {
-            const cdx = sp.x - pointer.x; const cdy = sp.y - pointer.y;
-            this.helper.handleMapControlsPan(this.transform, cdx, cdy);
-          }
-        }
-      } else {
-        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, db, 0, 'center');
-      }
-      this.opts.onChange({ axes: { rotate: true }, originalEvent: e });
     }
+    this.opts.onChange({ axes: { rotate: db !== 0, pitch: dp !== 0 }, originalEvent: e });
   };
 
   private onUp = (_e: PointerEvent) => {
