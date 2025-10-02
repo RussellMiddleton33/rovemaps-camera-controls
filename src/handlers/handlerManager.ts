@@ -127,7 +127,10 @@ export class HandlerManager {
     this.boxZoom.enable();
     // Safari gesture handler (optional)
     const sg = options?.safariGestures ?? false;
-    if (sg) {
+    // Enable Safari gesture handler only on non-touch devices (desktop Safari trackpad),
+    // to avoid conflicts with touch pinch/rotate on mobile.
+    const touchCapable = typeof window !== 'undefined' && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+    if (sg && !touchCapable) {
       this.safariGestures = new SafariGestureHandler(
         this.el,
         this.transform,
