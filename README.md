@@ -47,7 +47,12 @@ const controller = createControllerForNext(() => ({ camera, domElement }));
 - `examples/`: Next.js stubs
 - `tests/`: unit tests (vitest)
 
-## Commands
+# Test Commands
+npm run -s typecheck
+npm run -s test
+
+## Publish Commands
+
 git status -sb
 git add -A
 git commit -m 'Fix Errors'
@@ -55,11 +60,6 @@ git push origin HEAD:main
 
 ## Roadmap
 
-- M1: Core abstractions (ITransform, Evented, utils) + PlanarCameraHelper stub
-- M2: CameraController (jump/ease) + baseline handlers + examples
-- M3: Full handlers (rotate/pitch/roll, touch, dbl/tap/box) + inertia
-- M4: flyTo, fitBounds rigor, around-point invariants, cooperative gestures
-- M5: Tests, docs, packaging; first beta
 - M6: Optional spherical/globe projection
 
 ## Types & Packaging

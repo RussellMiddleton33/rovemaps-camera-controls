@@ -24,6 +24,9 @@ export interface TouchMultiOptions {
   inertiaPanXSign?: 1 | -1;
   inertiaPanYSign?: 1 | -1;
   rotateSign?: 1 | -1;
+  // MapLibre-style gating: allow two-finger pitch only when second touch arrives quickly
+  allowedSingleTouchTimeMs?: number; // time between first and second touch to allow pitch
+  pitchFirstMoveWindowMs?: number; // window since two-finger start for first pitch move
 }
 
 type Pt = { id: number; x: number; y: number };
@@ -38,6 +41,7 @@ export class TouchMultiHandler {
   private pts: Map<number, Pt> = new Map();
   private active = false;
   private lastCenter = { x: 0, y: 0 };
+  private lastCenterEl = { x: 0, y: 0 }; // element-relative centroid to avoid visualViewport drift
   private lastDist = 0;
   private lastAngle = 0; // radians
   private mode: 'idle' | 'pan' | 'zoomRotate' | 'pitch' = 'idle';
@@ -64,6 +68,10 @@ export class TouchMultiHandler {
   private igvz = 0;
   private inertiaHandle: number | null = null;
   private lastTs = 0;
+  private firstTouchDownTs = 0;
+  private gestureStartTs = 0;
+  private firstPitchMoveSeen = false;
+  private allowPitchThisGesture = true;
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: TouchMultiOptions) {
     this.el = el;
@@ -77,7 +85,8 @@ export class TouchMultiHandler {
       pitchPerPx: 0.25,
       // MapLibre-like, reduce accidental mode switching on touch
       rotateThresholdDeg: 0.5,
-      pitchThresholdPx: 12,
+      // Slightly higher pitch threshold for touch reliability
+      pitchThresholdPx: 14,
       zoomThreshold: 0.04,
       onChange: () => {},
       preventDefault: true,
@@ -86,10 +95,13 @@ export class TouchMultiHandler {
       panXSign: 1,
       panYSign: 1,
       recenterOnGestureStart: false,
-      anchorTightness: 1,
+      // Touch-specific: slightly loosen anchor to reduce counter-drift
+      anchorTightness: 0.95,
       inertiaPanXSign: 1,
       inertiaPanYSign: 1,
       rotateSign: 1,
+      allowedSingleTouchTimeMs: 200,
+      pitchFirstMoveWindowMs: 120,
       ...opts,
     };
   }
@@ -115,8 +127,11 @@ export class TouchMultiHandler {
     if (this.pts.size === 1) {
       // Single-finger pan: initialize ground anchor at finger
       this.bindMoveUp();
+      this.firstTouchDownTs = performance.now();
       const rect = this.el.getBoundingClientRect();
-      const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const vv = (window as any).visualViewport as VisualViewport | undefined;
+      // Element-relative pointer with explicit visualViewport offset handling
+      const pointer = { x: (e.clientX + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: (e.clientY + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
       const gp = (this.transform as any).groundFromScreen?.(pointer) ?? null;
       this.lastSinglePt = pointer;
       this.lastSingleGround = gp;
@@ -148,16 +163,24 @@ export class TouchMultiHandler {
     this.active = true;
     this.lastTs = performance.now();
     this.mode = 'idle';
+    // MapLibre-style pitch gating flags
+    const now = this.lastTs;
+    this.gestureStartTs = now;
+    this.firstPitchMoveSeen = false;
+    this.allowPitchThisGesture = (now - this.firstTouchDownTs) <= this.opts.allowedSingleTouchTimeMs;
     // Seed ground center so first movement immediately pans (grab feel)
     // Use fresh rect per move to avoid iOS visual viewport shifts
     const rect = this.el.getBoundingClientRect();
-    const gp = (this.transform as any).groundFromScreen?.({ x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top }) ?? null;
+    const vv = (window as any).visualViewport as VisualViewport | undefined;
+    const centerEl = { x: (this.lastCenter.x + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: (this.lastCenter.y + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
+    this.lastCenterEl = centerEl;
+    const gp = (this.transform as any).groundFromScreen?.(centerEl) ?? null;
     this.lastGroundCenter = gp;
     this.rectCache = this.el.getBoundingClientRect();
     if (this.opts.recenterOnGestureStart && this.opts.around === 'pinch') {
     // Fresh rect per frame
     const rect = this.el.getBoundingClientRect();
-      const gp = (this.transform as any).groundFromScreen?.({ x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top }) ?? null;
+      const gp = (this.transform as any).groundFromScreen?.(centerEl) ?? null;
       if (gp) (this.transform as any).setGroundCenter?.(gp);
     }
     // end any inertia
@@ -177,7 +200,8 @@ export class TouchMultiHandler {
       const dt = Math.max(1 / 120, (now - this.lastTs) / 1000);
       this.lastTs = now;
       const rect = this.el.getBoundingClientRect();
-      const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const vv = (window as any).visualViewport as VisualViewport | undefined;
+      const pointer = { x: (e.clientX + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: (e.clientY + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
       const gpNow = (this.transform as any).groundFromScreen?.(pointer) ?? null;
       if (this.lastSingleGround && gpNow) {
         let dgx = (this.lastSingleGround.gx - gpNow.gx) * (this.opts.panXSign ?? 1);
@@ -212,7 +236,8 @@ export class TouchMultiHandler {
     const rect = this.el.getBoundingClientRect();
     const [p0, p1] = [...this.pts.values()];
     if (!p0 || !p1) return;
-    const center = { x: (p0.x + p1.x) / 2 - rect.left, y: (p0.y + p1.y) / 2 - rect.top };
+    const vv = (window as any).visualViewport as VisualViewport | undefined;
+    const center = { x: ((p0.x + p1.x) / 2 + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: ((p0.y + p1.y) / 2 + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
     this.lastPinchPointer = center;
     const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     const angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
@@ -221,8 +246,8 @@ export class TouchMultiHandler {
     this.lastTs = now;
 
     // Compute candidate deltas
-    const dxPan = (center.x - (this.lastCenter.x - rect.left)) * (this.opts.panXSign ?? 1);
-    const dyPan = (center.y - (this.lastCenter.y - rect.top)) * (this.opts.panYSign ?? 1);
+    const dxPan = (center.x - this.lastCenterEl.x) * (this.opts.panXSign ?? 1);
+    const dyPan = (center.y - this.lastCenterEl.y) * (this.opts.panYSign ?? 1);
     const s = this.lastDist > 0 && dist > 0 ? dist / this.lastDist : 1;
     const dzCand = scaleZoom(s);
     let dAng = angle - this.lastAngle;
@@ -240,7 +265,15 @@ export class TouchMultiHandler {
     const dpCand = -avgDy * (this.opts.pitchPerPx ?? 0.25);
 
     // Determine mode if not locked
-    const pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && Math.abs(avgDy) >= (this.opts.pitchThresholdPx ?? 12);
+    let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && Math.abs(avgDy) >= (this.opts.pitchThresholdPx ?? 14);
+    // MapLibre-style gating: only allow pitch if second touch arrived quickly
+    if (!this.allowPitchThisGesture) pitchStrong = false;
+    // First-move timing window: pitch must be indicated near the start
+    if (pitchStrong && !this.firstPitchMoveSeen) {
+      const withinFirst = (now - this.gestureStartTs) <= this.opts.pitchFirstMoveWindowMs;
+      if (!withinFirst) pitchStrong = false;
+      else this.firstPitchMoveSeen = true;
+    }
     const zoomStrong = this.opts.enableZoom && (Math.abs(dzCand) >= (this.opts.zoomThreshold ?? 0.04));
     const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= (this.opts.rotateThresholdDeg ?? 0.5);
 
@@ -334,6 +367,7 @@ export class TouchMultiHandler {
     }
 
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+    this.lastCenterEl = center;
     this.lastDist = dist;
     this.lastAngle = angle;
     this.lastP0 = { ...p0 };
