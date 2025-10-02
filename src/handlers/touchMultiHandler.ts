@@ -277,7 +277,6 @@ export class TouchMultiHandler {
         this.startInertia();
       }
       this.rectCache = null;
-      this.lastPinchPointer = null;
     }
     if (this.pts.size === 0 && this.unbindMoveUp) {
       this.unbindMoveUp();
@@ -290,14 +289,18 @@ export class TouchMultiHandler {
       this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, 'center');
       return;
     }
-    const world = this.transform.screenToWorld(pointer);
+    const before = this.transform.groundFromScreen(pointer);
     this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, 'center');
-    if (!world) return;
-    const sp = this.transform.worldToScreen(world);
-    if (!sp) return;
-    const dx = sp.x - pointer.x;
-    const dy = sp.y - pointer.y;
-    this.helper.handleMapControlsPan(this.transform, dx, dy);
+    if (!before) return;
+    const after = this.transform.groundFromScreen(pointer);
+    if (!after) return;
+    const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
+    let dgx = (before.gx - after.gx) * tight;
+    let dgz = (before.gz - after.gz) * tight;
+    const maxShift = 500;
+    if (dgx > maxShift) dgx = maxShift; else if (dgx < -maxShift) dgx = -maxShift;
+    if (dgz > maxShift) dgz = maxShift; else if (dgz < -maxShift) dgz = -maxShift;
+    this.transform.adjustCenterByGroundDelta(dgx, dgz);
   }
 
   private startInertia() {
