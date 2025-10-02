@@ -163,21 +163,26 @@ export class MousePanHandler {
         this.inertiaHandle = null;
         return;
       }
-      let dx = this.vx * dt;
-      let dy = this.vy * dt * (this.opts.inertiaPanYSign ?? 1);
-      // Rubberband damping near/outside panBounds
-      const bounds = (this.transform as any).getPanBounds?.();
+      // Convert screen velocity (px/s) to ground velocity (world/s) using bearing and scale
+      const svx = this.vx; // already sign-adjusted via onMove
+      const svy = this.vy * (this.opts.inertiaPanYSign ?? 1);
+      const scale = Math.pow(2, this.transform.zoom);
+      const rad = (this.transform.bearing * Math.PI) / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      // Map screen dx,dy to ground dgx,dgz (same mapping as plan helper pan)
+      // dWx = (-dx * cos + dy * sin) / scale;  dWz ~ (+dx * sin + dy * cos) / scale
+      let dgx = (-svx * cos + svy * sin) / scale * dt;
+      let dgz = (svx * sin + svy * cos) / scale * dt;
+      // Rubberband damping near/outside panBounds in ground space
+      const bounds = this.transform.getPanBounds?.();
       if (bounds) {
-        const scale = Math.pow(2, this.transform.zoom);
-        const dxW = -dx / scale; const dyW = dy / scale;
-        const nx = this.transform.center.x + dxW; const ny = this.transform.center.y + dyW;
+        const nx = this.transform.center.x + dgx; const ny = this.transform.center.y + dgz;
         const overX = nx < bounds.min.x ? bounds.min.x - nx : nx > bounds.max.x ? nx - bounds.max.x : 0;
         const overY = ny < bounds.min.y ? bounds.min.y - ny : ny > bounds.max.y ? ny - bounds.max.y : 0;
-        const s = this.opts.rubberbandStrength;
-        const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
-        dx *= damp(overX); dy *= damp(overY);
+        const s = this.opts.rubberbandStrength; const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
+        dgx *= damp(overX); dgz *= damp(overY);
       }
-      this.helper.handleMapControlsPan(this.transform, dx, dy);
+      (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
       this.opts.onChange({ axes: { pan: true } });
       this.inertiaHandle = requestAnimationFrame(step);
     };

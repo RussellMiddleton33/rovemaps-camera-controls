@@ -120,7 +120,7 @@ export class HandlerManager {
         this.el,
         this.transform,
         this.helper,
-        typeof sg === 'object' ? { onChange: options?.onChange, ...sg, enabled: true } : { enabled: true, onChange: options?.onChange }
+        typeof sg === 'object' ? { onChange: options?.onChange, anchorTightness: options?.anchorTightness, ...sg, enabled: true } : { enabled: true, onChange: options?.onChange, anchorTightness: options?.anchorTightness }
       );
       this.safariGestures.enable();
     }

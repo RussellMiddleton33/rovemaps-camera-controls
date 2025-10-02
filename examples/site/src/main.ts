@@ -4,7 +4,7 @@ import { CameraController } from '../../../src/core/cameraController';
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const overlay = document.getElementById('overlay')!;
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+let renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio || 1);
 
 const scene = new THREE.Scene();
@@ -13,6 +13,29 @@ const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100000);
 
 const grid = new THREE.GridHelper(1000, 100, 0x444444, 0x222222);
 scene.add(grid);
+
+// Debug gizmos: world axes at center, camera axes at center, pointer anchor, velocity arrow
+const gizmoGroup = new THREE.Group();
+scene.add(gizmoGroup);
+
+function makeArrow(dir: THREE.Vector3, color: number, len = 80) {
+  return new THREE.ArrowHelper(dir.clone().normalize(), new THREE.Vector3(), len, color, 12, 6);
+}
+
+const worldXArrow = makeArrow(new THREE.Vector3(1, 0, 0), 0xff0000);
+const worldZArrow = makeArrow(new THREE.Vector3(0, 0, 1), 0x0000ff);
+const camRightArrow = makeArrow(new THREE.Vector3(1, 0, 0), 0xff00ff);
+const camFwdArrow = makeArrow(new THREE.Vector3(0, 0, 1), 0x00ffff);
+gizmoGroup.add(worldXArrow, worldZArrow, camRightArrow, camFwdArrow);
+
+const anchorSphere = new THREE.Mesh(
+  new THREE.SphereGeometry(3, 16, 16),
+  new THREE.MeshBasicMaterial({ color: 0xffff00 })
+);
+scene.add(anchorSphere);
+
+const velArrow = makeArrow(new THREE.Vector3(1, 0, 0), 0x00ff00, 60);
+scene.add(velArrow);
 
 const boxGeo = new THREE.BoxGeometry(20, 20, 20);
 for (let i = 0; i < 30; i++) {
@@ -46,6 +69,8 @@ let currentHandlers = {
 
 function buildController() {
   if (controller) controller.dispose();
+  // Rebuild renderer if AA toggle changed
+  rebuildRenderer(toolbar?.antialias ? toolbar.antialias.checked : true);
   controller = new CameraController({
     camera,
     domElement: renderer.domElement,
@@ -101,6 +126,7 @@ const toolbar = {
   keyboard: document.getElementById('keyboard') as HTMLInputElement,
   dblclick: document.getElementById('dblclick') as HTMLInputElement,
   boxzoom: document.getElementById('boxzoom') as HTMLInputElement,
+  antialias: document.getElementById('antialias') as HTMLInputElement,
   invertZoom: document.getElementById('invert-zoom') as HTMLInputElement,
   invertPitch: document.getElementById('invert-pitch') as HTMLInputElement,
   invertTwist: document.getElementById('invert-twist') as HTMLInputElement,
@@ -108,6 +134,7 @@ const toolbar = {
   recenterOnDown: document.getElementById('recenter-down') as HTMLInputElement,
   invertInertiaY: document.getElementById('invert-inertia-y') as HTMLInputElement,
   anchorTight: document.getElementById('anchor-tight') as HTMLInputElement,
+  showDebug: document.getElementById('show-debug') as HTMLInputElement,
   fly: document.getElementById('btn-fly')!,
   fit: document.getElementById('btn-fit')!,
 };
@@ -124,6 +151,7 @@ toolbar.cooperative.addEventListener('change', () => { currentHandlers.coop = to
 toolbar.keyboard.addEventListener('change', () => { currentHandlers.keyboard = toolbar.keyboard.checked; buildController(); });
 toolbar.dblclick.addEventListener('change', () => { currentHandlers.dblclick = toolbar.dblclick.checked; buildController(); });
 toolbar.boxzoom.addEventListener('change', () => { currentHandlers.boxzoom = toolbar.boxzoom.checked; buildController(); });
+toolbar.antialias.addEventListener('change', () => { buildController(); });
 toolbar.invertZoom.addEventListener('change', () => { currentHandlers.invertZoom = toolbar.invertZoom.checked; buildController(); });
 toolbar.invertPitch.addEventListener('change', () => { currentHandlers.invertPitch = toolbar.invertPitch.checked; buildController(); });
 toolbar.invertTwist.addEventListener('change', () => { currentHandlers.invertTwist = toolbar.invertTwist.checked; buildController(); });
@@ -131,6 +159,7 @@ toolbar.invertPanY.addEventListener('change', () => { currentHandlers.invertPanY
 toolbar.recenterOnDown.addEventListener('change', () => { currentHandlers.recenterOnDown = toolbar.recenterOnDown.checked; buildController(); });
 toolbar.invertInertiaY.addEventListener('change', () => { currentHandlers.invertInertiaY = toolbar.invertInertiaY.checked; buildController(); });
 toolbar.anchorTight.addEventListener('input', () => { currentHandlers.anchorTightness = parseFloat(toolbar.anchorTight.value); buildController(); });
+toolbar.showDebug.addEventListener('change', () => { updateDebugVisibility(toolbar.showDebug.checked); });
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };
@@ -163,6 +192,18 @@ function updateOverlay() {
   overlay.textContent = `center: ${c.x.toFixed(2)}, ${c.y.toFixed(2)}\nzoom: ${controller.getZoom().toFixed(2)}\n` +
     `bearing: ${controller.getBearing().toFixed(2)}\npitch: ${controller.getPitch().toFixed(2)}\n` +
     `roll: ${controller.getRoll().toFixed(2)}`;
+
+  // Update gizmos at center
+  const center3 = new THREE.Vector3(c.x, 0, c.y);
+  worldXArrow.position.copy(center3);
+  worldZArrow.position.copy(center3);
+  camRightArrow.position.copy(center3);
+  camFwdArrow.position.copy(center3);
+  const br = controller.getBearing() * Math.PI / 180;
+  const right = new THREE.Vector3(Math.cos(br), 0, Math.sin(br));
+  const fwd = new THREE.Vector3(-Math.sin(br), 0, Math.cos(br));
+  camRightArrow.setDirection(right);
+  camFwdArrow.setDirection(fwd);
 }
 
 function frame() {
@@ -188,6 +229,16 @@ frame();
 (window as any).THREE = THREE;
 (window as any).controller = controller;
 
+function rebuildRenderer(aa: boolean) {
+  // Dispose and recreate renderer with AA toggle
+  try { renderer.dispose(); } catch {}
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: aa });
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(rect.width, rect.height, false);
+}
+
 // Cooperative gestures hint (auto-hide)
 let coopTimer: number | null = null;
 function showCoopHint() {
@@ -212,6 +263,38 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
   selectRect.style.width = '0px'; selectRect.style.height = '0px';
   selectRect.removeAttribute('hidden');
 });
+
+// Pointer anchor tracking and velocity visualization
+let lastCenter = new THREE.Vector3(controller.getCenter().x, 0, controller.getCenter().y);
+let lastTime = performance.now();
+canvas.addEventListener('pointermove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  const gp = (controller.transform as any).groundFromScreen?.(pt) ?? null;
+  if (gp) anchorSphere.position.set(gp.gx, 0, gp.gz);
+});
+
+controller.on('renderFrame', () => {
+  const now = performance.now();
+  const dt = Math.max(1 / 120, (now - lastTime) / 1000);
+  lastTime = now;
+  const c = controller.getCenter();
+  const curr = new THREE.Vector3(c.x, 0, c.y);
+  const delta = curr.clone().sub(lastCenter);
+  lastCenter.copy(curr);
+  // Velocity arrow (scaled)
+  const speed = delta.length() / dt;
+  const dir = delta.lengthSq() > 1e-9 ? delta.clone().normalize() : new THREE.Vector3(1, 0, 0);
+  velArrow.position.copy(curr);
+  velArrow.setDirection(dir);
+  velArrow.setLength(Math.min(200, speed * 50), 12, 6);
+});
+
+function updateDebugVisibility(show: boolean) {
+  [gizmoGroup, anchorSphere, velArrow].forEach(obj => obj.visible = show);
+}
+// Default off
+updateDebugVisibility(false);
 window.addEventListener('pointermove', (e) => {
   if (!selecting) return;
   const rect = renderer.domElement.getBoundingClientRect();

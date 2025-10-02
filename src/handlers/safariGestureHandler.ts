@@ -11,6 +11,7 @@ export interface SafariGestureOptions {
   onChange?: (delta: HandlerDelta) => void;
   rotateSign?: 1 | -1;
   zoomSign?: 1 | -1;
+  anchorTightness?: number; // 0..1
 }
 
 export class SafariGestureHandler {
@@ -24,7 +25,7 @@ export class SafariGestureHandler {
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: SafariGestureOptions) {
     this.el = el; this.transform = transform; this.helper = helper;
-    this.opts = { enabled: false, around: 'pointer', onChange: () => {}, rotateSign: 1, zoomSign: 1, ...(opts || {}) };
+    this.opts = { enabled: false, around: 'pointer', onChange: () => {}, rotateSign: 1, zoomSign: 1, anchorTightness: 1, ...(opts || {}) };
   }
 
   enable() {
@@ -61,7 +62,8 @@ export class SafariGestureHandler {
     if (pointer && gpBefore) {
       const gpAfter = this.transform.groundFromScreen(pointer);
       if (gpAfter) {
-        this.transform.adjustCenterByGroundDelta(gpBefore.gx - gpAfter.gx, gpBefore.gz - gpAfter.gz);
+        const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
+        this.transform.adjustCenterByGroundDelta((gpBefore.gx - gpAfter.gx) * tight, (gpBefore.gz - gpAfter.gz) * tight);
       }
     }
     this.opts.onChange({ axes: { zoom: !!dz, rotate: !!drot } });
