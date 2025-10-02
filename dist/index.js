@@ -1017,7 +1017,7 @@ var TouchMultiHandler = class {
       }
     };
     this.onMove = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S;
       if (e.pointerType !== "touch") return;
       const pt = this.pts.get(e.pointerId);
       if (!pt) return;
@@ -1048,6 +1048,8 @@ var TouchMultiHandler = class {
             dgz *= damp(overY);
           }
           (_m = (_l = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _m.call(_l, dgx, dgz);
+          const after = (_p = (_o = (_n = this.transform).groundFromScreen) == null ? void 0 : _o.call(_n, pointer)) != null ? _p : null;
+          this.lastSingleGround = after != null ? after : gpNow;
           const alpha = 0.3;
           const igx = dgx / dt2;
           const igz = dgz / dt2;
@@ -1055,13 +1057,14 @@ var TouchMultiHandler = class {
           this.igvz = igz;
           this.gvx = this.gvx * (1 - alpha) + igx * alpha;
           this.gvz = this.gvz * (1 - alpha) + igz * alpha;
-          const sdx = pointer.x - ((_o = (_n = this.lastSinglePt) == null ? void 0 : _n.x) != null ? _o : pointer.x);
-          const sdy = pointer.y - ((_q = (_p = this.lastSinglePt) == null ? void 0 : _p.y) != null ? _q : pointer.y);
+          const sdx = pointer.x - ((_r = (_q = this.lastSinglePt) == null ? void 0 : _q.x) != null ? _r : pointer.x);
+          const sdy = pointer.y - ((_t = (_s = this.lastSinglePt) == null ? void 0 : _s.y) != null ? _t : pointer.y);
           this.vpx = this.vpx * (1 - alpha) + sdx / dt2 * alpha;
           this.vpy = this.vpy * (1 - alpha) + sdy / dt2 * alpha;
+        } else {
+          this.lastSingleGround = gpNow;
         }
         this.lastSinglePt = pointer;
-        this.lastSingleGround = gpNow;
         this.opts.onChange({ axes: { pan: true }, originalEvent: e });
         return;
       }
@@ -1070,15 +1073,15 @@ var TouchMultiHandler = class {
       const [p0, p1] = [...this.pts.values()];
       if (!p0 || !p1) return;
       const vv = window.visualViewport;
-      const center = { x: (p0.x + p1.x) / 2 + ((_r = vv == null ? void 0 : vv.offsetLeft) != null ? _r : 0) - (rect.left + ((_s = vv == null ? void 0 : vv.offsetLeft) != null ? _s : 0)), y: (p0.y + p1.y) / 2 + ((_t = vv == null ? void 0 : vv.offsetTop) != null ? _t : 0) - (rect.top + ((_u = vv == null ? void 0 : vv.offsetTop) != null ? _u : 0)) };
+      const center = { x: (p0.x + p1.x) / 2 + ((_u = vv == null ? void 0 : vv.offsetLeft) != null ? _u : 0) - (rect.left + ((_v = vv == null ? void 0 : vv.offsetLeft) != null ? _v : 0)), y: (p0.y + p1.y) / 2 + ((_w = vv == null ? void 0 : vv.offsetTop) != null ? _w : 0) - (rect.top + ((_x = vv == null ? void 0 : vv.offsetTop) != null ? _x : 0)) };
       this.lastPinchPointer = center;
       const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
       const angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
       const now = performance.now();
       const dt = Math.max(1 / 120, (now - this.lastTs) / 1e3);
       this.lastTs = now;
-      const dxPan = (center.x - this.lastCenterEl.x) * ((_v = this.opts.panXSign) != null ? _v : 1);
-      const dyPan = (center.y - this.lastCenterEl.y) * ((_w = this.opts.panYSign) != null ? _w : 1);
+      const dxPan = (center.x - this.lastCenterEl.x) * ((_y = this.opts.panXSign) != null ? _y : 1);
+      const dyPan = (center.y - this.lastCenterEl.y) * ((_z = this.opts.panYSign) != null ? _z : 1);
       const s = this.lastDist > 0 && dist > 0 ? dist / this.lastDist : 1;
       const dzCand = scaleZoom(s);
       let dAng = angle - this.lastAngle;
@@ -1093,16 +1096,10 @@ var TouchMultiHandler = class {
       const verticalB = Math.abs(vB.y) > Math.abs(vB.x);
       const sameDir = vA.y > 0 === vB.y > 0;
       const avgDy = (vA.y + vB.y) / 2;
-      const dpCand = -avgDy * ((_x = this.opts.pitchPerPx) != null ? _x : 0.25);
-      let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && Math.abs(avgDy) >= ((_y = this.opts.pitchThresholdPx) != null ? _y : 14);
-      if (!this.allowPitchThisGesture) pitchStrong = false;
-      if (pitchStrong && !this.firstPitchMoveSeen) {
-        const withinFirst = now - this.gestureStartTs <= this.opts.pitchFirstMoveWindowMs;
-        if (!withinFirst) pitchStrong = false;
-        else this.firstPitchMoveSeen = true;
-      }
-      const zoomStrong = this.opts.enableZoom && Math.abs(dzCand) >= ((_z = this.opts.zoomThreshold) != null ? _z : 0.04);
-      const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= ((_A = this.opts.rotateThresholdDeg) != null ? _A : 0.5);
+      const dpCand = -avgDy * ((_A = this.opts.pitchPerPx) != null ? _A : 0.25);
+      let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && Math.abs(avgDy) >= ((_B = this.opts.pitchThresholdPx) != null ? _B : 14);
+      const zoomStrong = this.opts.enableZoom && Math.abs(dzCand) >= ((_C = this.opts.zoomThreshold) != null ? _C : 0.04);
+      const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= ((_D = this.opts.rotateThresholdDeg) != null ? _D : 0.5);
       if (this.mode === "idle") {
         if (pitchStrong) this.mode = "pitch";
         else if (zoomStrong || rotateStrong) this.mode = "zoomRotate";
@@ -1113,12 +1110,12 @@ var TouchMultiHandler = class {
       }
       const axes = {};
       if (this.mode === "pan" && this.opts.enablePan) {
-        const gp = (_D = (_C = (_B = this.transform).groundFromScreen) == null ? void 0 : _C.call(_B, center)) != null ? _D : null;
+        const gp = (_G = (_F = (_E = this.transform).groundFromScreen) == null ? void 0 : _F.call(_E, center)) != null ? _G : null;
         if (gp) {
           if (this.lastGroundCenter) {
-            let dgx = (this.lastGroundCenter.gx - gp.gx) * ((_E = this.opts.panXSign) != null ? _E : 1);
-            let dgz = (this.lastGroundCenter.gz - gp.gz) * ((_F = this.opts.panYSign) != null ? _F : 1);
-            const bounds = (_H = (_G = this.transform).getPanBounds) == null ? void 0 : _H.call(_G);
+            let dgx = (this.lastGroundCenter.gx - gp.gx) * ((_H = this.opts.panXSign) != null ? _H : 1);
+            let dgz = (this.lastGroundCenter.gz - gp.gz) * ((_I = this.opts.panYSign) != null ? _I : 1);
+            const bounds = (_K = (_J = this.transform).getPanBounds) == null ? void 0 : _K.call(_J);
             if (bounds) {
               const nx = this.transform.center.x + dgx;
               const ny = this.transform.center.y + dgz;
@@ -1129,7 +1126,7 @@ var TouchMultiHandler = class {
               dgx *= damp(overX);
               dgz *= damp(overY);
             }
-            (_J = (_I = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _J.call(_I, dgx, dgz);
+            (_M = (_L = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _M.call(_L, dgx, dgz);
             if (dt > 0) {
               const alphaG = 0.3;
               const igx = dgx / dt;
@@ -1140,7 +1137,7 @@ var TouchMultiHandler = class {
               this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
             }
           }
-          const after = (_M = (_L = (_K = this.transform).groundFromScreen) == null ? void 0 : _L.call(_K, center)) != null ? _M : null;
+          const after = (_P = (_O = (_N = this.transform).groundFromScreen) == null ? void 0 : _O.call(_N, center)) != null ? _P : null;
           this.lastGroundCenter = after != null ? after : gp;
         } else {
           this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
@@ -1156,7 +1153,7 @@ var TouchMultiHandler = class {
       } else if (this.mode === "zoomRotate") {
         const ptr = this.opts.around === "pinch" ? center : null;
         const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
-        const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? dDeg * ((_N = this.opts.rotateSign) != null ? _N : 1) : 0;
+        const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? dDeg * ((_Q = this.opts.rotateSign) != null ? _Q : 1) : 0;
         const dZoom = this.opts.enableZoom ? dzCand : 0;
         if (dZoom) {
           this.vz = dZoom / dt;
@@ -1172,7 +1169,7 @@ var TouchMultiHandler = class {
         if (ptr && groundBefore) {
           const groundAfter = this.transform.groundFromScreen(ptr);
           if (groundAfter) {
-            const tight = Math.max(0, Math.min(1, (_O = this.opts.anchorTightness) != null ? _O : 1));
+            const tight = Math.max(0, Math.min(1, (_R = this.opts.anchorTightness) != null ? _R : 1));
             let dgx = (groundBefore.gx - groundAfter.gx) * tight;
             let dgz = (groundBefore.gz - groundAfter.gz) * tight;
             const maxShift = 500;
@@ -1199,7 +1196,7 @@ var TouchMultiHandler = class {
         if (ptr && groundBefore) {
           const groundAfter = this.transform.groundFromScreen(ptr);
           if (groundAfter) {
-            const tight = Math.max(0, Math.min(1, (_P = this.opts.anchorTightness) != null ? _P : 1));
+            const tight = Math.max(0, Math.min(1, (_S = this.opts.anchorTightness) != null ? _S : 1));
             const dgx = (groundBefore.gx - groundAfter.gx) * tight;
             const dgz = (groundBefore.gz - groundAfter.gz) * tight;
             this.transform.adjustCenterByGroundDelta(dgx, dgz);
@@ -1258,6 +1255,9 @@ var TouchMultiHandler = class {
       rotateSign: 1,
       allowedSingleTouchTimeMs: 200,
       pitchFirstMoveWindowMs: 120,
+      inertiaPanFriction: 12,
+      inertiaZoomFriction: 20,
+      inertiaRotateFriction: 12,
       ...opts
     };
   }
@@ -1343,6 +1343,7 @@ var TouchMultiHandler = class {
     this.transform.adjustCenterByGroundDelta(dgx, dgz);
   }
   startInertia() {
+    var _a, _b, _c;
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
     if (this.mode !== "pan") {
       this.vpx = 0;
@@ -1375,14 +1376,17 @@ var TouchMultiHandler = class {
     if (Math.abs(this.vb) < 8) this.vb = 0;
     if (Math.abs(this.vp) < 8) this.vp = 0;
     let last = performance.now();
+    const frPan = (_a = this.opts.inertiaPanFriction) != null ? _a : 12;
+    const frZoom = (_b = this.opts.inertiaZoomFriction) != null ? _b : 20;
+    const frAng = (_c = this.opts.inertiaRotateFriction) != null ? _c : 12;
     const step = () => {
-      var _a, _b, _c, _d, _e;
+      var _a2, _b2, _c2, _d, _e;
       const now = performance.now();
       const dt = (now - last) / 1e3;
       last = now;
-      const decayPan = Math.exp(-12 * dt);
-      const decayZoom = Math.exp(-20 * dt);
-      const decayAng = Math.exp(-12 * dt);
+      const decayPan = Math.exp(-frPan * dt);
+      const decayZoom = Math.exp(-frZoom * dt);
+      const decayAng = Math.exp(-frAng * dt);
       this.vpx *= decayPan;
       this.vpy *= decayPan;
       this.vz *= decayZoom;
@@ -1401,7 +1405,7 @@ var TouchMultiHandler = class {
       const axes = {};
       if (this.mode === "zoomRotate") {
         if (this.opts.enableZoom && dz) {
-          this.applyZoomAround(dz, (_a = this.lastPinchPointer) != null ? _a : null);
+          this.applyZoomAround(dz, (_a2 = this.lastPinchPointer) != null ? _a2 : null);
           axes.zoom = true;
         }
         if (this.opts.enableRotate && db) {
@@ -1417,7 +1421,7 @@ var TouchMultiHandler = class {
         if (this.opts.enablePan && (this.gvx || this.gvz)) {
           let dgx = this.gvx * dt;
           let dgz = this.gvz * dt;
-          const bounds = (_c = (_b = this.transform).getPanBounds) == null ? void 0 : _c.call(_b);
+          const bounds = (_c2 = (_b2 = this.transform).getPanBounds) == null ? void 0 : _c2.call(_b2);
           if (bounds) {
             const nx = this.transform.center.x + dgx;
             const ny = this.transform.center.y + dgz;
@@ -1809,6 +1813,7 @@ var HandlerManager = class {
     this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, {
       onChange: options == null ? void 0 : options.onChange,
       rubberbandStrength: options == null ? void 0 : options.rubberbandStrength,
+      inertiaPanFriction: options == null ? void 0 : options.inertiaPanFriction,
       ...typeof mpOpts === "object" ? mpOpts : {}
     });
     this.mousePan.enable();
@@ -1816,6 +1821,7 @@ var HandlerManager = class {
       this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, {
         onChange: options == null ? void 0 : options.onChange,
         rubberbandStrength: options == null ? void 0 : options.rubberbandStrength,
+        inertiaPanFriction: options == null ? void 0 : options.inertiaPanFriction,
         ...typeof mpOpts === "object" ? mpOpts : {},
         button: 2
       });
@@ -1834,7 +1840,7 @@ var HandlerManager = class {
       this.el,
       this.transform,
       this.helper,
-      typeof touchOpts === "object" ? { anchorTightness: options == null ? void 0 : options.anchorTightness, rubberbandStrength: options == null ? void 0 : options.rubberbandStrength, ...touchOpts } : { onChange: options == null ? void 0 : options.onChange, rubberbandStrength: options == null ? void 0 : options.rubberbandStrength, anchorTightness: options == null ? void 0 : options.anchorTightness }
+      typeof touchOpts === "object" ? { anchorTightness: options == null ? void 0 : options.anchorTightness, rubberbandStrength: options == null ? void 0 : options.rubberbandStrength, inertiaPanFriction: options == null ? void 0 : options.inertiaPanFriction, inertiaZoomFriction: options == null ? void 0 : options.inertiaZoomFriction, inertiaRotateFriction: options == null ? void 0 : options.inertiaRotateFriction, ...touchOpts } : { onChange: options == null ? void 0 : options.onChange, rubberbandStrength: options == null ? void 0 : options.rubberbandStrength, anchorTightness: options == null ? void 0 : options.anchorTightness, inertiaPanFriction: options == null ? void 0 : options.inertiaPanFriction, inertiaZoomFriction: options == null ? void 0 : options.inertiaZoomFriction, inertiaRotateFriction: options == null ? void 0 : options.inertiaRotateFriction }
     );
     this.touch.enable();
     const kbOpts = (_e = options == null ? void 0 : options.keyboard) != null ? _e : {};

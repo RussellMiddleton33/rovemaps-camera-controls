@@ -243,6 +243,9 @@ interface TouchMultiOptions {
     rotateSign?: 1 | -1;
     allowedSingleTouchTimeMs?: number;
     pitchFirstMoveWindowMs?: number;
+    inertiaPanFriction?: number;
+    inertiaZoomFriction?: number;
+    inertiaRotateFriction?: number;
 }
 
 interface KeyboardOptions {
@@ -293,6 +296,9 @@ interface HandlerManagerOptions {
     safariGestures?: SafariGestureOptions | boolean;
     anchorTightness?: number;
     rightButtonPan?: boolean;
+    inertiaPanFriction?: number;
+    inertiaZoomFriction?: number;
+    inertiaRotateFriction?: number;
 }
 
 type Projection = 'planar';

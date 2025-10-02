@@ -27,6 +27,10 @@ export interface TouchMultiOptions {
   // MapLibre-style gating: allow two-finger pitch only when second touch arrives quickly
   allowedSingleTouchTimeMs?: number; // time between first and second touch to allow pitch
   pitchFirstMoveWindowMs?: number; // window since two-finger start for first pitch move
+  // Inertia friction (higher = faster decay, less glide)
+  inertiaPanFriction?: number; // friction for pan (default: 12)
+  inertiaZoomFriction?: number; // friction for zoom (default: 20)
+  inertiaRotateFriction?: number; // friction for rotate/pitch (default: 12)
 }
 
 type Pt = { id: number; x: number; y: number };
@@ -102,6 +106,9 @@ export class TouchMultiHandler {
       rotateSign: 1,
       allowedSingleTouchTimeMs: 200,
       pitchFirstMoveWindowMs: 120,
+      inertiaPanFriction: 12,
+      inertiaZoomFriction: 20,
+      inertiaRotateFriction: 12,
       ...opts,
     };
   }
@@ -215,6 +222,9 @@ export class TouchMultiHandler {
           dgx *= damp(overX); dgz *= damp(overY);
         }
         (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
+        // Recompute ground under pointer after adjustment to keep anchor locked (like mouse pan)
+        const after = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+        this.lastSingleGround = after ?? gpNow;
         // velocity
         const alpha = 0.3;
         const igx = dgx / dt; const igz = dgz / dt;
@@ -225,9 +235,10 @@ export class TouchMultiHandler {
         const sdy = (pointer.y - (this.lastSinglePt?.y ?? pointer.y));
         this.vpx = this.vpx * (1 - alpha) + (sdx / dt) * alpha;
         this.vpy = this.vpy * (1 - alpha) + (sdy / dt) * alpha;
+      } else {
+        this.lastSingleGround = gpNow;
       }
       this.lastSinglePt = pointer;
-      this.lastSingleGround = gpNow;
       this.opts.onChange({ axes: { pan: true }, originalEvent: e });
       return;
     }
@@ -266,14 +277,14 @@ export class TouchMultiHandler {
 
     // Determine mode if not locked
     let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && Math.abs(avgDy) >= (this.opts.pitchThresholdPx ?? 14);
-    // MapLibre-style gating: only allow pitch if second touch arrived quickly
-    if (!this.allowPitchThisGesture) pitchStrong = false;
-    // First-move timing window: pitch must be indicated near the start
-    if (pitchStrong && !this.firstPitchMoveSeen) {
-      const withinFirst = (now - this.gestureStartTs) <= this.opts.pitchFirstMoveWindowMs;
-      if (!withinFirst) pitchStrong = false;
-      else this.firstPitchMoveSeen = true;
-    }
+    // MapLibre-style gating: disabled for now to allow pitch anytime (users expect this)
+    // if (!this.allowPitchThisGesture) pitchStrong = false;
+    // First-move timing window: disabled to allow pitch anytime during gesture
+    // if (pitchStrong && !this.firstPitchMoveSeen) {
+    //   const withinFirst = (now - this.gestureStartTs) <= this.opts.pitchFirstMoveWindowMs;
+    //   if (!withinFirst) pitchStrong = false;
+    //   else this.firstPitchMoveSeen = true;
+    // }
     const zoomStrong = this.opts.enableZoom && (Math.abs(dzCand) >= (this.opts.zoomThreshold ?? 0.04));
     const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= (this.opts.rotateThresholdDeg ?? 0.5);
 
@@ -432,10 +443,10 @@ export class TouchMultiHandler {
     if (Math.abs(this.vb) < 8) this.vb = 0; // deg/s
     if (Math.abs(this.vp) < 8) this.vp = 0;
     let last = performance.now();
-    // Separate frictions per axis (stronger than before)
-    const frPan = 12; // pan dies quickly
-    const frZoom = 20; // zoom off
-    const frAng = 12; // rotate/pitch quick
+    // Separate frictions per axis (configurable)
+    const frPan = this.opts.inertiaPanFriction ?? 12; // pan dies quickly
+    const frZoom = this.opts.inertiaZoomFriction ?? 20; // zoom off
+    const frAng = this.opts.inertiaRotateFriction ?? 12; // rotate/pitch quick
     const step = () => {
       const now = performance.now();
       const dt = (now - last) / 1000;

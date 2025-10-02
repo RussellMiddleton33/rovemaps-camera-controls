@@ -24,6 +24,11 @@ export interface HandlerManagerOptions {
   safariGestures?: SafariGestureOptions | boolean;
   anchorTightness?: number; // global default for anchor-based corrections
   rightButtonPan?: boolean; // if true, right button pans instead of rotate/pitch
+
+  // Inertia friction settings (higher = faster decay, less glide)
+  inertiaPanFriction?: number; // friction for mouse/trackpad pan inertia (default: 6 for mouse, 12 for touch)
+  inertiaZoomFriction?: number; // friction for zoom inertia (default: 20, effectively disabled)
+  inertiaRotateFriction?: number; // friction for rotate/pitch inertia on touch (default: 12)
 }
 
 export class HandlerManager {
@@ -68,6 +73,7 @@ export class HandlerManager {
     this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, {
       onChange: options?.onChange,
       rubberbandStrength: options?.rubberbandStrength,
+      inertiaPanFriction: options?.inertiaPanFriction,
       ...(typeof mpOpts === 'object' ? mpOpts : {}),
     });
     this.mousePan.enable();
@@ -76,6 +82,7 @@ export class HandlerManager {
       this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, {
         onChange: options?.onChange,
         rubberbandStrength: options?.rubberbandStrength,
+        inertiaPanFriction: options?.inertiaPanFriction,
         ...(typeof mpOpts === 'object' ? mpOpts : {}),
         button: 2,
       });
@@ -95,7 +102,7 @@ export class HandlerManager {
       this.el,
       this.transform,
       this.helper,
-      typeof touchOpts === 'object' ? { anchorTightness: options?.anchorTightness, rubberbandStrength: options?.rubberbandStrength, ...touchOpts } : { onChange: options?.onChange, rubberbandStrength: options?.rubberbandStrength, anchorTightness: options?.anchorTightness }
+      typeof touchOpts === 'object' ? { anchorTightness: options?.anchorTightness, rubberbandStrength: options?.rubberbandStrength, inertiaPanFriction: options?.inertiaPanFriction, inertiaZoomFriction: options?.inertiaZoomFriction, inertiaRotateFriction: options?.inertiaRotateFriction, ...touchOpts } : { onChange: options?.onChange, rubberbandStrength: options?.rubberbandStrength, anchorTightness: options?.anchorTightness, inertiaPanFriction: options?.inertiaPanFriction, inertiaZoomFriction: options?.inertiaZoomFriction, inertiaRotateFriction: options?.inertiaRotateFriction }
     );
     this.touch.enable();
     // Keyboard handler (default enabled)
