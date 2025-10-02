@@ -101,6 +101,8 @@ function buildController() {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnGestureStart: currentHandlers.recenterOnDown,
         anchorTightness: currentHandlers.anchorTightness,
+        inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
+        inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
       },
       safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,

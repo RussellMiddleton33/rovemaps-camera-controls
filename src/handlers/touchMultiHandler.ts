@@ -21,6 +21,8 @@ export interface TouchMultiOptions {
   panYSign?: 1 | -1;
   recenterOnGestureStart?: boolean;
   anchorTightness?: number; // 0..1
+  inertiaPanXSign?: 1 | -1;
+  inertiaPanYSign?: 1 | -1;
 }
 
 type Pt = { id: number; x: number; y: number };
@@ -71,6 +73,8 @@ export class TouchMultiHandler {
       panYSign: 1,
       recenterOnGestureStart: false,
       anchorTightness: 1,
+      inertiaPanXSign: 1,
+      inertiaPanYSign: 1,
       ...opts,
     };
   }
@@ -279,8 +283,8 @@ export class TouchMultiHandler {
       } else if (this.mode === 'pan') {
         if (this.opts.enablePan && (dx || dy)) {
           // Convert screen velocity (px/s) to ground velocity (world/s) using bearing and scale, then integrate
-          const svx = this.vpx; // already aligned with applied pan direction
-          const svy = this.vpy;
+          const svx = this.vpx * (this.opts.inertiaPanXSign ?? 1);
+          const svy = this.vpy * (this.opts.inertiaPanYSign ?? 1);
           const scale = Math.pow(2, this.transform.zoom);
           const rad = (this.transform.bearing * Math.PI) / 180;
           const cos = Math.cos(rad), sin = Math.sin(rad);
