@@ -44,6 +44,7 @@ export class TouchMultiHandler {
   private lastGroundCenter: { gx: number; gz: number } | null = null;
   // For touch on mobile, recompute bounding rect each move to avoid visualViewport shifts
   private rectCache: DOMRect | null = null; // unused for move; kept for potential future batching
+  private lastPinchPointer: { x: number; y: number } | null = null; // screen coords of last pinch centroid
 
   // inertias
   private vz = 0; // zoom units/s
@@ -155,6 +156,7 @@ export class TouchMultiHandler {
     const rect = this.rectCache ?? this.el.getBoundingClientRect();
     const [p0, p1] = [...this.pts.values()];
     const center = { x: (p0.x + p1.x) / 2 - rect.left, y: (p0.y + p1.y) / 2 - rect.top };
+    this.lastPinchPointer = center;
     const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     const angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
     const now = performance.now();
@@ -275,6 +277,7 @@ export class TouchMultiHandler {
         this.startInertia();
       }
       this.rectCache = null;
+      this.lastPinchPointer = null;
     }
     if (this.pts.size === 0 && this.unbindMoveUp) {
       this.unbindMoveUp();
@@ -324,7 +327,7 @@ export class TouchMultiHandler {
       let dy = this.vpy * dt;
       const axes: HandlerDelta['axes'] = {};
       if (this.mode === 'zoomRotate') {
-        if (this.opts.enableZoom && dz) { this.applyZoomAround(dz, null); axes.zoom = true; }
+        if (this.opts.enableZoom && dz) { this.applyZoomAround(dz, this.lastPinchPointer ?? null); axes.zoom = true; }
         if (this.opts.enableRotate && db) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, db, 0, 'center'); axes.rotate = true; }
       } else if (this.mode === 'pitch') {
         if (this.opts.enablePitch && dp) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, 'center'); axes.pitch = true; }
@@ -349,5 +352,8 @@ export class TouchMultiHandler {
       this.inertiaHandle = requestAnimationFrame(step);
     };
     this.inertiaHandle = requestAnimationFrame(step);
+    // Track initial pinch centroid pointer (relative to element)
+    const vp = { x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top };
+    this.lastPinchPointer = vp;
   }
 }
