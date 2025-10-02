@@ -1,6 +1,5 @@
 export const vertex = /* glsl */`
 #include <common>
-#include <batching_pars_vertex>
 #include <uv_pars_vertex>
 #include <displacementmap_pars_vertex>
 #include <morphtarget_pars_vertex>
@@ -17,10 +16,7 @@ void main() {
 
 	#include <uv_vertex>
 
-	#include <batching_vertex>
 	#include <skinbase_vertex>
-
-	#include <morphinstance_vertex>
 
 	#ifdef USE_DISPLACEMENTMAP
 
@@ -64,8 +60,9 @@ varying vec2 vHighPrecisionZW;
 
 void main() {
 
-	vec4 diffuseColor = vec4( 1.0 );
 	#include <clipping_planes_fragment>
+
+	vec4 diffuseColor = vec4( 1.0 );
 
 	#if DEPTH_PACKING == 3200
 
@@ -90,14 +87,6 @@ void main() {
 	#elif DEPTH_PACKING == 3201
 
 		gl_FragColor = packDepthToRGBA( fragCoordZ );
-
-	#elif DEPTH_PACKING == 3202
-
-		gl_FragColor = vec4( packDepthToRGB( fragCoordZ ), 1.0 );
-
-	#elif DEPTH_PACKING == 3203
-
-		gl_FragColor = vec4( packDepthToRG( fragCoordZ ), 0.0, 1.0 );
 
 	#endif
 

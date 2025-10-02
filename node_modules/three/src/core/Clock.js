@@ -67,7 +67,7 @@ class Clock {
 
 function now() {
 
-	return performance.now();
+	return ( typeof performance === 'undefined' ? Date : performance ).now(); // see #10732
 
 }
 

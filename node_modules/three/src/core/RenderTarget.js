@@ -1,8 +1,9 @@
 import { EventDispatcher } from './EventDispatcher.js';
 import { Texture } from '../textures/Texture.js';
-import { LinearFilter } from '../constants.js';
+import { LinearFilter, NoColorSpace, SRGBColorSpace, sRGBEncoding } from '../constants.js';
 import { Vector4 } from '../math/Vector4.js';
 import { Source } from '../textures/Source.js';
+import { warnOnce } from '../utils.js';
 
 /*
  In options, we can specify:
@@ -28,56 +29,37 @@ class RenderTarget extends EventDispatcher {
 
 		const image = { width: width, height: height, depth: 1 };
 
+		if ( options.encoding !== undefined ) {
+
+			// @deprecated, r152
+			warnOnce( 'THREE.WebGLRenderTarget: option.encoding has been replaced by option.colorSpace.' );
+			options.colorSpace = options.encoding === sRGBEncoding ? SRGBColorSpace : NoColorSpace;
+
+		}
+
 		options = Object.assign( {
 			generateMipmaps: false,
 			internalFormat: null,
 			minFilter: LinearFilter,
 			depthBuffer: true,
 			stencilBuffer: false,
-			resolveDepthBuffer: true,
-			resolveStencilBuffer: true,
 			depthTexture: null,
-			samples: 0,
-			count: 1
+			samples: 0
 		}, options );
 
-		const texture = new Texture( image, options.mapping, options.wrapS, options.wrapT, options.magFilter, options.minFilter, options.format, options.type, options.anisotropy, options.colorSpace );
+		this.texture = new Texture( image, options.mapping, options.wrapS, options.wrapT, options.magFilter, options.minFilter, options.format, options.type, options.anisotropy, options.colorSpace );
+		this.texture.isRenderTargetTexture = true;
 
-		texture.flipY = false;
-		texture.generateMipmaps = options.generateMipmaps;
-		texture.internalFormat = options.internalFormat;
-
-		this.textures = [];
-
-		const count = options.count;
-		for ( let i = 0; i < count; i ++ ) {
-
-			this.textures[ i ] = texture.clone();
-			this.textures[ i ].isRenderTargetTexture = true;
-
-		}
+		this.texture.flipY = false;
+		this.texture.generateMipmaps = options.generateMipmaps;
+		this.texture.internalFormat = options.internalFormat;
 
 		this.depthBuffer = options.depthBuffer;
 		this.stencilBuffer = options.stencilBuffer;
 
-		this.resolveDepthBuffer = options.resolveDepthBuffer;
-		this.resolveStencilBuffer = options.resolveStencilBuffer;
-
 		this.depthTexture = options.depthTexture;
 
 		this.samples = options.samples;
-
-	}
-
-	get texture() {
-
-		return this.textures[ 0 ];
-
-	}
-
-	set texture( value ) {
-
-		this.textures[ 0 ] = value;
 
 	}
 
@@ -89,13 +71,9 @@ class RenderTarget extends EventDispatcher {
 			this.height = height;
 			this.depth = depth;
 
-			for ( let i = 0, il = this.textures.length; i < il; i ++ ) {
-
-				this.textures[ i ].image.width = width;
-				this.textures[ i ].image.height = height;
-				this.textures[ i ].image.depth = depth;
-
-			}
+			this.texture.image.width = width;
+			this.texture.image.height = height;
+			this.texture.image.depth = depth;
 
 			this.dispose();
 
@@ -123,14 +101,8 @@ class RenderTarget extends EventDispatcher {
 
 		this.viewport.copy( source.viewport );
 
-		this.textures.length = 0;
-
-		for ( let i = 0, il = source.textures.length; i < il; i ++ ) {
-
-			this.textures[ i ] = source.textures[ i ].clone();
-			this.textures[ i ].isRenderTargetTexture = true;
-
-		}
+		this.texture = source.texture.clone();
+		this.texture.isRenderTargetTexture = true;
 
 		// ensure image object is not shared, see #20328
 
@@ -139,9 +111,6 @@ class RenderTarget extends EventDispatcher {
 
 		this.depthBuffer = source.depthBuffer;
 		this.stencilBuffer = source.stencilBuffer;
-
-		this.resolveDepthBuffer = source.resolveDepthBuffer;
-		this.resolveStencilBuffer = source.resolveStencilBuffer;
 
 		if ( source.depthTexture !== null ) this.depthTexture = source.depthTexture.clone();
 

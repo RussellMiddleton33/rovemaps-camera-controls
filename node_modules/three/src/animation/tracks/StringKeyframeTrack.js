@@ -4,16 +4,7 @@ import { KeyframeTrack } from '../KeyframeTrack.js';
 /**
  * A Track that interpolates Strings
  */
-class StringKeyframeTrack extends KeyframeTrack {
-
-	// No interpolation parameter because only InterpolateDiscrete is valid.
-	constructor( name, times, values ) {
-
-		super( name, times, values );
-
-	}
-
-}
+class StringKeyframeTrack extends KeyframeTrack {}
 
 StringKeyframeTrack.prototype.ValueTypeName = 'string';
 StringKeyframeTrack.prototype.ValueBufferType = Array;

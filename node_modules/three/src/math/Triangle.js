@@ -1,5 +1,4 @@
 import { Vector3 } from './Vector3.js';
-import { Vector4 } from './Vector4.js';
 
 const _v0 = /*@__PURE__*/ new Vector3();
 const _v1 = /*@__PURE__*/ new Vector3();
@@ -13,9 +12,7 @@ const _vap = /*@__PURE__*/ new Vector3();
 const _vbp = /*@__PURE__*/ new Vector3();
 const _vcp = /*@__PURE__*/ new Vector3();
 
-const _v40 = /*@__PURE__*/ new Vector4();
-const _v41 = /*@__PURE__*/ new Vector4();
-const _v42 = /*@__PURE__*/ new Vector4();
+let warnedGetUV = false;
 
 class Triangle {
 
@@ -63,8 +60,9 @@ class Triangle {
 		// collinear or singular triangle
 		if ( denom === 0 ) {
 
-			target.set( 0, 0, 0 );
-			return null;
+			// arbitrary location outside of triangle?
+			// not sure if this is the best idea, maybe should be returning undefined
+			return target.set( - 2, - 1, - 1 );
 
 		}
 
@@ -79,52 +77,34 @@ class Triangle {
 
 	static containsPoint( point, a, b, c ) {
 
-		// if the triangle is degenerate then we can't contain a point
-		if ( this.getBarycoord( point, a, b, c, _v3 ) === null ) {
-
-			return false;
-
-		}
+		this.getBarycoord( point, a, b, c, _v3 );
 
 		return ( _v3.x >= 0 ) && ( _v3.y >= 0 ) && ( ( _v3.x + _v3.y ) <= 1 );
 
 	}
 
-	static getInterpolation( point, p1, p2, p3, v1, v2, v3, target ) {
+	static getUV( point, p1, p2, p3, uv1, uv2, uv3, target ) { // @deprecated, r151
 
-		if ( this.getBarycoord( point, p1, p2, p3, _v3 ) === null ) {
+		if ( warnedGetUV === false ) {
 
-			target.x = 0;
-			target.y = 0;
-			if ( 'z' in target ) target.z = 0;
-			if ( 'w' in target ) target.w = 0;
-			return null;
+			console.warn( 'THREE.Triangle.getUV() has been renamed to THREE.Triangle.getInterpolation().' );
+
+			warnedGetUV = true;
 
 		}
+
+		return this.getInterpolation( point, p1, p2, p3, uv1, uv2, uv3, target );
+
+	}
+
+	static getInterpolation( point, p1, p2, p3, v1, v2, v3, target ) {
+
+		this.getBarycoord( point, p1, p2, p3, _v3 );
 
 		target.setScalar( 0 );
 		target.addScaledVector( v1, _v3.x );
 		target.addScaledVector( v2, _v3.y );
 		target.addScaledVector( v3, _v3.z );
-
-		return target;
-
-	}
-
-	static getInterpolatedAttribute( attr, i1, i2, i3, barycoord, target ) {
-
-		_v40.setScalar( 0 );
-		_v41.setScalar( 0 );
-		_v42.setScalar( 0 );
-
-		_v40.fromBufferAttribute( attr, i1 );
-		_v41.fromBufferAttribute( attr, i2 );
-		_v42.fromBufferAttribute( attr, i3 );
-
-		target.setScalar( 0 );
-		target.addScaledVector( _v40, barycoord.x );
-		target.addScaledVector( _v41, barycoord.y );
-		target.addScaledVector( _v42, barycoord.z );
 
 		return target;
 
@@ -216,6 +196,20 @@ class Triangle {
 	getBarycoord( point, target ) {
 
 		return Triangle.getBarycoord( point, this.a, this.b, this.c, target );
+
+	}
+
+	getUV( point, uv1, uv2, uv3, target ) { // @deprecated, r151
+
+		if ( warnedGetUV === false ) {
+
+			console.warn( 'THREE.Triangle.getUV() has been renamed to THREE.Triangle.getInterpolation().' );
+
+			warnedGetUV = true;
+
+		}
+
+		return Triangle.getInterpolation( point, this.a, this.b, this.c, uv1, uv2, uv3, target );
 
 	}
 

@@ -4,7 +4,6 @@ export const vertex = /* glsl */`
 varying vec3 vViewPosition;
 
 #include <common>
-#include <batching_pars_vertex>
 #include <uv_pars_vertex>
 #include <color_pars_vertex>
 #include <displacementmap_pars_vertex>
@@ -20,10 +19,7 @@ void main() {
 
 	#include <uv_vertex>
 	#include <color_vertex>
-	#include <morphinstance_vertex>
 	#include <morphcolor_vertex>
-	#include <batching_vertex>
-
 	#include <beginnormal_vertex>
 	#include <morphnormal_vertex>
 	#include <skinbase_vertex>
@@ -72,8 +68,9 @@ varying vec3 vViewPosition;
 
 void main() {
 
-	vec4 diffuseColor = vec4( diffuse, opacity );
 	#include <clipping_planes_fragment>
+
+	vec4 diffuseColor = vec4( diffuse, opacity );
 
 	#include <logdepthbuf_fragment>
 	#include <map_fragment>

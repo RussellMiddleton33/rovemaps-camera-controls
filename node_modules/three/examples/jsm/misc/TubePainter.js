@@ -176,13 +176,16 @@ function TubePainter() {
 
 		if ( start === end ) return;
 
-		positions.addUpdateRange( start * 3, ( end - start ) * 3 );
+		positions.updateRange.offset = start * 3;
+		positions.updateRange.count = ( end - start ) * 3;
 		positions.needsUpdate = true;
 
-		normals.addUpdateRange( start * 3, ( end - start ) * 3 );
+		normals.updateRange.offset = start * 3;
+		normals.updateRange.count = ( end - start ) * 3;
 		normals.needsUpdate = true;
 
-		colors.addUpdateRange( start * 3, ( end - start ) * 3 );
+		colors.updateRange.offset = start * 3;
+		colors.updateRange.count = ( end - start ) * 3;
 		colors.needsUpdate = true;
 
 		count = geometry.drawRange.count;

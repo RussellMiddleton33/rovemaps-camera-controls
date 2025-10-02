@@ -1,8 +1,5 @@
-import { Matrix4 } from '../math/Matrix4.js';
 import { Ray } from '../math/Ray.js';
 import { Layers } from './Layers.js';
-
-const _matrix = /*@__PURE__*/ new Matrix4();
 
 class Raycaster {
 
@@ -56,20 +53,9 @@ class Raycaster {
 
 	}
 
-	setFromXRController( controller ) {
-
-		_matrix.identity().extractRotation( controller.matrixWorld );
-
-		this.ray.origin.setFromMatrixPosition( controller.matrixWorld );
-		this.ray.direction.set( 0, 0, - 1 ).applyMatrix4( _matrix );
-
-		return this;
-
-	}
-
 	intersectObject( object, recursive = true, intersects = [] ) {
 
-		intersect( object, this, intersects, recursive );
+		intersectObject( object, this, intersects, recursive );
 
 		intersects.sort( ascSort );
 
@@ -81,7 +67,7 @@ class Raycaster {
 
 		for ( let i = 0, l = objects.length; i < l; i ++ ) {
 
-			intersect( objects[ i ], this, intersects, recursive );
+			intersectObject( objects[ i ], this, intersects, recursive );
 
 		}
 
@@ -99,25 +85,21 @@ function ascSort( a, b ) {
 
 }
 
-function intersect( object, raycaster, intersects, recursive ) {
-
-	let propagate = true;
+function intersectObject( object, raycaster, intersects, recursive ) {
 
 	if ( object.layers.test( raycaster.layers ) ) {
 
-		const result = object.raycast( raycaster, intersects );
-
-		if ( result === false ) propagate = false;
+		object.raycast( raycaster, intersects );
 
 	}
 
-	if ( propagate === true && recursive === true ) {
+	if ( recursive === true ) {
 
 		const children = object.children;
 
 		for ( let i = 0, l = children.length; i < l; i ++ ) {
 
-			intersect( children[ i ], raycaster, intersects, true );
+			intersectObject( children[ i ], raycaster, intersects, true );
 
 		}
 

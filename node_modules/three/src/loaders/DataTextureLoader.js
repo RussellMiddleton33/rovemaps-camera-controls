@@ -75,6 +75,10 @@ class DataTextureLoader extends Loader {
 
 				texture.colorSpace = texData.colorSpace;
 
+			} else if ( texData.encoding !== undefined ) { // @deprecated, r152
+
+				texture.encoding = texData.encoding;
+
 			}
 
 			if ( texData.flipY !== undefined ) {

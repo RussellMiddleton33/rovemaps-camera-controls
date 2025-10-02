@@ -1,7 +1,6 @@
 import { Material } from './Material.js';
 import { MultiplyOperation } from '../constants.js';
 import { Color } from '../math/Color.js';
-import { Euler } from '../math/Euler.js';
 
 class MeshBasicMaterial extends Material {
 
@@ -28,7 +27,6 @@ class MeshBasicMaterial extends Material {
 		this.alphaMap = null;
 
 		this.envMap = null;
-		this.envMapRotation = new Euler();
 		this.combine = MultiplyOperation;
 		this.reflectivity = 1;
 		this.refractionRatio = 0.98;
@@ -63,7 +61,6 @@ class MeshBasicMaterial extends Material {
 		this.alphaMap = source.alphaMap;
 
 		this.envMap = source.envMap;
-		this.envMapRotation.copy( source.envMapRotation );
 		this.combine = source.combine;
 		this.reflectivity = source.reflectivity;
 		this.refractionRatio = source.refractionRatio;

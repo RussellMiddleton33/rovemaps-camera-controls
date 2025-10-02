@@ -21,6 +21,14 @@ const _vC = /*@__PURE__*/ new Vector3();
 const _tempA = /*@__PURE__*/ new Vector3();
 const _morphA = /*@__PURE__*/ new Vector3();
 
+const _uvA = /*@__PURE__*/ new Vector2();
+const _uvB = /*@__PURE__*/ new Vector2();
+const _uvC = /*@__PURE__*/ new Vector2();
+
+const _normalA = /*@__PURE__*/ new Vector3();
+const _normalB = /*@__PURE__*/ new Vector3();
+const _normalC = /*@__PURE__*/ new Vector3();
+
 const _intersectionPoint = /*@__PURE__*/ new Vector3();
 const _intersectionPointWorld = /*@__PURE__*/ new Vector3();
 
@@ -363,24 +371,34 @@ function checkGeometryIntersection( object, material, raycaster, ray, uv, uv1, n
 
 	if ( intersection ) {
 
-		const barycoord = new Vector3();
-		Triangle.getBarycoord( _intersectionPoint, _vA, _vB, _vC, barycoord );
-
 		if ( uv ) {
 
-			intersection.uv = Triangle.getInterpolatedAttribute( uv, a, b, c, barycoord, new Vector2() );
+			_uvA.fromBufferAttribute( uv, a );
+			_uvB.fromBufferAttribute( uv, b );
+			_uvC.fromBufferAttribute( uv, c );
+
+			intersection.uv = Triangle.getInterpolation( _intersectionPoint, _vA, _vB, _vC, _uvA, _uvB, _uvC, new Vector2() );
 
 		}
 
 		if ( uv1 ) {
 
-			intersection.uv1 = Triangle.getInterpolatedAttribute( uv1, a, b, c, barycoord, new Vector2() );
+			_uvA.fromBufferAttribute( uv1, a );
+			_uvB.fromBufferAttribute( uv1, b );
+			_uvC.fromBufferAttribute( uv1, c );
+
+			intersection.uv1 = Triangle.getInterpolation( _intersectionPoint, _vA, _vB, _vC, _uvA, _uvB, _uvC, new Vector2() );
+			intersection.uv2 = intersection.uv1; // @deprecated, r152
 
 		}
 
 		if ( normal ) {
 
-			intersection.normal = Triangle.getInterpolatedAttribute( normal, a, b, c, barycoord, new Vector3() );
+			_normalA.fromBufferAttribute( normal, a );
+			_normalB.fromBufferAttribute( normal, b );
+			_normalC.fromBufferAttribute( normal, c );
+
+			intersection.normal = Triangle.getInterpolation( _intersectionPoint, _vA, _vB, _vC, _normalA, _normalB, _normalC, new Vector3() );
 
 			if ( intersection.normal.dot( ray.direction ) > 0 ) {
 
@@ -401,7 +419,6 @@ function checkGeometryIntersection( object, material, raycaster, ray, uv, uv1, n
 		Triangle.getNormal( _vA, _vB, _vC, face.normal );
 
 		intersection.face = face;
-		intersection.barycoord = barycoord;
 
 	}
 

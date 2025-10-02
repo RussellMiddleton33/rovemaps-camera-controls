@@ -155,8 +155,6 @@ function testPoint( point, index, localThresholdSq, matrixWorld, raycaster, inte
 			point: intersectPoint,
 			index: index,
 			face: null,
-			faceIndex: null,
-			barycoord: null,
 			object: object
 
 		} );

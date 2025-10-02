@@ -7,15 +7,11 @@ import { LineBasicMaterial } from '../materials/LineBasicMaterial.js';
 import { BufferGeometry } from '../core/BufferGeometry.js';
 import { Float32BufferAttribute } from '../core/BufferAttribute.js';
 
-const _vStart = /*@__PURE__*/ new Vector3();
-const _vEnd = /*@__PURE__*/ new Vector3();
-
+const _start = /*@__PURE__*/ new Vector3();
+const _end = /*@__PURE__*/ new Vector3();
 const _inverseMatrix = /*@__PURE__*/ new Matrix4();
 const _ray = /*@__PURE__*/ new Ray();
 const _sphere = /*@__PURE__*/ new Sphere();
-
-const _intersectPointOnRay = /*@__PURE__*/ new Vector3();
-const _intersectPointOnSegment = /*@__PURE__*/ new Vector3();
 
 class Line extends Object3D {
 
@@ -58,11 +54,11 @@ class Line extends Object3D {
 
 			for ( let i = 1, l = positionAttribute.count; i < l; i ++ ) {
 
-				_vStart.fromBufferAttribute( positionAttribute, i - 1 );
-				_vEnd.fromBufferAttribute( positionAttribute, i );
+				_start.fromBufferAttribute( positionAttribute, i - 1 );
+				_end.fromBufferAttribute( positionAttribute, i );
 
 				lineDistances[ i ] = lineDistances[ i - 1 ];
-				lineDistances[ i ] += _vStart.distanceTo( _vEnd );
+				lineDistances[ i ] += _start.distanceTo( _end );
 
 			}
 
@@ -103,6 +99,10 @@ class Line extends Object3D {
 		const localThreshold = threshold / ( ( this.scale.x + this.scale.y + this.scale.z ) / 3 );
 		const localThresholdSq = localThreshold * localThreshold;
 
+		const vStart = new Vector3();
+		const vEnd = new Vector3();
+		const interSegment = new Vector3();
+		const interRay = new Vector3();
 		const step = this.isLineSegments ? 2 : 1;
 
 		const index = geometry.index;
@@ -119,28 +119,31 @@ class Line extends Object3D {
 				const a = index.getX( i );
 				const b = index.getX( i + 1 );
 
-				const intersect = checkIntersection( this, raycaster, _ray, localThresholdSq, a, b );
+				vStart.fromBufferAttribute( positionAttribute, a );
+				vEnd.fromBufferAttribute( positionAttribute, b );
 
-				if ( intersect ) {
+				const distSq = _ray.distanceSqToSegment( vStart, vEnd, interRay, interSegment );
 
-					intersects.push( intersect );
+				if ( distSq > localThresholdSq ) continue;
 
-				}
+				interRay.applyMatrix4( this.matrixWorld ); //Move back to world space for distance calculation
 
-			}
+				const distance = raycaster.ray.origin.distanceTo( interRay );
 
-			if ( this.isLineLoop ) {
+				if ( distance < raycaster.near || distance > raycaster.far ) continue;
 
-				const a = index.getX( end - 1 );
-				const b = index.getX( start );
+				intersects.push( {
 
-				const intersect = checkIntersection( this, raycaster, _ray, localThresholdSq, a, b );
+					distance: distance,
+					// What do we want? intersection point on the ray or on the segment??
+					// point: raycaster.ray.at( distance ),
+					point: interSegment.clone().applyMatrix4( this.matrixWorld ),
+					index: i,
+					face: null,
+					faceIndex: null,
+					object: this
 
-				if ( intersect ) {
-
-					intersects.push( intersect );
-
-				}
+				} );
 
 			}
 
@@ -151,25 +154,31 @@ class Line extends Object3D {
 
 			for ( let i = start, l = end - 1; i < l; i += step ) {
 
-				const intersect = checkIntersection( this, raycaster, _ray, localThresholdSq, i, i + 1 );
+				vStart.fromBufferAttribute( positionAttribute, i );
+				vEnd.fromBufferAttribute( positionAttribute, i + 1 );
 
-				if ( intersect ) {
+				const distSq = _ray.distanceSqToSegment( vStart, vEnd, interRay, interSegment );
 
-					intersects.push( intersect );
+				if ( distSq > localThresholdSq ) continue;
 
-				}
+				interRay.applyMatrix4( this.matrixWorld ); //Move back to world space for distance calculation
 
-			}
+				const distance = raycaster.ray.origin.distanceTo( interRay );
 
-			if ( this.isLineLoop ) {
+				if ( distance < raycaster.near || distance > raycaster.far ) continue;
 
-				const intersect = checkIntersection( this, raycaster, _ray, localThresholdSq, end - 1, start );
+				intersects.push( {
 
-				if ( intersect ) {
+					distance: distance,
+					// What do we want? intersection point on the ray or on the segment??
+					// point: raycaster.ray.at( distance ),
+					point: interSegment.clone().applyMatrix4( this.matrixWorld ),
+					index: i,
+					face: null,
+					faceIndex: null,
+					object: this
 
-					intersects.push( intersect );
-
-				}
+				} );
 
 			}
 
@@ -207,39 +216,6 @@ class Line extends Object3D {
 		}
 
 	}
-
-}
-
-function checkIntersection( object, raycaster, ray, thresholdSq, a, b ) {
-
-	const positionAttribute = object.geometry.attributes.position;
-
-	_vStart.fromBufferAttribute( positionAttribute, a );
-	_vEnd.fromBufferAttribute( positionAttribute, b );
-
-	const distSq = ray.distanceSqToSegment( _vStart, _vEnd, _intersectPointOnRay, _intersectPointOnSegment );
-
-	if ( distSq > thresholdSq ) return;
-
-	_intersectPointOnRay.applyMatrix4( object.matrixWorld ); // Move back to world space for distance calculation
-
-	const distance = raycaster.ray.origin.distanceTo( _intersectPointOnRay );
-
-	if ( distance < raycaster.near || distance > raycaster.far ) return;
-
-	return {
-
-		distance: distance,
-		// What do we want? intersection point on the ray or on the segment??
-		// point: raycaster.ray.at( distance ),
-		point: _intersectPointOnSegment.clone().applyMatrix4( object.matrixWorld ),
-		index: a,
-		face: null,
-		faceIndex: null,
-		barycoord: null,
-		object: object
-
-	};
 
 }
 
