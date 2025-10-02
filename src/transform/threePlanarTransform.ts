@@ -177,6 +177,15 @@ export class ThreePlanarTransform implements ITransform {
       const oz = horiz * Math.cos(bearingRad);
 
       cam.position.set(targetX + ox, targetY + y, targetZ + oz);
+      // Handle top-down singularity: when pitch ~ 0, bearing should rotate the view in-plane.
+      // Use camera.up to encode bearing so lookAt can orient consistently.
+      const eps = 1e-6;
+      if (Math.abs(pitchRad) <= eps) {
+        // Up vector aligned with ground "north" rotated by bearing
+        cam.up.set(Math.sin(bearingRad), 0, Math.cos(bearingRad));
+      } else {
+        cam.up.set(0, 1, 0);
+      }
       cam.lookAt(targetX, targetY, targetZ);
       // Apply roll about forward axis
       if (this._roll) {
@@ -202,6 +211,12 @@ export class ThreePlanarTransform implements ITransform {
       const ox = horiz * Math.sin(bearingRad);
       const oz = horiz * Math.cos(bearingRad);
       cam.position.set(targetX + ox, targetY + y, targetZ + oz);
+      const eps = 1e-6;
+      if (Math.abs(pitchRad) <= eps) {
+        cam.up.set(Math.sin(bearingRad), 0, Math.cos(bearingRad));
+      } else {
+        cam.up.set(0, 1, 0);
+      }
       cam.lookAt(targetX, targetY, targetZ);
       if (this._roll) {
         const rollRad = (this._roll * Math.PI) / 180;
