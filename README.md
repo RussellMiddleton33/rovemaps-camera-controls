@@ -32,9 +32,10 @@ const controller = createControllerForNext(() => ({ camera, domElement }));
 
 ## Goals
 
-- Maping parity for camera API, gestures, events, inertia, and semantics.
+- Maping Camera For Three.JS with camera API, gestures, events, inertia, and semantics.
 - Projection-agnostic design with a Planar helper first; optional spherical/globe.
-- SSR hardened; Next.js examples (Pages and App Router) with ResizeObserver wiring.
+- SSR hardened; 
+-Next.js examples (Pages and App Router) with ResizeObserver wiring.
 
 ## Repository Structure
 

@@ -75,9 +75,9 @@ export class CameraController extends Evented<CameraMoveEvents> {
     super();
     if (typeof window === 'undefined') {
       // SSR guard: don't access DOM
-      // @ts-expect-error intentional
+      // @ts-ignore
       this._camera = opts.camera;
-      // @ts-expect-error intentional
+      // @ts-ignore
       this._dom = {} as any;
       this._helper = new PlanarCameraHelper();
       this.transform = new ThreePlanarTransform({
@@ -254,10 +254,12 @@ export class CameraController extends Evented<CameraMoveEvents> {
       const e = easing(k);
 
       this.transform.deferApply(() => {
+        const startZ = start.center.z ?? 0;
+        const targetZ = target.center.z ?? 0;
         this.transform.setCenter({
           x: start.center.x + (target.center.x - start.center.x) * e,
           y: start.center.y + (target.center.y - start.center.y) * e,
-          z: start.center.z + ((target.center.z ?? 0) - (start.center.z ?? 0)) * e,
+          z: startZ + (targetZ - startZ) * e,
         });
         this.transform.setZoom(start.zoom + (target.zoom - start.zoom) * e);
         this.transform.setBearing(start.bearing + (target.bearing - start.bearing) * e);

@@ -381,8 +381,5 @@ export class TouchMultiHandler {
       this.inertiaHandle = requestAnimationFrame(step);
     };
     this.inertiaHandle = requestAnimationFrame(step);
-    // Track initial pinch centroid pointer (relative to element)
-    const vp = { x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top };
-    this.lastPinchPointer = vp;
   }
 }

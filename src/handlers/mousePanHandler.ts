@@ -58,6 +58,7 @@ export class MousePanHandler {
       recenterOnPointerDown: false,
       inertiaPanYSign: 1,
       inertiaPanXSign: 1,
+      anchorTightness: 1,
       ...opts,
     };
   }

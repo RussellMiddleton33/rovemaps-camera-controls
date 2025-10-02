@@ -93,16 +93,18 @@ export class MouseRotatePitchHandler {
     // MapLibre-style: right-drag rotates (dx) and pitches (dy) simultaneously.
     // If modifier is held, allow pitch-only for precision.
     const wantsPitchOnly = (this.opts.pitchModifier === 'shift' && e.shiftKey) || (this.opts.pitchModifier === 'alt' && (e.altKey || e.metaKey));
-    const db = (wantsPitchOnly ? 0 : dx * (this.opts.sensitivity.rotatePerPx / 1.0)) * (this.opts.rotateSign ?? 1);
-    const dp = (-dy * (this.opts.sensitivity.pitchPerPx / 1.0)) * (this.opts.pitchSign ?? 1);
+    const rotPerPx = this.opts.sensitivity.rotatePerPx ?? 0.3;
+    const pitPerPx = this.opts.sensitivity.pitchPerPx ?? 0.25;
+    const db = (wantsPitchOnly ? 0 : dx * rotPerPx) * (this.opts.rotateSign ?? 1);
+    const dp = (-dy * pitPerPx) * (this.opts.pitchSign ?? 1);
     const groundBefore = aroundPointer ? this.transform.groundFromScreen(pointer) : null;
     this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, db, 0, 'center');
     if (aroundPointer && groundBefore) {
       const groundAfter = this.transform.groundFromScreen(pointer);
       if (groundAfter) {
         const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
-        const dgx = (groundBefore.gx - groundAfter.gx) * tight;
-        const dgz = (groundBefore.gz - groundAfter.gz) * tight;
+        const dgx = (groundBefore!.gx - groundAfter!.gx) * tight;
+        const dgz = (groundBefore!.gz - groundAfter!.gz) * tight;
         this.transform.adjustCenterByGroundDelta(dgx, dgz);
       }
     }
