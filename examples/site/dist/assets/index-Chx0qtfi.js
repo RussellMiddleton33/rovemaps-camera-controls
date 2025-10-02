@@ -31990,11 +31990,12 @@ let currentHandlers = {
   recenterOnDown: false,
   invertInertiaY: false,
   invertInertiaX: false,
-  anchorTightness: 1
+  anchorTightness: 1,
+  antialias: true
 };
 function buildController() {
   if (controller) controller.dispose();
-  rebuildRenderer((toolbar == null ? void 0 : toolbar.antialias) ? toolbar.antialias.checked : true);
+  rebuildRenderer(currentHandlers.antialias);
   controller = new CameraController({
     camera,
     domElement: renderer.domElement,
@@ -32094,6 +32095,7 @@ toolbar.boxzoom.addEventListener("change", () => {
   buildController();
 });
 toolbar.antialias.addEventListener("change", () => {
+  currentHandlers.antialias = toolbar.antialias.checked;
   buildController();
 });
 toolbar.invertZoom.addEventListener("change", () => {
@@ -32279,4 +32281,4 @@ window.addEventListener("pointerup", (e) => {
     controller.fitBounds({ min: { x: Math.min(w0.x, w1.x), y: Math.min(w0.y, w1.y) }, max: { x: Math.max(w0.x, w1.x), y: Math.max(w0.y, w1.y) } }, { padding: { top: 10, right: 10, bottom: 10, left: 10 } });
   }
 });
-//# sourceMappingURL=index-2N-v-xOs.js.map
+//# sourceMappingURL=index-Chx0qtfi.js.map

@@ -66,12 +66,13 @@ let currentHandlers = {
   invertInertiaY: false,
   invertInertiaX: false,
   anchorTightness: 1,
+  antialias: true,
 };
 
 function buildController() {
   if (controller) controller.dispose();
-  // Rebuild renderer if AA toggle changed
-  rebuildRenderer(toolbar?.antialias ? toolbar.antialias.checked : true);
+  // Rebuild renderer based on current handlers (avoid referencing toolbar before init)
+  rebuildRenderer(currentHandlers.antialias);
   controller = new CameraController({
     camera,
     domElement: renderer.domElement,
@@ -154,7 +155,7 @@ toolbar.cooperative.addEventListener('change', () => { currentHandlers.coop = to
 toolbar.keyboard.addEventListener('change', () => { currentHandlers.keyboard = toolbar.keyboard.checked; buildController(); });
 toolbar.dblclick.addEventListener('change', () => { currentHandlers.dblclick = toolbar.dblclick.checked; buildController(); });
 toolbar.boxzoom.addEventListener('change', () => { currentHandlers.boxzoom = toolbar.boxzoom.checked; buildController(); });
-toolbar.antialias.addEventListener('change', () => { buildController(); });
+toolbar.antialias.addEventListener('change', () => { currentHandlers.antialias = toolbar.antialias.checked; buildController(); });
 toolbar.invertZoom.addEventListener('change', () => { currentHandlers.invertZoom = toolbar.invertZoom.checked; buildController(); });
 toolbar.invertPitch.addEventListener('change', () => { currentHandlers.invertPitch = toolbar.invertPitch.checked; buildController(); });
 toolbar.invertTwist.addEventListener('change', () => { currentHandlers.invertTwist = toolbar.invertTwist.checked; buildController(); });
