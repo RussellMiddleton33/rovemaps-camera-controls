@@ -1,4 +1,29 @@
 import { describe, it, expect } from 'vitest';
+// Lightweight DOM + RAF polyfill to avoid jsdom
+const g: any = globalThis as any;
+if (!g.window) {
+  g.window = {
+    requestAnimationFrame: (cb: any) => setTimeout(() => cb(performance.now()), 16),
+    cancelAnimationFrame: (h: any) => clearTimeout(h),
+    matchMedia: () => ({ matches: false, addListener() {}, removeListener() {} }),
+    addEventListener() {},
+    removeEventListener() {},
+  };
+}
+if (!g.navigator) {
+  g.navigator = { maxTouchPoints: 0 } as any;
+}
+if (!g.document) {
+  g.document = {
+    body: { appendChild() {} },
+    createElement: (_tag: string) => ({
+      addEventListener() {},
+      removeEventListener() {},
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
+      style: {},
+    }),
+  } as any;
+}
 import { CameraController } from '../src/core/cameraController';
 
 class FakePerspectiveCamera {
@@ -43,4 +68,3 @@ describe('cancelation semantics', () => {
     expect(seen.lastIndexOf('moveend')).toBeGreaterThan(seen.indexOf('zoomend'));
   });
 });
-// @vitest-environment jsdom
