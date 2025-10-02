@@ -25,7 +25,7 @@ export class ThreePlanarTransform implements ITransform {
   private _zoomMode: 'fov' | 'dolly';
   private _upAxis: 'y' | 'z';
   private _getGroundIntersection?: (screen: Vec2) => ThreeVector3 | null;
-  private _constraints: TransformConstraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0, maxPitch: 85 };
+  private _constraints: TransformConstraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0.001, maxPitch: 85 };
   // pooled objects to avoid allocs in hot path
   private _tmpVec3a = new Vector3();
   private _tmpVec3b = new Vector3();
