@@ -131,8 +131,8 @@ function buildController() {
         anchorTightness: currentHandlers.anchorTightness,
         inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
         inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
-        // Keep touch rotation default unchanged regardless of invertTwist toggle
-        rotateSign: 1,
+        // Make touch rotation respect the invert twist toggle
+        rotateSign: currentHandlers.invertTwist ? -1 : 1,
         ...(touchProfile as any),
       },
       // Safari trackpad twist: empirically invert to match expected feel on macOS.
