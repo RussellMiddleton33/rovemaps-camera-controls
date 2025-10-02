@@ -190,7 +190,8 @@ export class ThreePlanarTransform implements ITransform {
       const dist = (visibleWorldHeight / 2) / Math.tan(fovRad / 2);
 
       // Bearing (yaw) around Y-up, pitch tilts downward from vertical
-      const bearingRad = (this._bearing * Math.PI) / 180;
+      // Negate bearing so increasing bearing rotates view clockwise (not camera orbit)
+      const bearingRad = (-this._bearing * Math.PI) / 180;
       const pitchRad = (this._pitch * Math.PI) / 180;
       const horiz = dist * Math.sin(pitchRad);
       const y = dist * Math.cos(pitchRad);
@@ -202,7 +203,7 @@ export class ThreePlanarTransform implements ITransform {
       // Use camera.up to encode bearing so lookAt can orient consistently.
       const eps = 1e-6;
       if (Math.abs(pitchRad) <= eps) {
-        // Up vector aligned with ground "north" rotated by bearing
+        // Up vector aligned with ground "north" rotated by bearing (already negated)
         cam.up?.set?.(Math.sin(bearingRad), 0, Math.cos(bearingRad));
       } else {
         cam.up?.set?.(0, 1, 0);
@@ -228,7 +229,8 @@ export class ThreePlanarTransform implements ITransform {
       cam.left = -halfW; cam.right = halfW; cam.top = halfH; cam.bottom = -halfH;
       // Place camera above ground with pitch and bearing
       const baseDist = 1000; // arbitrary; irrelevant for projection, but needed for near/far
-      const bearingRad = (this._bearing * Math.PI) / 180;
+      // Negate bearing so increasing bearing rotates view clockwise (not camera orbit)
+      const bearingRad = (-this._bearing * Math.PI) / 180;
       const pitchRad = (this._pitch * Math.PI) / 180;
       const horiz = baseDist * Math.sin(pitchRad);
       const y = baseDist * Math.cos(pitchRad);
@@ -237,6 +239,7 @@ export class ThreePlanarTransform implements ITransform {
       cam.position?.set?.(targetX + ox, targetY + y, targetZ + oz);
       const eps = 1e-6;
       if (Math.abs(pitchRad) <= eps) {
+        // Up vector aligned with ground "north" rotated by bearing (already negated)
         cam.up?.set?.(Math.sin(bearingRad), 0, Math.cos(bearingRad));
       } else {
         cam.up?.set?.(0, 1, 0);

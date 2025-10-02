@@ -59,10 +59,8 @@ export class SafariGestureHandler {
     const pointer = this.opts.around === 'pointer' ? { x: (e.clientX ?? rect.width / 2) - rect.left, y: (e.clientY ?? rect.height / 2) - rect.top } : null;
     const scale = (e.scale || 1) / (this.startScale || 1);
     const dz = scaleZoom(scale) * (this.opts.zoomSign ?? 1);
-    // WebKit's gesture rotation increases clockwise; our camera-bearing semantics
-    // result in perceived opposite rotation. Invert the delta here so a clockwise
-    // gesture increases clockwise map rotation when rotateSign is +1.
-    const drot = -(((e.rotation || 0) - (this.startRotation || 0)) * (this.opts.rotateSign ?? 1));
+    // WebKit's gesture rotation increases clockwise; apply directly with rotateSign
+    const drot = ((e.rotation || 0) - (this.startRotation || 0)) * (this.opts.rotateSign ?? 1);
     // Translational pan to follow pointer movement across frames (grab feel)
     const gpNow = pointer ? this.transform.groundFromScreen(pointer) : null;
     if (gpNow && this.lastGround) {

@@ -135,9 +135,8 @@ function buildController() {
         rotateSign: currentHandlers.invertTwist ? -1 : 1,
         ...(touchProfile as any),
       },
-      // Safari trackpad twist: empirically invert to match expected feel on macOS.
-      // Default (unchecked) gives clockwise gesture -> clockwise map rotation.
-      safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? 1 : -1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
+      // Safari trackpad twist: now uses consistent sign convention with other handlers
+      safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,
       dblclick: currentHandlers.dblclick,
       boxZoom: currentHandlers.boxzoom,
