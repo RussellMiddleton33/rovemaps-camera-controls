@@ -33,6 +33,11 @@ export class MousePanHandler {
   private vy = 0; // px/s
   private instVx = 0; // last instantaneous px/s
   private instVy = 0;
+  // Ground-space velocity (world units per second)
+  private gvx = 0;
+  private gvz = 0;
+  private igvx = 0; // instantaneous ground velocity at last move
+  private igvz = 0;
   private inertiaHandle: number | null = null;
   private lastGround: { gx: number; gz: number } | null = null;
   private rectCache: DOMRect | null = null;
@@ -130,10 +135,32 @@ export class MousePanHandler {
       // Recompute ground under pointer after adjustment to keep anchor locked
       const after = (this.transform as any).groundFromScreen?.(pointer) ?? null;
       this.lastGround = after ?? currGround;
+      // Update ground-space velocity (world/s)
+      if (dt > 0) {
+        const alphaG = 0.3;
+        const igx = dgx / dt;
+        const igz = dgz / dt;
+        this.igvx = igx; this.igvz = igz;
+        this.gvx = this.gvx * (1 - alphaG) + igx * alphaG;
+        this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
+      }
     } else {
       // Fallback to screen-space pan
       this.helper.handleMapControlsPan(this.transform, dx, dy);
       this.lastGround = currGround;
+      if (dt > 0) {
+        // Estimate ground delta from screen dx,dy mapping
+        const scale = Math.pow(2, this.transform.zoom);
+        const rad = (this.transform.bearing * Math.PI) / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const dWx = (-dx * cos + dy * sin) / scale;
+        const dWz = (dx * sin + dy * cos) / scale;
+        const alphaG = 0.3;
+        const igx = dWx / dt; const igz = dWz / dt;
+        this.igvx = igx; this.igvz = igz;
+        this.gvx = this.gvx * (1 - alphaG) + igx * alphaG;
+        this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
+      }
     }
     this.opts.onChange({ axes: { pan: true }, originalEvent: e });
 
@@ -157,9 +184,9 @@ export class MousePanHandler {
     this.unbindMoveUp = null;
     if (!this.dragging) return;
     this.dragging = false;
-    // Directional clamp: prevent backslide if filtered velocity opposes last motion direction
-    const dot = this.vx * this.instVx + this.vy * this.instVy;
-    if (dot <= 0) { this.vx = 0; this.vy = 0; }
+    // Directional clamp in ground space: prevent backslide
+    const dot = this.gvx * this.igvx + this.gvz * this.igvz;
+    if (dot <= 0) { this.gvx = 0; this.gvz = 0; this.vx = 0; this.vy = 0; }
     this.rectCache = null;
     // Start inertia
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
@@ -174,22 +201,15 @@ export class MousePanHandler {
       const dt = (now - last) / 1000;
       last = now;
       const decay = Math.exp(-friction * dt);
-      this.vx *= decay;
-      this.vy *= decay;
-      if (Math.hypot(this.vx, this.vy) < 5) { // px/s threshold
+      this.gvx *= decay;
+      this.gvz *= decay;
+      if (Math.hypot(this.gvx, this.gvz) < 1e-3) {
         this.inertiaHandle = null;
         return;
       }
-      // Convert screen velocity (px/s) to ground velocity (world/s) using bearing and scale
-      const svx = this.vx * (this.opts.inertiaPanXSign ?? 1); // allow flipping X inertia
-      const svy = this.vy * (this.opts.inertiaPanYSign ?? 1);
-      const scale = Math.pow(2, this.transform.zoom);
-      const rad = (this.transform.bearing * Math.PI) / 180;
-      const cos = Math.cos(rad), sin = Math.sin(rad);
-      // Map screen dx,dy to ground dgx,dgz (same mapping as plan helper pan)
-      // dWx = (-dx * cos + dy * sin) / scale;  dWz ~ (+dx * sin + dy * cos) / scale
-      let dgx = (-svx * cos + svy * sin) / scale * dt;
-      let dgz = (svx * sin + svy * cos) / scale * dt;
+      // Integrate ground-space velocity directly
+      let dgx = this.gvx * dt;
+      let dgz = this.gvz * dt;
       // Rubberband damping near/outside panBounds in ground space
       const bounds = this.transform.getPanBounds?.();
       if (bounds) {

@@ -195,6 +195,14 @@ export class TouchMultiHandler {
             dgx *= damp(overX); dgz *= damp(overY);
           }
           (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
+          // Update ground-space velocity based on applied delta
+          if (dt > 0) {
+            const alphaG = 0.3;
+            const igx = dgx / dt; const igz = dgz / dt;
+            this.igvx = igx; this.igvz = igz;
+            this.gvx = this.gvx * (1 - alphaG) + igx * alphaG;
+            this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
+          }
         }
         // Recompute ground under centroid after adjustment to keep anchor locked
         const after = (this.transform as any).groundFromScreen?.(center) ?? null;
@@ -227,6 +235,14 @@ export class TouchMultiHandler {
           dgx *= damp(overX); dgz *= damp(overY);
         }
         (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
+        // Update ground-space velocity during translational part of twist
+        if (dt > 0) {
+          const alphaG = 0.3;
+          const igx = dgx / dt; const igz = dgz / dt;
+          this.igvx = igx; this.igvz = igz;
+          this.gvx = this.gvx * (1 - alphaG) + igx * alphaG;
+          this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
+        }
       }
       // Then: lock the ground point under the centroid across rotate/zoom
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
@@ -310,15 +326,10 @@ export class TouchMultiHandler {
       } else if (this.mode === 'pitch') {
         if (this.opts.enablePitch && dp) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, 'center'); axes.pitch = true; }
       } else if (this.mode === 'pan') {
-        if (this.opts.enablePan && (dx || dy)) {
-          // Convert screen velocity (px/s) to ground velocity (world/s) using bearing and scale, then integrate
-          const svx = this.vpx * (this.opts.inertiaPanXSign ?? 1);
-          const svy = this.vpy * (this.opts.inertiaPanYSign ?? 1);
-          const scale = Math.pow(2, this.transform.zoom);
-          const rad = (this.transform.bearing * Math.PI) / 180;
-          const cos = Math.cos(rad), sin = Math.sin(rad);
-          let dgx = (-svx * cos + svy * sin) / scale * dt;
-          let dgz = (svx * sin + svy * cos) / scale * dt;
+        if (this.opts.enablePan && (this.gvx || this.gvz)) {
+          // Integrate stored ground-space velocity directly
+          let dgx = this.gvx * dt;
+          let dgz = this.gvz * dt;
           // Rubberband damping near/outside panBounds in ground space
           const bounds = (this.transform as any).getPanBounds?.();
           if (bounds) {
