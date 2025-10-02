@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Three RoveMaps Camera Controls — Demo</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="toolbar">
+        <button id="btn-zoom-in">Zoom In</button>
+        <button id="btn-zoom-out">Zoom Out</button>
+        <button id="btn-rotate-left">Rotate Left</button>
+        <button id="btn-rotate-right">Rotate Right</button>
+        <button id="btn-pitch-up">Pitch Up</button>
+        <button id="btn-pitch-down">Pitch Down</button>
+        <label>Rubberband <input id="rubberband" type="range" min="0.1" max="1.5" step="0.1" value="0.5"/></label>
+        <label><input id="around-pointer" type="checkbox" checked /> Around Pointer</label>
+        <label><input id="cooperative" type="checkbox" /> Cooperative Gestures (Ctrl+wheel to zoom)</label>
+        <label><input id="keyboard" type="checkbox" checked /> Keyboard</label>
+        <label><input id="dblclick" type="checkbox" checked /> Dblclick</label>
+        <label><input id="boxzoom" type="checkbox" checked /> Box Zoom</label>
+        <button id="btn-fly">FlyTo Demo</button>
+        <button id="btn-fit">Fit Bounds</button>
+      </div>
+      <div id="coop-hint" class="hint" hidden>Hold Ctrl (or ⌘) + scroll to zoom</div>
+      <div id="overlay"></div>
+      <canvas id="c"></canvas>
+      <div id="select-rect" hidden></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+  </html>
