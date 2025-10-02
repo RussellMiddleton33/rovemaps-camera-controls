@@ -1,1 +1,0 @@
-import{_ as i,c as a,o as n,ae as t}from"./chunks/framework.BX0NALm0.js";const g=JSON.parse('{"title":"","description":"","frontmatter":{},"headers":[],"relativePath":"QuickStart.md","filePath":"QuickStart.md"}'),h={name:"QuickStart.md"};function k(l,s,e,p,r,E){return n(),a("div",null,[...s[0]||(s[0]=[t("",7)])])}const y=i(h,[["render",k]]);export{g as __pageData,y as default};

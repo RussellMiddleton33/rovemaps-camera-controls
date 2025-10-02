@@ -16,5 +16,11 @@ export default defineConfig(({ mode }) => {
       include: ['three'],
       exclude: ['three'],
     },
+    build: {
+      minify: false,
+      sourcemap: true,
+      target: 'es2019',
+      chunkSizeWarningLimit: 1500,
+    },
   };
 });
