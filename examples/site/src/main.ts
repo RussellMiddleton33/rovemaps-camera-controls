@@ -77,11 +77,9 @@ function buildController() {
   if (controller) controller.dispose();
   // Rebuild renderer based on current handlers (avoid referencing toolbar before init)
   rebuildRenderer(currentHandlers.antialias);
-  // Detect touch-capable device to auto-enable mobile profile on first load
-  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-  if (isTouch && (controller == null)) {
-    currentHandlers.mobileProfile = true;
-  }
+  // Detect touch-capable device; always favor Touch Profile when touch is present
+  const isTouch = typeof window !== 'undefined' && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+  if (isTouch) currentHandlers.mobileProfile = true;
   const touchProfile = currentHandlers.mobileProfile ? {
     rotateThresholdDeg: 0.5,
     pitchThresholdPx: 12,
