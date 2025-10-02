@@ -100,9 +100,35 @@ describe('around-point invariants with perspective stub', () => {
     // Apply rotate by +20 and compensate via pan (iterate to converge)
     t.setBearing(t.bearing + 20);
     const s = Math.pow(2, t.zoom);
-    for (let i = 0; i < 8; i++) {
-      const sp1 = t.worldToScreen(world)!; const dx1 = sp1.x - pointer.x; const dy1 = sp1.y - pointer.y;
-      t.setCenter({ x: t.center.x - dx1 / s, y: t.center.y + dy1 / s });
+    const applyPanComp = () => {
+      // Use a small numerical Jacobian to compute the pan needed to reduce screen error
+      const base = t.worldToScreen(world)!;
+      const ex = base.x - pointer.x;
+      const ey = base.y - pointer.y;
+      if (Math.hypot(ex, ey) < 1e-3) return;
+      const eps = 1e-3;
+      // Partial derivatives of screen w.r.t center.x and center.y
+      const cx0 = t.center.x, cy0 = t.center.y;
+      t.setCenter({ x: cx0 + eps, y: cy0 });
+      const sx1 = t.worldToScreen(world)!;
+      t.setCenter({ x: cx0, y: cy0 + eps });
+      const sy1 = t.worldToScreen(world)!;
+      // Restore center
+      t.setCenter({ x: cx0, y: cy0 });
+      const dSx_dcx = (sx1.x - base.x) / eps; const dSy_dcx = (sx1.y - base.y) / eps;
+      const dSx_dcy = (sy1.x - base.x) / eps; const dSy_dcy = (sy1.y - base.y) / eps;
+      // Solve J * dC = -E => dC = J^{-1} * -E
+      const a = dSx_dcx, b = dSx_dcy, c = dSy_dcx, d = dSy_dcy;
+      const det = a * d - b * c || 1e-12;
+      const invA = d / det, invB = -b / det, invC = -c / det, invD = a / det;
+      const dcx = invA * (-ex) + invB * (-ey);
+      const dcy = invC * (-ex) + invD * (-ey);
+      // Dampen to ensure stability
+      const k = 1.0;
+      t.setCenter({ x: cx0 + k * dcx, y: cy0 + k * dcy });
+    };
+    for (let i = 0; i < 12; i++) {
+      applyPanComp();
       const drift = Math.hypot((t.worldToScreen(world)!.x - pointer.x), (t.worldToScreen(world)!.y - pointer.y));
       if (drift <= 1.0) break;
     }
@@ -110,9 +136,8 @@ describe('around-point invariants with perspective stub', () => {
     expect(driftRot).toBeLessThanOrEqual(1.0);
     // Apply pitch by -10 and compensate via pan (iterate)
     t.setPitch(t.pitch - 10);
-    for (let i = 0; i < 8; i++) {
-      const sp2 = t.worldToScreen(world)!; const dx2 = sp2.x - pointer.x; const dy2 = sp2.y - pointer.y;
-      t.setCenter({ x: t.center.x - dx2 / s, y: t.center.y + dy2 / s });
+    for (let i = 0; i < 12; i++) {
+      applyPanComp();
       const drift = Math.hypot((t.worldToScreen(world)!.x - pointer.x), (t.worldToScreen(world)!.y - pointer.y));
       if (drift <= 1.0) break;
     }

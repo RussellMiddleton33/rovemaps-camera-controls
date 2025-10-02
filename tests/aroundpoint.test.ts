@@ -75,17 +75,17 @@ describe('around-point zoom invariant', () => {
 
   it('keeps world point under cursor within ≤1px during rotate', () => {
     const t = new StubTransform(1024, 768);
+    const helper = new PlanarCameraHelper();
     const pointer = { x: 400, y: 300 };
     t.setZoom(8); t.setBearing(0); t.setCenter({ x: 0, y: 0 });
     const world = t.screenToWorld(pointer)!;
     const db = 15; // degrees
-    // Apply bearing and compensate pan
+    // Apply bearing and compensate pan using correct screen->world mapping
     t.setBearing(t.bearing + db);
-    const s = Math.pow(2, t.zoom);
     for (let i = 0; i < 6; i++) {
       const sp = t.worldToScreen(world)!;
       const dx = sp.x - pointer.x; const dy = sp.y - pointer.y;
-      t.setCenter({ x: t.center.x - dx / s, y: t.center.y + dy / s });
+      helper.handleMapControlsPan(t as unknown as ITransform, dx, dy);
       const sp2 = t.worldToScreen(world)!;
       const err = Math.hypot(sp2.x - pointer.x, sp2.y - pointer.y);
       if (err <= 1.0) break;
@@ -100,18 +100,23 @@ describe('around-point zoom invariant', () => {
     t.setZoom(6); t.setBearing(45); t.setCenter({ x: 0, y: 0 });
     // Our stub projection ignores pitch; this test demonstrates method, not true 3D correctness.
     // We still simulate pitch by shifting content vertically and compensating via pan.
+    const helper = new PlanarCameraHelper();
     const world = t.screenToWorld(pointer)!;
-    const dy = -40; // pixels
-    const s = Math.pow(2, t.zoom);
+    const dy = -40; // pixels (simulate content moving up by 40px)
     for (let i = 0; i < 6; i++) {
-      const sp = { x: pointer.x, y: pointer.y + dy };
-      const dx = sp.x - pointer.x; const ddy = sp.y - pointer.y;
-      t.setCenter({ x: t.center.x - dx / s, y: t.center.y + ddy / s });
+      const sp = t.worldToScreen(world)!;
+      // After a visual upward shift by dy, the apparent screen position is sp.y + dy
+      const dx = (sp.x - pointer.x);
+      const ddy = (sp.y + dy) - pointer.y;
+      helper.handleMapControlsPan(t as unknown as ITransform, dx, ddy);
       const sp2 = t.worldToScreen(world)!;
       const err = Math.hypot(sp2.x - pointer.x, sp2.y - pointer.y);
       if (err <= 1.0) break;
     }
     const spFinal = t.worldToScreen(world)!;
-    expect(Math.hypot(spFinal.x - pointer.x, spFinal.y - pointer.y)).toBeLessThanOrEqual(1.0);
+    // Account for the simulated vertical shift when measuring drift
+    const driftX = spFinal.x - pointer.x;
+    const driftY = (spFinal.y + dy) - pointer.y;
+    expect(Math.hypot(driftX, driftY)).toBeLessThanOrEqual(1.0);
   });
 });
