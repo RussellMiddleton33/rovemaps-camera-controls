@@ -31,6 +31,7 @@ export class ThreePlanarTransform implements ITransform {
   private _tmpVec3b = new Vector3();
   private _ray = new Ray();
   private _plane = new Plane();
+  private _projDirty = true;
 
   constructor(opts: ThreePlanarTransformOptions) {
     this._camera = opts.camera;
@@ -60,6 +61,7 @@ export class ThreePlanarTransform implements ITransform {
     this._width = view.width;
     this._height = view.height;
     if (view.devicePixelRatio) this._dpr = view.devicePixelRatio;
+    this._projDirty = true;
     this._applyToCamera();
   }
 
@@ -75,6 +77,9 @@ export class ThreePlanarTransform implements ITransform {
   setZoom(zoom: number): void {
     const z = Math.max(this._constraints.minZoom, Math.min(this._constraints.maxZoom, zoom));
     this._zoom = z;
+    // Perspective projection matrix does not depend on zoom; orthographic does.
+    const cam = this._camera as any;
+    if (cam && 'isOrthographicCamera' in cam && cam.isOrthographicCamera) this._projDirty = true;
     this._applyToCamera();
   }
 
@@ -194,7 +199,10 @@ export class ThreePlanarTransform implements ITransform {
         const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion(cam.quaternion);
         cam.rotateOnWorldAxis(dir, rollRad);
       }
-      cam.updateProjectionMatrix();
+      if (this._projDirty) {
+        cam.updateProjectionMatrix();
+        this._projDirty = false;
+      }
       cam.updateMatrixWorld();
     } else if ('isOrthographicCamera' in cam && cam.isOrthographicCamera) {
       // Ortho: set frustum to map pixels-per-world
@@ -223,6 +231,7 @@ export class ThreePlanarTransform implements ITransform {
         const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion(cam.quaternion);
         cam.rotateOnWorldAxis(dir, rollRad);
       }
+      // Ortho frustum changes every zoom/viewport change
       cam.updateProjectionMatrix();
       cam.updateMatrixWorld();
     }
