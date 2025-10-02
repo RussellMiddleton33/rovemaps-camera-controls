@@ -60,7 +60,8 @@ let currentHandlers = {
   rubber: 0,
   invertZoom: false,
   invertPitch: false,
-  invertTwist: false,
+  // Default to natural clockwise twist on trackpads
+  invertTwist: true,
   invertPanY: false,
   recenterOnDown: false,
   invertInertiaY: false,
@@ -74,6 +75,16 @@ let currentHandlers = {
 };
 
 function buildController() {
+  // Preserve current camera state when rebuilding handlers/renderer
+  const prev = controller ? {
+    center: controller.getCenter(),
+    zoom: controller.getZoom(),
+    bearing: controller.getBearing(),
+    pitch: controller.getPitch(),
+    roll: controller.getRoll(),
+    padding: controller.getPadding(),
+  } : null;
+
   if (controller) controller.dispose();
   // Rebuild renderer based on current handlers (avoid referencing toolbar before init)
   rebuildRenderer(currentHandlers.antialias);
@@ -120,7 +131,8 @@ function buildController() {
         anchorTightness: currentHandlers.anchorTightness,
         inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
         inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
-        rotateSign: currentHandlers.invertTwist ? -1 : 1,
+        // Keep touch rotation default unchanged regardless of invertTwist toggle
+        rotateSign: 1,
         ...(touchProfile as any),
       },
       safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
@@ -131,7 +143,12 @@ function buildController() {
     },
     bearingSnap: 7,
   });
-  controller.jumpTo({ center: { x: 0, y: 0 }, zoom: 4, bearing: 0, pitch: 45 });
+  // Restore previous camera if available; otherwise use a sensible default
+  if (prev) {
+    controller.jumpTo({ center: prev.center, zoom: prev.zoom, bearing: prev.bearing, pitch: prev.pitch, roll: prev.roll, padding: prev.padding });
+  } else {
+    controller.jumpTo({ center: { x: 0, y: 0 }, zoom: 4, bearing: 0, pitch: 45 });
+  }
   controller.on('renderFrame', () => updateOverlay());
   controller.on('move', () => updateOverlay());
 }

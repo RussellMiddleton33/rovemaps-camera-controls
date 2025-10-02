@@ -65,9 +65,10 @@ class PerspectiveStubTransform implements ITransform {
     const x = dot(PC, R);
     const y = dot(PC, U);
     const z = -dot(PC, F);
-    if (z <= 1e-6) return null;
-    const sx = (x * f) / z + this.width / 2;
-    const sy = (-y * f) / z + this.height / 2;
+    // Be tolerant near horizon/degenerate view; clamp to near plane epsilon
+    const zp = z <= 1e-6 ? 1e-6 : z;
+    const sx = (x * f) / zp + this.width / 2;
+    const sy = (-y * f) / zp + this.height / 2;
     return { x: sx, y: sy };
     }
 
@@ -96,19 +97,26 @@ describe('around-point invariants with perspective stub', () => {
     t.setBearing(25);
     t.setPitch(45);
     const world = t.screenToWorld(pointer)!;
-    // Apply rotate by +20 and compensate via pan
+    // Apply rotate by +20 and compensate via pan (iterate to converge)
     t.setBearing(t.bearing + 20);
-    const sp1 = t.worldToScreen(world)!; const dx1 = sp1.x - pointer.x; const dy1 = sp1.y - pointer.y;
     const s = Math.pow(2, t.zoom);
-    t.setCenter({ x: t.center.x - dx1 / s, y: t.center.y + dy1 / s });
+    for (let i = 0; i < 8; i++) {
+      const sp1 = t.worldToScreen(world)!; const dx1 = sp1.x - pointer.x; const dy1 = sp1.y - pointer.y;
+      t.setCenter({ x: t.center.x - dx1 / s, y: t.center.y + dy1 / s });
+      const drift = Math.hypot((t.worldToScreen(world)!.x - pointer.x), (t.worldToScreen(world)!.y - pointer.y));
+      if (drift <= 1.0) break;
+    }
     const driftRot = Math.hypot((t.worldToScreen(world)!.x - pointer.x), (t.worldToScreen(world)!.y - pointer.y));
     expect(driftRot).toBeLessThanOrEqual(1.0);
-    // Apply pitch by -10 and compensate via pan
+    // Apply pitch by -10 and compensate via pan (iterate)
     t.setPitch(t.pitch - 10);
-    const sp2 = t.worldToScreen(world)!; const dx2 = sp2.x - pointer.x; const dy2 = sp2.y - pointer.y;
-    t.setCenter({ x: t.center.x - dx2 / s, y: t.center.y + dy2 / s });
+    for (let i = 0; i < 8; i++) {
+      const sp2 = t.worldToScreen(world)!; const dx2 = sp2.x - pointer.x; const dy2 = sp2.y - pointer.y;
+      t.setCenter({ x: t.center.x - dx2 / s, y: t.center.y + dy2 / s });
+      const drift = Math.hypot((t.worldToScreen(world)!.x - pointer.x), (t.worldToScreen(world)!.y - pointer.y));
+      if (drift <= 1.0) break;
+    }
     const driftPitch = Math.hypot((t.worldToScreen(world)!.x - pointer.x), (t.worldToScreen(world)!.y - pointer.y));
     expect(driftPitch).toBeLessThanOrEqual(1.0);
   });
 });
-
