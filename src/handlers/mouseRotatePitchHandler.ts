@@ -57,6 +57,7 @@ export class MouseRotatePitchHandler {
   }
 
   private onDown = (e: PointerEvent) => {
+    if ((e as any).pointerType && (e as any).pointerType !== 'mouse') return;
     const isRotateBtn = e.button === this.opts.rotateButton;
     const wantsPitch = (this.opts.pitchModifier === 'shift' && e.shiftKey) || (this.opts.pitchModifier === 'alt' && (e.altKey || e.metaKey));
     if (!isRotateBtn && !wantsPitch) return;

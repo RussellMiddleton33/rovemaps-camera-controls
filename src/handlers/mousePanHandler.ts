@@ -77,6 +77,7 @@ export class MousePanHandler {
   }
 
   private onDown = (e: PointerEvent) => {
+    if ((e as any).pointerType && (e as any).pointerType !== 'mouse') return;
     if (e.button !== this.opts.button) return;
     this.el.setPointerCapture?.(e.pointerId);
     this.dragging = false;
