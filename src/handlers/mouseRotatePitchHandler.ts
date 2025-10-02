@@ -29,7 +29,7 @@ export class MouseRotatePitchHandler {
     this.opts = {
       rotateButton: 2,
       pitchModifier: 'shift',
-      sensitivity: { rotatePerPx: 0.25, pitchPerPx: 0.25 },
+      sensitivity: { rotatePerPx: 0.3, pitchPerPx: 0.25 },
       onChange: () => {},
       around: 'center',
       ...opts,

@@ -8,6 +8,7 @@ export interface MousePanOptions {
   dragThresholdPx?: number; // prevent clicks
   onChange?: (delta: HandlerDelta) => void;
   rubberbandStrength?: number; // higher = stronger resistance
+  inertiaPanFriction?: number; // 1/s
 }
 
 export class MousePanHandler {
@@ -36,6 +37,7 @@ export class MousePanHandler {
       dragThresholdPx: 3,
       onChange: () => {},
       rubberbandStrength: 0.5,
+      inertiaPanFriction: 6,
       ...opts,
     };
   }
@@ -120,7 +122,7 @@ export class MousePanHandler {
 
   private runInertia() {
     let last = performance.now();
-    const friction = 6; // 1/s
+    const friction = this.opts.inertiaPanFriction; // 1/s
     const step = () => {
       const now = performance.now();
       const dt = (now - last) / 1000;

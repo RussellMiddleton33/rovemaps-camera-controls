@@ -37,6 +37,8 @@ export interface ITransform extends IReadonlyTransform {
   // Ground helpers for planar projections (y-up, ground plane y=0)
   groundFromScreen(screen: Vec2): GroundPoint | null;
   adjustCenterByGroundDelta(dgx: number, dgz: number): void;
+  getGroundCenter(): GroundPoint;
+  setGroundCenter(g: GroundPoint): void;
   clamp(): void;
 }
 

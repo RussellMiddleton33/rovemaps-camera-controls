@@ -8,6 +8,7 @@ import { TouchMultiHandler, type TouchMultiOptions } from './touchMultiHandler';
 import { KeyboardHandler, type KeyboardOptions } from './keyboardHandler';
 import { DblclickHandler, type DblclickOptions } from './dblclickHandler';
 import { BoxZoomHandler, type BoxZoomOptions } from './boxZoomHandler';
+import { SafariGestureHandler, type SafariGestureOptions } from './safariGestureHandler';
 
 export interface HandlerManagerOptions {
   scrollZoom?: ScrollZoomOptions | boolean;
@@ -18,6 +19,7 @@ export interface HandlerManagerOptions {
   dblclick?: DblclickOptions | boolean;
   boxZoom?: BoxZoomOptions | boolean;
   suppressContextMenu?: boolean;
+  safariGestures?: SafariGestureOptions | boolean;
 }
 
 export class HandlerManager {
@@ -31,6 +33,7 @@ export class HandlerManager {
   private keyboard?: KeyboardHandler;
   private dblclick?: DblclickHandler;
   private boxZoom?: BoxZoomHandler;
+  private safariGestures?: SafariGestureHandler;
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, options?: HandlerManagerOptions) {
     this.el = el;
@@ -102,6 +105,17 @@ export class HandlerManager {
       typeof boxOpts === 'object' ? boxOpts : { onChange: options?.onChange }
     );
     this.boxZoom.enable();
+    // Safari gesture handler (optional)
+    const sg = options?.safariGestures ?? false;
+    if (sg) {
+      this.safariGestures = new SafariGestureHandler(
+        this.el,
+        this.transform,
+        this.helper,
+        typeof sg === 'object' ? { onChange: options?.onChange, ...sg, enabled: true } : { enabled: true, onChange: options?.onChange }
+      );
+      this.safariGestures.enable();
+    }
   }
 
   dispose() {
@@ -112,5 +126,6 @@ export class HandlerManager {
     this.keyboard?.destroy();
     this.dblclick?.destroy();
     this.boxZoom?.destroy();
+    this.safariGestures?.destroy();
   }
 }

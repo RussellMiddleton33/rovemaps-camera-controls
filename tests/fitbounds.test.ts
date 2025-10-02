@@ -24,16 +24,16 @@ class StubTransform implements ITransform {
   setConstraints(): void {}
   screenToWorld(): any { return null; }
   worldToScreen(world: any): { x: number; y: number } | null {
-    // Simple rotated/translated/scale projection with origin at viewport center
+    // Treat world as ground (x,z)
     const s = Math.pow(2, this.zoom);
     const dx = (world.x - this.center.x);
-    const dy = (world.y - this.center.y);
+    const dz = (world.y - this.center.y);
     const rad = (this.bearing * Math.PI) / 180;
     const cos = Math.cos(rad), sin = Math.sin(rad);
-    const rx = dx * cos - dy * sin;
-    const ry = dx * sin + dy * cos;
+    const rx = dx * cos - dz * sin;
+    const rf = dx * sin + dz * cos;
     const x = rx * s + this.width / 2;
-    const y = -ry * s + this.height / 2;
+    const y = -rf * s + this.height / 2;
     return { x, y };
   }
   clamp(): void {}
@@ -70,4 +70,3 @@ describe('PlanarCameraHelper.cameraForBoxAndBearing', () => {
     expect(maxY - minY).toBeLessThanOrEqual(viewH + 1);
   });
 });
-

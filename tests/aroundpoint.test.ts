@@ -24,24 +24,25 @@ class StubTransform implements ITransform {
   setConstraints(): void {}
   clamp(): void {}
   worldToScreen(world: { x: number; y: number }): { x: number; y: number } | null {
+    // Interpret world as ground (x,z) in y-up space
     const s = Math.pow(2, this.zoom);
     const dx = world.x - this.center.x;
-    const dy = world.y - this.center.y;
+    const dz = world.y - this.center.y; // world.y used as gz
     const rad = (this.bearing * Math.PI) / 180;
     const cos = Math.cos(rad), sin = Math.sin(rad);
-    const rx = dx * cos - dy * sin;
-    const ry = dx * sin + dy * cos;
-    return { x: rx * s + this.width / 2, y: -ry * s + this.height / 2 };
+    const rx = dx * cos - dz * sin; // camera right
+    const rf = dx * sin + dz * cos; // camera forward
+    return { x: rx * s + this.width / 2, y: -rf * s + this.height / 2 };
   }
   screenToWorld(screen: { x: number; y: number }): { x: number; y: number } | null {
     const s = Math.pow(2, this.zoom);
     const rx = (screen.x - this.width / 2) / s;
-    const ry = -(screen.y - this.height / 2) / s;
+    const rf = -(screen.y - this.height / 2) / s;
     const rad = (this.bearing * Math.PI) / 180;
     const cos = Math.cos(rad), sin = Math.sin(rad);
-    const dx = rx * cos + ry * sin;
-    const dy = -rx * sin + ry * cos;
-    return { x: this.center.x + dx, y: this.center.y + dy };
+    const dx = rx * cos + rf * sin;
+    const dz = -rx * sin + rf * cos;
+    return { x: this.center.x + dx, y: this.center.y + dz };
   }
 }
 
