@@ -9,6 +9,7 @@ export interface DblclickOptions {
   around?: 'center' | 'pointer';
   preventDefault?: boolean;
   onChange?: (delta: HandlerDelta) => void;
+  anchorTightness?: number; // 0..1
 }
 
 export class DblclickHandler {
@@ -27,6 +28,7 @@ export class DblclickHandler {
       around: 'pointer',
       preventDefault: true,
       onChange: () => {},
+      anchorTightness: 1,
       ...opts,
     };
   }
@@ -86,8 +88,9 @@ export class DblclickHandler {
     if (!groundBefore) return;
     const groundAfter = this.transform.groundFromScreen(pointer);
     if (!groundAfter) return;
-    const dgx = groundBefore.gx - groundAfter.gx;
-    const dgz = groundBefore.gz - groundAfter.gz;
+    const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
+    const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+    const dgz = (groundBefore.gz - groundAfter.gz) * tight;
     this.transform.adjustCenterByGroundDelta(dgx, dgz);
   }
 }

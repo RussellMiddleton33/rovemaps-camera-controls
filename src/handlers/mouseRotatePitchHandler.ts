@@ -12,6 +12,7 @@ export interface MouseRotatePitchOptions {
   rotateSign?: 1 | -1;
   pitchSign?: 1 | -1;
   recenterOnPointerDown?: boolean;
+  anchorTightness?: number; // 0..1
 }
 
 export class MouseRotatePitchHandler {
@@ -38,6 +39,7 @@ export class MouseRotatePitchHandler {
       rotateSign: 1,
       pitchSign: 1,
       recenterOnPointerDown: false,
+      anchorTightness: 1,
       ...opts,
     };
   }
@@ -95,8 +97,9 @@ export class MouseRotatePitchHandler {
     if (aroundPointer && groundBefore) {
       const groundAfter = this.transform.groundFromScreen(pointer);
       if (groundAfter) {
-        const dgx = groundBefore.gx - groundAfter.gx;
-        const dgz = groundBefore.gz - groundAfter.gz;
+        const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
+        const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+        const dgz = (groundBefore.gz - groundAfter.gz) * tight;
         this.transform.adjustCenterByGroundDelta(dgx, dgz);
       }
     }

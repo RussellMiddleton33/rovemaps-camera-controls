@@ -20,6 +20,7 @@ export interface TouchMultiOptions {
   panXSign?: 1 | -1;
   panYSign?: 1 | -1;
   recenterOnGestureStart?: boolean;
+  anchorTightness?: number; // 0..1
 }
 
 type Pt = { id: number; x: number; y: number };
@@ -68,6 +69,7 @@ export class TouchMultiHandler {
       panXSign: 1,
       panYSign: 1,
       recenterOnGestureStart: false,
+      anchorTightness: 1,
       ...opts,
     };
   }
@@ -196,13 +198,13 @@ export class TouchMultiHandler {
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (this.opts.enableZoom && dzCand) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dzCand, 'center'); this.vz = dzCand / dt; axes.zoom = true; }
       if (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dDeg, 0, 'center'); this.vb = dDeg / dt; axes.rotate = true; }
-      if (ptr && groundBefore) { const groundAfter = this.transform.groundFromScreen(ptr); if (groundAfter) { const dgx = groundBefore.gx - groundAfter.gx; const dgz = groundBefore.gz - groundAfter.gz; this.transform.adjustCenterByGroundDelta(dgx, dgz); } }
+      if (ptr && groundBefore) { const groundAfter = this.transform.groundFromScreen(ptr); if (groundAfter) { const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1)); const dgx = (groundBefore.gx - groundAfter.gx) * tight; const dgz = (groundBefore.gz - groundAfter.gz) * tight; this.transform.adjustCenterByGroundDelta(dgx, dgz); } }
       // Optionally, small pan to compensate centroid drift is skipped to better preserve around-point lock
     } else if (this.mode === 'pitch' && this.opts.enablePitch) {
       const ptr = this.opts.around === 'pinch' ? center : null;
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (dpCand) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, 'center'); this.vp = dpCand / dt; axes.pitch = true; }
-      if (ptr && groundBefore) { const groundAfter = this.transform.groundFromScreen(ptr); if (groundAfter) { const dgx = groundBefore.gx - groundAfter.gx; const dgz = groundBefore.gz - groundAfter.gz; this.transform.adjustCenterByGroundDelta(dgx, dgz); } }
+      if (ptr && groundBefore) { const groundAfter = this.transform.groundFromScreen(ptr); if (groundAfter) { const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1)); const dgx = (groundBefore.gx - groundAfter.gx) * tight; const dgz = (groundBefore.gz - groundAfter.gz) * tight; this.transform.adjustCenterByGroundDelta(dgx, dgz); } }
     }
 
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };

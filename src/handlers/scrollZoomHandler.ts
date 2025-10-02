@@ -14,6 +14,7 @@ export interface ScrollZoomOptions {
   cooperative?: boolean; // require ctrl/meta to zoom via wheel to avoid hijacking page scroll
   onCoopGestureHint?: (req: { type: 'pinch' | 'rotate' }) => void;
   zoomSign?: 1 | -1; // invert zoom direction if needed
+  anchorTightness?: number; // 0..1, how strongly to keep pointer fixed (default 1)
 }
 
 export class ScrollZoomHandler {
@@ -42,6 +43,7 @@ export class ScrollZoomHandler {
       cooperative: false,
       onCoopGestureHint: () => {},
       zoomSign: 1,
+      anchorTightness: 1,
       ...opts,
     };
   }
@@ -127,8 +129,9 @@ export class ScrollZoomHandler {
     if (!groundBefore) return;
     const groundAfter = this.transform.groundFromScreen(pointer);
     if (!groundAfter) return;
-    const dgx = groundBefore.gx - groundAfter.gx;
-    const dgz = groundBefore.gz - groundAfter.gz;
+    const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
+    const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+    const dgz = (groundBefore.gz - groundAfter.gz) * tight;
     this.transform.adjustCenterByGroundDelta(dgx, dgz);
   }
 

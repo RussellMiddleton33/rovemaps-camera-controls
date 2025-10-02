@@ -41,6 +41,7 @@ let currentHandlers = {
   invertPanY: false,
   recenterOnDown: false,
   invertInertiaY: false,
+  anchorTightness: 1,
 };
 
 function buildController() {
@@ -54,20 +55,24 @@ function buildController() {
         cooperative: currentHandlers.coop,
         onCoopGestureHint: showCoopHint,
         zoomSign: currentHandlers.invertZoom ? -1 : 1,
+        anchorTightness: currentHandlers.anchorTightness,
       },
       mousePan: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnPointerDown: currentHandlers.recenterOnDown,
         inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
+        anchorTightness: currentHandlers.anchorTightness,
       },
       mouseRotatePitch: {
         pitchSign: currentHandlers.invertPitch ? -1 : 1,
         rotateSign: currentHandlers.invertTwist ? -1 : 1,
         recenterOnPointerDown: currentHandlers.recenterOnDown && currentHandlers.around,
+        anchorTightness: currentHandlers.anchorTightness,
       },
       touch: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnGestureStart: currentHandlers.recenterOnDown,
+        anchorTightness: currentHandlers.anchorTightness,
       },
       safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,
@@ -102,6 +107,7 @@ const toolbar = {
   invertPanY: document.getElementById('invert-pany') as HTMLInputElement,
   recenterOnDown: document.getElementById('recenter-down') as HTMLInputElement,
   invertInertiaY: document.getElementById('invert-inertia-y') as HTMLInputElement,
+  anchorTight: document.getElementById('anchor-tight') as HTMLInputElement,
   fly: document.getElementById('btn-fly')!,
   fit: document.getElementById('btn-fit')!,
 };
@@ -124,6 +130,7 @@ toolbar.invertTwist.addEventListener('change', () => { currentHandlers.invertTwi
 toolbar.invertPanY.addEventListener('change', () => { currentHandlers.invertPanY = toolbar.invertPanY.checked; buildController(); });
 toolbar.recenterOnDown.addEventListener('change', () => { currentHandlers.recenterOnDown = toolbar.recenterOnDown.checked; buildController(); });
 toolbar.invertInertiaY.addEventListener('change', () => { currentHandlers.invertInertiaY = toolbar.invertInertiaY.checked; buildController(); });
+toolbar.anchorTight.addEventListener('input', () => { currentHandlers.anchorTightness = parseFloat(toolbar.anchorTight.value); buildController(); });
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };

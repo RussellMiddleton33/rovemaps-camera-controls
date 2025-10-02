@@ -22,6 +22,7 @@ export interface HandlerManagerOptions {
   boxZoom?: BoxZoomOptions | boolean;
   suppressContextMenu?: boolean;
   safariGestures?: SafariGestureOptions | boolean;
+  anchorTightness?: number; // global default for anchor-based corrections
 }
 
 export class HandlerManager {
@@ -57,7 +58,7 @@ export class HandlerManager {
         this.el,
         this.transform,
         this.helper,
-        { ...(typeof scrollOpts === 'object' ? scrollOpts : {}), onChange: options?.onChange }
+        { anchorTightness: options?.anchorTightness, ...(typeof scrollOpts === 'object' ? scrollOpts : {}), onChange: options?.onChange }
       );
       this.scroll.enable();
     }
@@ -72,6 +73,7 @@ export class HandlerManager {
     const mrpOpts = options?.mouseRotatePitch ?? {};
     this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, {
       onChange: options?.onChange,
+      anchorTightness: options?.anchorTightness,
       ...(typeof mrpOpts === 'object' ? mrpOpts : {}),
     });
     this.mouseRotatePitch.enable();
@@ -81,7 +83,7 @@ export class HandlerManager {
       this.el,
       this.transform,
       this.helper,
-      typeof touchOpts === 'object' ? { rubberbandStrength: options?.rubberbandStrength, ...touchOpts } : { onChange: options?.onChange, rubberbandStrength: options?.rubberbandStrength }
+      typeof touchOpts === 'object' ? { anchorTightness: options?.anchorTightness, rubberbandStrength: options?.rubberbandStrength, ...touchOpts } : { onChange: options?.onChange, rubberbandStrength: options?.rubberbandStrength, anchorTightness: options?.anchorTightness }
     );
     this.touch.enable();
     // Keyboard handler (default enabled)
