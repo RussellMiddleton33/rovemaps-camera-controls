@@ -186,6 +186,9 @@ const toolbar = {
   mobileProfile: document.getElementById('mobile-profile') as HTMLInputElement,
 };
 
+// Sync initial UI state with defaults so toggling works as expected
+toolbar.invertTwist.checked = currentHandlers.invertTwist;
+
 toolbar.zoomIn.addEventListener('click', () => controller.zoomIn(0.5, { around: toolbar.aroundPointer.checked ? 'pointer' : 'center' }));
 toolbar.zoomOut.addEventListener('click', () => controller.zoomOut(0.5, { around: toolbar.aroundPointer.checked ? 'pointer' : 'center' }));
 toolbar.rotateLeft.addEventListener('click', () => controller.rotateBy(-10, { around: toolbar.aroundPointer.checked ? 'pointer' : 'center' }));
