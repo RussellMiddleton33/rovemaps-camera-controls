@@ -223,21 +223,26 @@ export class TouchMultiHandler {
       axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
       const ptr = this.opts.around === 'pinch' ? center : null;
-      // Preserve the ground point under the centroid across rotate/zoom
+      // Preserve the ground point under the centroid across combined rotate/zoom in a single apply
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
-      if (this.opts.enableZoom && dzCand) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dzCand, 'center'); this.vz = dzCand / dt; axes.zoom = true; }
-      if (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) {
-        const dRot = dDeg * (this.opts.rotateSign ?? 1);
-        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dRot, 0, 'center');
-        this.vb = dRot / dt;
-        axes.rotate = true;
+      const dRot = (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) ? (dDeg * (this.opts.rotateSign ?? 1)) : 0;
+      const dZoom = this.opts.enableZoom ? dzCand : 0;
+      if (dZoom) { this.vz = dZoom / dt; axes.zoom = true; }
+      if (dRot) { this.vb = dRot / dt; axes.rotate = true; }
+      if (dZoom || dRot) {
+        // Apply both in one helper call to avoid intermediate camera states
+        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dRot, dZoom, 'center');
       }
       if (ptr && groundBefore) {
         const groundAfter = this.transform.groundFromScreen(ptr);
         if (groundAfter) {
           const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
-          const dgx = (groundBefore.gx - groundAfter.gx) * tight;
-          const dgz = (groundBefore.gz - groundAfter.gz) * tight;
+          let dgx = (groundBefore.gx - groundAfter.gx) * tight;
+          let dgz = (groundBefore.gz - groundAfter.gz) * tight;
+          // Safety clamp: prevent extreme corrections from numerical jitter on mobile
+          const maxShift = 500; // world units per frame cap (tunable)
+          if (dgx > maxShift) dgx = maxShift; else if (dgx < -maxShift) dgx = -maxShift;
+          if (dgz > maxShift) dgz = maxShift; else if (dgz < -maxShift) dgz = -maxShift;
           this.transform.adjustCenterByGroundDelta(dgx, dgz);
           this.lastGroundCenter = groundAfter;
         }
