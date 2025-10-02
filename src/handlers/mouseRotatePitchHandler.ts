@@ -11,6 +11,7 @@ export interface MouseRotatePitchOptions {
   around?: 'center' | 'pointer';
   rotateSign?: 1 | -1;
   pitchSign?: 1 | -1;
+  recenterOnPointerDown?: boolean;
 }
 
 export class MouseRotatePitchHandler {
@@ -36,6 +37,7 @@ export class MouseRotatePitchHandler {
       around: 'center',
       rotateSign: 1,
       pitchSign: 1,
+      recenterOnPointerDown: false,
       ...opts,
     };
   }
@@ -59,6 +61,12 @@ export class MouseRotatePitchHandler {
     this.dragging = true;
     this.lastX = e.clientX;
     this.lastY = e.clientY;
+    if (this.opts.recenterOnPointerDown && this.opts.around === 'pointer') {
+      const rect = this.el.getBoundingClientRect();
+      const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const gp = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+      if (gp) (this.transform as any).setGroundCenter?.(gp);
+    }
     const offMove = on(window, 'pointermove', this.onMove as any, { passive: false });
     const offUp = on(window, 'pointerup', this.onUp as any, { passive: true });
     this.unbindMoveUp = () => { offMove(); offUp(); };

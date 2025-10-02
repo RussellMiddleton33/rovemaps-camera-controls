@@ -19,6 +19,7 @@ export interface TouchMultiOptions {
   rubberbandStrength?: number;
   panXSign?: 1 | -1;
   panYSign?: 1 | -1;
+  recenterOnGestureStart?: boolean;
 }
 
 type Pt = { id: number; x: number; y: number };
@@ -66,6 +67,7 @@ export class TouchMultiHandler {
       rubberbandStrength: 0.5,
       panXSign: 1,
       panYSign: 1,
+      recenterOnGestureStart: false,
       ...opts,
     };
   }
@@ -114,6 +116,11 @@ export class TouchMultiHandler {
     this.lastTs = performance.now();
     this.mode = 'idle';
     this.lastGroundCenter = null;
+    if (this.opts.recenterOnGestureStart && this.opts.around === 'pinch') {
+      const rect = this.el.getBoundingClientRect();
+      const gp = (this.transform as any).groundFromScreen?.({ x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top }) ?? null;
+      if (gp) (this.transform as any).setGroundCenter?.(gp);
+    }
     // end any inertia
     if (this.inertiaHandle != null) { cancelAnimationFrame(this.inertiaHandle); this.inertiaHandle = null; }
   }

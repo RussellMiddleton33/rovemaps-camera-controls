@@ -39,6 +39,7 @@ let currentHandlers = {
   invertPitch: false,
   invertTwist: false,
   invertPanY: false,
+  recenterOnDown: false,
 };
 
 function buildController() {
@@ -55,13 +56,16 @@ function buildController() {
       },
       mousePan: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
+        recenterOnPointerDown: currentHandlers.recenterOnDown,
       },
       mouseRotatePitch: {
         pitchSign: currentHandlers.invertPitch ? -1 : 1,
         rotateSign: currentHandlers.invertTwist ? -1 : 1,
+        recenterOnPointerDown: currentHandlers.recenterOnDown && currentHandlers.around,
       },
       touch: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
+        recenterOnGestureStart: currentHandlers.recenterOnDown,
       },
       safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,
@@ -94,6 +98,7 @@ const toolbar = {
   invertPitch: document.getElementById('invert-pitch') as HTMLInputElement,
   invertTwist: document.getElementById('invert-twist') as HTMLInputElement,
   invertPanY: document.getElementById('invert-pany') as HTMLInputElement,
+  recenterOnDown: document.getElementById('recenter-down') as HTMLInputElement,
   fly: document.getElementById('btn-fly')!,
   fit: document.getElementById('btn-fit')!,
 };
@@ -114,6 +119,7 @@ toolbar.invertZoom.addEventListener('change', () => { currentHandlers.invertZoom
 toolbar.invertPitch.addEventListener('change', () => { currentHandlers.invertPitch = toolbar.invertPitch.checked; buildController(); });
 toolbar.invertTwist.addEventListener('change', () => { currentHandlers.invertTwist = toolbar.invertTwist.checked; buildController(); });
 toolbar.invertPanY.addEventListener('change', () => { currentHandlers.invertPanY = toolbar.invertPanY.checked; buildController(); });
+toolbar.recenterOnDown.addEventListener('change', () => { currentHandlers.recenterOnDown = toolbar.recenterOnDown.checked; buildController(); });
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };

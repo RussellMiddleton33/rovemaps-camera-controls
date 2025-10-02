@@ -11,6 +11,7 @@ export interface MousePanOptions {
   inertiaPanFriction?: number; // 1/s
   panXSign?: 1 | -1;
   panYSign?: 1 | -1;
+  recenterOnPointerDown?: boolean;
 }
 
 export class MousePanHandler {
@@ -43,6 +44,7 @@ export class MousePanHandler {
       inertiaPanFriction: 6,
       panXSign: 1,
       panYSign: 1,
+      recenterOnPointerDown: false,
       ...opts,
     };
   }
@@ -72,7 +74,12 @@ export class MousePanHandler {
     // Initialize ground anchor at pointer
     const rect = this.el.getBoundingClientRect();
     const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    this.lastGround = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+    const gp = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+    this.lastGround = gp;
+    if (this.opts.recenterOnPointerDown && gp) {
+      (this.transform as any).setGroundCenter?.(gp);
+      this.opts.onChange({ axes: { pan: true }, originalEvent: e });
+    }
     const offMove = on(window, 'pointermove', this.onMove as any, { passive: false });
     const offUp = on(window, 'pointerup', this.onUp as any, { passive: true });
     this.unbindMoveUp = () => { offMove(); offUp(); };
