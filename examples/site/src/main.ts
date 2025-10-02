@@ -70,6 +70,7 @@ let currentHandlers = {
   maxPitch: 80,
   maxZoom: 12,
   minZoom: 0,
+  rightDragPan: true,
 };
 
 function buildController() {
@@ -90,7 +91,7 @@ function buildController() {
         zoomSign: currentHandlers.invertZoom ? -1 : 1,
         anchorTightness: currentHandlers.anchorTightness,
       },
-      rightButtonPan: true,
+      rightButtonPan: currentHandlers.rightDragPan,
       mousePan: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnPointerDown: currentHandlers.recenterOnDown,
@@ -98,7 +99,13 @@ function buildController() {
         inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
         anchorTightness: currentHandlers.anchorTightness,
       },
-      // mouseRotatePitch is disabled when rightButtonPan is true
+      // Enable right-drag rotate/pitch when rightButtonPan is false
+      mouseRotatePitch: {
+        pitchSign: currentHandlers.invertPitch ? -1 : 1,
+        rotateSign: currentHandlers.invertTwist ? -1 : 1,
+        recenterOnPointerDown: currentHandlers.recenterOnDown && currentHandlers.around,
+        anchorTightness: currentHandlers.anchorTightness,
+      },
       touch: {
         panYSign: currentHandlers.invertPanY ? -1 : 1,
         recenterOnGestureStart: currentHandlers.recenterOnDown,
@@ -138,6 +145,7 @@ const toolbar = {
   invertZoom: document.getElementById('invert-zoom') as HTMLInputElement,
   invertPitch: document.getElementById('invert-pitch') as HTMLInputElement,
   invertTwist: document.getElementById('invert-twist') as HTMLInputElement,
+  rightDragPan: document.getElementById('right-drag-pan') as HTMLInputElement,
   invertPanY: document.getElementById('invert-pany') as HTMLInputElement,
   recenterOnDown: document.getElementById('recenter-down') as HTMLInputElement,
   invertInertiaY: document.getElementById('invert-inertia-y') as HTMLInputElement,
@@ -167,6 +175,7 @@ toolbar.antialias.addEventListener('change', () => { currentHandlers.antialias =
 toolbar.invertZoom.addEventListener('change', () => { currentHandlers.invertZoom = toolbar.invertZoom.checked; buildController(); });
 toolbar.invertPitch.addEventListener('change', () => { currentHandlers.invertPitch = toolbar.invertPitch.checked; buildController(); });
 toolbar.invertTwist.addEventListener('change', () => { currentHandlers.invertTwist = toolbar.invertTwist.checked; buildController(); });
+toolbar.rightDragPan.addEventListener('change', () => { currentHandlers.rightDragPan = toolbar.rightDragPan.checked; buildController(); });
 toolbar.invertPanY.addEventListener('change', () => { currentHandlers.invertPanY = toolbar.invertPanY.checked; buildController(); });
 toolbar.recenterOnDown.addEventListener('change', () => { currentHandlers.recenterOnDown = toolbar.recenterOnDown.checked; buildController(); });
 toolbar.invertInertiaY.addEventListener('change', () => { currentHandlers.invertInertiaY = toolbar.invertInertiaY.checked; buildController(); });
