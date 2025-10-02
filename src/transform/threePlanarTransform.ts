@@ -119,6 +119,17 @@ export class ThreePlanarTransform implements ITransform {
     return { x, y };
   }
 
+  groundFromScreen(screen: { x: number; y: number }) {
+    const hit = this.screenToWorld(screen);
+    if (!hit) return null;
+    return { gx: hit.x, gz: hit.z };
+  }
+
+  adjustCenterByGroundDelta(dgx: number, dgz: number) {
+    this._center = { x: this._center.x + dgx, y: this._center.y + dgz, z: this._center.z };
+    this._applyToCamera();
+  }
+
   clamp(): void {
     this._pitch = clamp(this._pitch, this._constraints.minPitch, this._constraints.maxPitch);
     this._zoom = clamp(this._zoom, this._constraints.minZoom, this._constraints.maxZoom);

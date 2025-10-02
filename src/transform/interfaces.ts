@@ -5,6 +5,7 @@ export type Padding = { top: number; right: number; bottom: number; left: number
 export type Vec2 = { x: number; y: number };
 
 export type Center = { x: number; y: number; z?: number };
+export type GroundPoint = { gx: number; gz: number };
 
 export interface IReadonlyTransform {
   readonly width: number;
@@ -33,6 +34,9 @@ export interface ITransform extends IReadonlyTransform {
   // Coordinate conversions depend on projection; planar implements via a ground plane
   screenToWorld(screen: Vec2): Vector3 | null;
   worldToScreen(world: Vector3): Vec2 | null;
+  // Ground helpers for planar projections (y-up, ground plane y=0)
+  groundFromScreen(screen: Vec2): GroundPoint | null;
+  adjustCenterByGroundDelta(dgx: number, dgz: number): void;
   clamp(): void;
 }
 

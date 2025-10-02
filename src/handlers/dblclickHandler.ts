@@ -81,13 +81,13 @@ export class DblclickHandler {
       this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, 'center');
       return;
     }
-    const worldBefore = this.transform.screenToWorld(pointer);
+    const groundBefore = this.transform.groundFromScreen(pointer);
     this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, 'center');
-    if (!worldBefore) return;
-    const worldAfter = this.transform.screenToWorld(pointer);
-    if (!worldAfter) return;
-    const dxw = worldBefore.x - (worldAfter as any).x;
-    const dzw = (worldBefore as any).z - (worldAfter as any).z;
-    this.transform.setCenter({ x: this.transform.center.x + dxw, y: this.transform.center.y + dzw, z: this.transform.center.z });
+    if (!groundBefore) return;
+    const groundAfter = this.transform.groundFromScreen(pointer);
+    if (!groundAfter) return;
+    const dgx = groundBefore.gx - groundAfter.gx;
+    const dgz = groundBefore.gz - groundAfter.gz;
+    this.transform.adjustCenterByGroundDelta(dgx, dgz);
   }
 }
