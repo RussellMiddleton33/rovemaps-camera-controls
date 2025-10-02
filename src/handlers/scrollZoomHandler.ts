@@ -13,6 +13,7 @@ export interface ScrollZoomOptions {
   onChange?: (delta: HandlerDelta) => void;
   cooperative?: boolean; // require ctrl/meta to zoom via wheel to avoid hijacking page scroll
   onCoopGestureHint?: (req: { type: 'pinch' | 'rotate' }) => void;
+  zoomSign?: 1 | -1; // invert zoom direction if needed
 }
 
 export class ScrollZoomHandler {
@@ -40,6 +41,7 @@ export class ScrollZoomHandler {
       onChange: () => {},
       cooperative: false,
       onCoopGestureHint: () => {},
+      zoomSign: 1,
       ...opts,
     };
   }
@@ -99,7 +101,7 @@ export class ScrollZoomHandler {
     this.lastPointer.x = evt.clientX - rect.left;
     this.lastPointer.y = evt.clientY - rect.top;
 
-    this.applyZoomAround(dz, this.opts.around === 'pointer' ? this.lastPointer : null);
+    this.applyZoomAround(dz * (this.opts.zoomSign ?? 1), this.opts.around === 'pointer' ? this.lastPointer : null);
     this.opts.onChange({ axes: { zoom: true }, originalEvent: evt });
 
     // Inertia: update velocity and start decay timer
@@ -144,7 +146,7 @@ export class ScrollZoomHandler {
         this.inertiaHandle = null;
         return;
       }
-      const dz = this.velocity * dt;
+      const dz = this.velocity * dt * (this.opts.zoomSign ?? 1);
       this.applyZoomAround(dz, this.opts.around === 'pointer' ? this.lastPointer : null);
       this.opts.onChange({ axes: { zoom: true } });
       this.inertiaHandle = requestAnimationFrame(step);

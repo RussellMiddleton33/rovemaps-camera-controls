@@ -28,7 +28,18 @@ scene.add(light);
 scene.add(new THREE.AmbientLight(0x404040));
 
 let controller: CameraController;
-let currentHandlers = { around: true, coop: false, keyboard: true, dblclick: true, boxzoom: true, rubber: 0.5 };
+let currentHandlers = {
+  around: true,
+  coop: false,
+  keyboard: true,
+  dblclick: true,
+  boxzoom: true,
+  rubber: 0.5,
+  invertZoom: false,
+  invertPitch: false,
+  invertTwist: false,
+  invertPanY: false,
+};
 
 function buildController() {
   if (controller) controller.dispose();
@@ -36,7 +47,23 @@ function buildController() {
     camera,
     domElement: renderer.domElement,
     handlers: {
-      scrollZoom: { around: currentHandlers.around ? 'pointer' : 'center', cooperative: currentHandlers.coop, onCoopGestureHint: showCoopHint },
+      scrollZoom: {
+        around: currentHandlers.around ? 'pointer' : 'center',
+        cooperative: currentHandlers.coop,
+        onCoopGestureHint: showCoopHint,
+        zoomSign: currentHandlers.invertZoom ? -1 : 1,
+      },
+      mousePan: {
+        panYSign: currentHandlers.invertPanY ? -1 : 1,
+      },
+      mouseRotatePitch: {
+        pitchSign: currentHandlers.invertPitch ? -1 : 1,
+        rotateSign: currentHandlers.invertTwist ? -1 : 1,
+      },
+      touch: {
+        panYSign: currentHandlers.invertPanY ? -1 : 1,
+      },
+      safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,
       dblclick: currentHandlers.dblclick,
       boxZoom: currentHandlers.boxzoom,
@@ -44,7 +71,7 @@ function buildController() {
     },
     bearingSnap: 7,
   });
-  controller.jumpTo({ center: { x: 0, y: 0 }, zoom: 6, bearing: 0, pitch: 45 });
+  controller.jumpTo({ center: { x: 0, y: 0 }, zoom: 4, bearing: 0, pitch: 45 });
   controller.on('renderFrame', () => updateOverlay());
   controller.on('move', () => updateOverlay());
 }
@@ -63,6 +90,10 @@ const toolbar = {
   keyboard: document.getElementById('keyboard') as HTMLInputElement,
   dblclick: document.getElementById('dblclick') as HTMLInputElement,
   boxzoom: document.getElementById('boxzoom') as HTMLInputElement,
+  invertZoom: document.getElementById('invert-zoom') as HTMLInputElement,
+  invertPitch: document.getElementById('invert-pitch') as HTMLInputElement,
+  invertTwist: document.getElementById('invert-twist') as HTMLInputElement,
+  invertPanY: document.getElementById('invert-pany') as HTMLInputElement,
   fly: document.getElementById('btn-fly')!,
   fit: document.getElementById('btn-fit')!,
 };
@@ -79,6 +110,10 @@ toolbar.cooperative.addEventListener('change', () => { currentHandlers.coop = to
 toolbar.keyboard.addEventListener('change', () => { currentHandlers.keyboard = toolbar.keyboard.checked; buildController(); });
 toolbar.dblclick.addEventListener('change', () => { currentHandlers.dblclick = toolbar.dblclick.checked; buildController(); });
 toolbar.boxzoom.addEventListener('change', () => { currentHandlers.boxzoom = toolbar.boxzoom.checked; buildController(); });
+toolbar.invertZoom.addEventListener('change', () => { currentHandlers.invertZoom = toolbar.invertZoom.checked; buildController(); });
+toolbar.invertPitch.addEventListener('change', () => { currentHandlers.invertPitch = toolbar.invertPitch.checked; buildController(); });
+toolbar.invertTwist.addEventListener('change', () => { currentHandlers.invertTwist = toolbar.invertTwist.checked; buildController(); });
+toolbar.invertPanY.addEventListener('change', () => { currentHandlers.invertPanY = toolbar.invertPanY.checked; buildController(); });
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };

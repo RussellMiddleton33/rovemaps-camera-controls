@@ -2,8 +2,8 @@ import type { ITransform } from '../transform/interfaces';
 import type { ICameraHelper } from '../helpers/icameraHelper';
 import { ScrollZoomHandler, type ScrollZoomOptions } from './scrollZoomHandler';
 import type { HandlerDelta } from './types';
-import { MousePanHandler } from './mousePanHandler';
-import { MouseRotatePitchHandler } from './mouseRotatePitchHandler';
+import { MousePanHandler, type MousePanOptions } from './mousePanHandler';
+import { MouseRotatePitchHandler, type MouseRotatePitchOptions } from './mouseRotatePitchHandler';
 import { TouchMultiHandler, type TouchMultiOptions } from './touchMultiHandler';
 import { KeyboardHandler, type KeyboardOptions } from './keyboardHandler';
 import { DblclickHandler, type DblclickOptions } from './dblclickHandler';
@@ -15,6 +15,8 @@ export interface HandlerManagerOptions {
   onChange?: (delta: HandlerDelta) => void;
   touch?: TouchMultiOptions | boolean;
   rubberbandStrength?: number;
+  mousePan?: MousePanOptions | boolean;
+  mouseRotatePitch?: MouseRotatePitchOptions | boolean;
   keyboard?: KeyboardOptions | boolean;
   dblclick?: DblclickOptions | boolean;
   boxZoom?: BoxZoomOptions | boolean;
@@ -60,13 +62,17 @@ export class HandlerManager {
       this.scroll.enable();
     }
     // Mouse handlers (defaults enabled)
+    const mpOpts = options?.mousePan ?? {};
     this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, {
       onChange: options?.onChange,
       rubberbandStrength: options?.rubberbandStrength,
+      ...(typeof mpOpts === 'object' ? mpOpts : {}),
     });
     this.mousePan.enable();
+    const mrpOpts = options?.mouseRotatePitch ?? {};
     this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, {
       onChange: options?.onChange,
+      ...(typeof mrpOpts === 'object' ? mrpOpts : {}),
     });
     this.mouseRotatePitch.enable();
     // Touch handler (default enabled)

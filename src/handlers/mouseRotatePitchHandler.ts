@@ -9,6 +9,8 @@ export interface MouseRotatePitchOptions {
   sensitivity?: { rotatePerPx?: number; pitchPerPx?: number };
   onChange?: (delta: HandlerDelta) => void;
   around?: 'center' | 'pointer';
+  rotateSign?: 1 | -1;
+  pitchSign?: 1 | -1;
 }
 
 export class MouseRotatePitchHandler {
@@ -32,6 +34,8 @@ export class MouseRotatePitchHandler {
       sensitivity: { rotatePerPx: 0.3, pitchPerPx: 0.25 },
       onChange: () => {},
       around: 'center',
+      rotateSign: 1,
+      pitchSign: 1,
       ...opts,
     };
   }
@@ -76,8 +80,8 @@ export class MouseRotatePitchHandler {
     // MapLibre-style: right-drag rotates (dx) and pitches (dy) simultaneously.
     // If modifier is held, allow pitch-only for precision.
     const wantsPitchOnly = (this.opts.pitchModifier === 'shift' && e.shiftKey) || (this.opts.pitchModifier === 'alt' && (e.altKey || e.metaKey));
-    const db = wantsPitchOnly ? 0 : dx * (this.opts.sensitivity.rotatePerPx / 1.0);
-    const dp = -dy * (this.opts.sensitivity.pitchPerPx / 1.0);
+    const db = (wantsPitchOnly ? 0 : dx * (this.opts.sensitivity.rotatePerPx / 1.0)) * (this.opts.rotateSign ?? 1);
+    const dp = (-dy * (this.opts.sensitivity.pitchPerPx / 1.0)) * (this.opts.pitchSign ?? 1);
     const groundBefore = aroundPointer ? this.transform.groundFromScreen(pointer) : null;
     this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, db, 0, 'center');
     if (aroundPointer && groundBefore) {

@@ -17,6 +17,8 @@ export interface TouchMultiOptions {
   preventDefault?: boolean;
   around?: 'center' | 'pinch';
   rubberbandStrength?: number;
+  panXSign?: 1 | -1;
+  panYSign?: 1 | -1;
 }
 
 type Pt = { id: number; x: number; y: number };
@@ -34,6 +36,7 @@ export class TouchMultiHandler {
   private lastDist = 0;
   private lastAngle = 0; // radians
   private mode: 'idle' | 'pan' | 'zoomRotate' | 'pitch' = 'idle';
+  private lastGroundCenter: { gx: number; gz: number } | null = null;
 
   // inertias
   private vz = 0; // zoom units/s
@@ -61,6 +64,8 @@ export class TouchMultiHandler {
       preventDefault: true,
       around: 'pinch',
       rubberbandStrength: 0.5,
+      panXSign: 1,
+      panYSign: 1,
       ...opts,
     };
   }
@@ -108,6 +113,7 @@ export class TouchMultiHandler {
     this.active = true;
     this.lastTs = performance.now();
     this.mode = 'idle';
+    this.lastGroundCenter = null;
     // end any inertia
     if (this.inertiaHandle != null) { cancelAnimationFrame(this.inertiaHandle); this.inertiaHandle = null; }
   }
@@ -131,8 +137,8 @@ export class TouchMultiHandler {
     this.lastTs = now;
 
     // Compute candidate deltas
-    const dxPan = center.x - (this.lastCenter.x - rect.left);
-    const dyPan = center.y - (this.lastCenter.y - rect.top);
+    const dxPan = (center.x - (this.lastCenter.x - rect.left)) * (this.opts.panXSign ?? 1);
+    const dyPan = (center.y - (this.lastCenter.y - rect.top)) * (this.opts.panYSign ?? 1);
     const s = this.lastDist > 0 && dist > 0 ? dist / this.lastDist : 1;
     const dzCand = scaleZoom(s);
     let dAng = angle - this.lastAngle;
@@ -154,20 +160,26 @@ export class TouchMultiHandler {
     // Apply based on locked mode, preserving around-point using centroid when enabled
     const axes: HandlerDelta['axes'] = {};
     if (this.mode === 'pan' && this.opts.enablePan) {
-      // Apply spring resistance when near/outside panBounds
-      let ddx = dxPan, ddy = dyPan;
-      const bounds = (this.transform as any).getPanBounds?.();
-      if (bounds) {
-        const scale = Math.pow(2, this.transform.zoom);
-        const dxW = -dxPan / scale; const dyW = dyPan / scale;
-        const nx = this.transform.center.x + dxW; const ny = this.transform.center.y + dyW;
-        const overX = nx < bounds.min.x ? bounds.min.x - nx : nx > bounds.max.x ? nx - bounds.max.x : 0;
-        const overY = ny < bounds.min.y ? bounds.min.y - ny : ny > bounds.max.y ? ny - bounds.max.y : 0;
-        const s = this.opts.rubberbandStrength;
-        const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
-        ddx = dxPan * damp(overX); ddy = dyPan * damp(overY);
+      // Pointer-anchored pan based on centroid
+      const gp = (this.transform as any).groundFromScreen?.(center) ?? null;
+      if (gp) {
+        if (this.lastGroundCenter) {
+          let dgx = this.lastGroundCenter.gx - gp.gx;
+          let dgz = this.lastGroundCenter.gz - gp.gz;
+          const bounds = (this.transform as any).getPanBounds?.();
+          if (bounds) {
+            const nx = this.transform.center.x + dgx; const ny = this.transform.center.y + dgz;
+            const overX = nx < bounds.min.x ? bounds.min.x - nx : nx > bounds.max.x ? nx - bounds.max.x : 0;
+            const overY = ny < bounds.min.y ? bounds.min.y - ny : ny > bounds.max.y ? ny - bounds.max.y : 0;
+            const s = this.opts.rubberbandStrength; const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
+            dgx *= damp(overX); dgz *= damp(overY);
+          }
+          (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
+        }
+        this.lastGroundCenter = gp;
+      } else {
+        this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
       }
-      this.helper.handleMapControlsPan(this.transform, ddx, ddy);
       this.vpx = dxPan / dt; this.vpy = dyPan / dt; axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
       const ptr = this.opts.around === 'pinch' ? center : null;

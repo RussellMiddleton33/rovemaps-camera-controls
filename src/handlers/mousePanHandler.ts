@@ -9,6 +9,8 @@ export interface MousePanOptions {
   onChange?: (delta: HandlerDelta) => void;
   rubberbandStrength?: number; // higher = stronger resistance
   inertiaPanFriction?: number; // 1/s
+  panXSign?: 1 | -1;
+  panYSign?: 1 | -1;
 }
 
 export class MousePanHandler {
@@ -27,6 +29,7 @@ export class MousePanHandler {
   private vx = 0; // px/s
   private vy = 0; // px/s
   private inertiaHandle: number | null = null;
+  private lastGround: { gx: number; gz: number } | null = null;
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: MousePanOptions) {
     this.el = el;
@@ -38,6 +41,8 @@ export class MousePanHandler {
       onChange: () => {},
       rubberbandStrength: 0.5,
       inertiaPanFriction: 6,
+      panXSign: 1,
+      panYSign: 1,
       ...opts,
     };
   }
@@ -64,14 +69,18 @@ export class MousePanHandler {
     this.startX = this.lastX = e.clientX;
     this.startY = this.lastY = e.clientY;
     this.lastTs = performance.now();
+    // Initialize ground anchor at pointer
+    const rect = this.el.getBoundingClientRect();
+    const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    this.lastGround = (this.transform as any).groundFromScreen?.(pointer) ?? null;
     const offMove = on(window, 'pointermove', this.onMove as any, { passive: false });
     const offUp = on(window, 'pointerup', this.onUp as any, { passive: true });
     this.unbindMoveUp = () => { offMove(); offUp(); };
   };
 
   private onMove = (e: PointerEvent) => {
-    const dx = e.clientX - this.lastX;
-    const dy = e.clientY - this.lastY;
+    const dx = (e.clientX - this.lastX) * (this.opts.panXSign ?? 1);
+    const dy = (e.clientY - this.lastY) * (this.opts.panYSign ?? 1);
     const dt = (performance.now() - this.lastTs) / 1000;
     this.lastX = e.clientX;
     this.lastY = e.clientY;
@@ -82,24 +91,32 @@ export class MousePanHandler {
       if (dist < this.opts.dragThresholdPx) return;
       this.dragging = true;
     }
-    // Apply pan with spring resistance beyond panBounds
+    // Pointer-anchored pan: keep ground under pointer fixed
     e.preventDefault();
-    let ddx = dx, ddy = dy;
-    const bounds = this.transform.getPanBounds?.();
-    if (bounds) {
-      const scale = Math.pow(2, this.transform.zoom);
-      const dxW = -dx / scale;
-      const dyW = dy / scale;
-      const nextX = this.transform.center.x + dxW;
-      const nextY = this.transform.center.y + dyW;
-      const overX = nextX < bounds.min.x ? bounds.min.x - nextX : nextX > bounds.max.x ? nextX - bounds.max.x : 0;
-      const overY = nextY < bounds.min.y ? bounds.min.y - nextY : nextY > bounds.max.y ? nextY - bounds.max.y : 0;
-      const s = this.opts.rubberbandStrength;
-      const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
-      ddx = dx * damp(overX);
-      ddy = dy * damp(overY);
+    const rect = this.el.getBoundingClientRect();
+    const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const currGround = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+    if (this.lastGround && currGround) {
+      let dgx = this.lastGround.gx - currGround.gx;
+      let dgz = this.lastGround.gz - currGround.gz;
+      // Rubberband damping near/outside panBounds
+      const bounds = this.transform.getPanBounds?.();
+      if (bounds) {
+        const nextX = this.transform.center.x + dgx;
+        const nextY = this.transform.center.y + dgz;
+        const overX = nextX < bounds.min.x ? bounds.min.x - nextX : nextX > bounds.max.x ? nextX - bounds.max.x : 0;
+        const overY = nextY < bounds.min.y ? bounds.min.y - nextY : nextY > bounds.max.y ? nextY - bounds.max.y : 0;
+        const s = this.opts.rubberbandStrength;
+        const damp = (o: number) => (o > 0 ? 1 / (1 + o * s) : 1);
+        dgx *= damp(overX);
+        dgz *= damp(overY);
+      }
+      (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
+    } else {
+      // Fallback to screen-space pan
+      this.helper.handleMapControlsPan(this.transform, dx, dy);
     }
-    this.helper.handleMapControlsPan(this.transform, ddx, ddy);
+    this.lastGround = currGround;
     this.opts.onChange({ axes: { pan: true }, originalEvent: e });
 
     // Velocity for inertia (px/s)

@@ -9,6 +9,8 @@ export interface SafariGestureOptions {
   enabled?: boolean;
   around?: 'center' | 'pointer';
   onChange?: (delta: HandlerDelta) => void;
+  rotateSign?: 1 | -1;
+  zoomSign?: 1 | -1;
 }
 
 export class SafariGestureHandler {
@@ -22,7 +24,7 @@ export class SafariGestureHandler {
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: SafariGestureOptions) {
     this.el = el; this.transform = transform; this.helper = helper;
-    this.opts = { enabled: false, around: 'pointer', onChange: () => {}, ...(opts || {}) };
+    this.opts = { enabled: false, around: 'pointer', onChange: () => {}, rotateSign: 1, zoomSign: 1, ...(opts || {}) };
   }
 
   enable() {
@@ -50,8 +52,8 @@ export class SafariGestureHandler {
     const rect = this.el.getBoundingClientRect();
     const pointer = this.opts.around === 'pointer' ? { x: (e.clientX ?? rect.width / 2) - rect.left, y: (e.clientY ?? rect.height / 2) - rect.top } : null;
     const scale = (e.scale || 1) / (this.startScale || 1);
-    const dz = scaleZoom(scale);
-    const drot = (e.rotation || 0) - (this.startRotation || 0);
+    const dz = scaleZoom(scale) * (this.opts.zoomSign ?? 1);
+    const drot = ((e.rotation || 0) - (this.startRotation || 0)) * (this.opts.rotateSign ?? 1);
     // Apply zoom around pointer
     const gpBefore = pointer ? this.transform.groundFromScreen(pointer) : null;
     if (dz) this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, 'center');
@@ -66,4 +68,3 @@ export class SafariGestureHandler {
   };
   private onEnd = (_e: any) => {};
 }
-
