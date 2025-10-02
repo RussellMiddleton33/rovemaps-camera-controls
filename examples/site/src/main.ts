@@ -60,8 +60,8 @@ let currentHandlers = {
   rubber: 0,
   invertZoom: false,
   invertPitch: false,
-  // Default to natural clockwise twist on trackpads
-  invertTwist: true,
+  // Default: natural clockwise twist; checkbox toggles invert
+  invertTwist: false,
   invertPanY: false,
   recenterOnDown: false,
   invertInertiaY: false,
@@ -135,10 +135,9 @@ function buildController() {
         rotateSign: 1,
         ...(touchProfile as any),
       },
-      // Safari trackpad twist: event.rotation is clockwise-positive.
-      // Use the opposite mapping from mouse: default to +1 so clockwise rotates clockwise,
-      // and let the invert toggle flip it if desired.
-      safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? 1 : -1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
+      // Safari trackpad twist: event.rotation is clockwise-positive; keep default natural (+1).
+      // The "Invert Twist" checkbox flips the sign when checked.
+      safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,
       dblclick: currentHandlers.dblclick,
       boxZoom: currentHandlers.boxzoom,
