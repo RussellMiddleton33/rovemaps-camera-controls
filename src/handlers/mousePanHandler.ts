@@ -123,11 +123,14 @@ export class MousePanHandler {
         dgz *= damp(overY);
       }
       (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
+      // Recompute ground under pointer after adjustment to keep anchor locked
+      const after = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+      this.lastGround = after ?? currGround;
     } else {
       // Fallback to screen-space pan
       this.helper.handleMapControlsPan(this.transform, dx, dy);
+      this.lastGround = currGround;
     }
-    this.lastGround = currGround;
     this.opts.onChange({ axes: { pan: true }, originalEvent: e });
 
     // Velocity for inertia (px/s)

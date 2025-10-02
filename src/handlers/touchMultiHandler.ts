@@ -185,7 +185,9 @@ export class TouchMultiHandler {
           }
           (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
         }
-        this.lastGroundCenter = gp;
+        // Recompute ground under centroid after adjustment to keep anchor locked
+        const after = (this.transform as any).groundFromScreen?.(center) ?? null;
+        this.lastGroundCenter = after ?? gp;
       } else {
         this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
       }
