@@ -11,9 +11,12 @@ Map GL JS-compatible camera controls for Three.js with camera API, gestures, and
   <div style="margin-top:8px;color:#666">No install needed — try all features in your browser</div>
   </div>
 
+Alternatively, open the live demo directly:
+
+- https://russellmiddleton33.github.io/rovemaps-camera-controls/demo/
+
 - Quick Start: /QuickStart
 - API Reference: /API
 - Handlers: /Handlers
 - SSR & Next: /SSR-Next
 - Examples: /Examples
-

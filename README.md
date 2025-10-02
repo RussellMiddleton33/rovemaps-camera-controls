@@ -1,5 +1,9 @@
 # ThreeJS RoveMaps Camera Controls (WIP)
 
+Quick links
+- Live Demo: https://russellmiddleton33.github.io/rovemaps-camera-controls/demo/
+- Documentation: https://russellmiddleton33.github.io/rovemaps-camera-controls/
+
 Drop-in GL JS camera controls for Three.js scenes with (jumpTo/easeTo/flyTo/fitBounds, pan/zoom/rotate/pitch/roll, around-point, padding/offset, events, inertia, reduced motion).
 
 
