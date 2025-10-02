@@ -47,8 +47,10 @@ const controller = createControllerForNext(() => ({ camera, domElement }));
 - `examples/`: Next.js stubs
 - `tests/`: unit tests (vitest)
 
-
+## Commands
 git status -sb
+git add -A
+git commit -m 'Fix Errors'
 git push origin HEAD:main
 
 ## Roadmap
@@ -113,4 +115,11 @@ Known differences / next steps
 - Which toggles you needed (Invert Pitch/Pan‑Y/Inertia X/Y, Anchor Tightness)
 - A short clip or screenshot of the debug gizmos (green velocity arrow and world axes)
 
+**Open Issues (Touch)**
+- **iOS 1‑Finger Pan “Fighting”/Counter‑Drift:** On some iOS devices, single‑finger panning can feel like it resists or counter‑drifts, resembling the original mouse‑sign issue. Implemented so far: strict handler separation (mouse ignores touch/pen; Safari gestures disabled on touch‑capable devices), ground‑anchored pan, ground‑space inertia with directional clamps, fresh `getBoundingClientRect()` per move to avoid visualViewport shifts, removal of two‑finger pan, and corrected screen→world pan mapping. Residual resistance suggests intermittent double‑anchoring from viewport shifts or jitter.
+  - Tried: pointer anchoring every move, ground‑space inertia/clamps, strict pointerType guards, iOS meta viewport/overscroll lockdown, and pan mapping correction.
+  - Next: port MapLibre’s central inertia aggregator (touch) verbatim, add optional touch‑only anchor tightness (e.g., 0.95), and handle visualViewport offsets explicitly.
 
+- **Two‑Finger Pitch Reliability:** Two fingers moving vertically in the same direction should pitch (up increases, down decreases). Some devices still fall into pinch/rotate or fail to pitch.
+  - Tried: per‑finger vertical detection (both mostly vertical, same Y direction), raised thresholds (rotate ~0.5°, pitch ~12 px, zoom ~0.04), dynamic mode switching (pitch wins mid‑gesture), no two‑finger pan, single around‑point correction.
+  - Next: adopt MapLibre’s two‑finger pitch gating more literally (including ALLOWED_SINGLE_TOUCH_TIME and first‑move timing), and slightly raise pitch threshold on touch profile.
