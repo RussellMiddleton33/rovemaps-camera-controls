@@ -119,18 +119,15 @@ export class ScrollZoomHandler {
       this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, 'center');
       return;
     }
-    // World point under cursor pre-zoom
-    const world = this.transform.screenToWorld(pointer);
-    // Apply zoom
+    // Preserve the world point under the pointer by adjusting center after zoom
+    const worldBefore = this.transform.screenToWorld(pointer);
     this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, 'center');
-    if (!world) return;
-    // Where did that world point end up?
-    const sp = this.transform.worldToScreen(world);
-    if (!sp) return;
-    const dx = sp.x - pointer.x;
-    const dy = sp.y - pointer.y;
-    // Pan back by the delta at the new zoom
-    this.helper.handleMapControlsPan(this.transform, dx, dy);
+    if (!worldBefore) return;
+    const worldAfter = this.transform.screenToWorld(pointer);
+    if (!worldAfter) return;
+    const dxw = worldBefore.x - (worldAfter as any).x;
+    const dzw = (worldBefore as any).z - (worldAfter as any).z;
+    this.transform.setCenter({ x: this.transform.center.x + dxw, y: this.transform.center.y + dzw, z: this.transform.center.z });
   }
 
   private runInertia() {

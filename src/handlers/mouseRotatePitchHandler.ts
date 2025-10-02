@@ -78,13 +78,14 @@ export class MouseRotatePitchHandler {
     const wantsPitchOnly = (this.opts.pitchModifier === 'shift' && e.shiftKey) || (this.opts.pitchModifier === 'alt' && (e.altKey || e.metaKey));
     const db = wantsPitchOnly ? 0 : dx * (this.opts.sensitivity.rotatePerPx / 1.0);
     const dp = -dy * (this.opts.sensitivity.pitchPerPx / 1.0);
-    const world = aroundPointer ? this.transform.screenToWorld(pointer) : null;
+    const worldBefore = aroundPointer ? this.transform.screenToWorld(pointer) : null;
     this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, db, 0, 'center');
-    if (aroundPointer && world) {
-      const sp = this.transform.worldToScreen(world);
-      if (sp) {
-        const cdx = sp.x - pointer.x; const cdy = sp.y - pointer.y;
-        this.helper.handleMapControlsPan(this.transform, cdx, cdy);
+    if (aroundPointer && worldBefore) {
+      const worldAfter = this.transform.screenToWorld(pointer);
+      if (worldAfter) {
+        const dxw = (worldBefore as any).x - (worldAfter as any).x;
+        const dzw = (worldBefore as any).z - (worldAfter as any).z;
+        this.transform.setCenter({ x: this.transform.center.x + dxw, y: this.transform.center.y + dzw, z: this.transform.center.z });
       }
     }
     this.opts.onChange({ axes: { rotate: db !== 0, pitch: dp !== 0 }, originalEvent: e });
