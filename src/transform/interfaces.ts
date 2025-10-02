@@ -30,6 +30,8 @@ export interface ITransform extends IReadonlyTransform {
   setRoll(roll: number): void;
   setConstraints(constraints: Partial<TransformConstraints>): void;
   getPanBounds(): Bounds2D | undefined;
+  // Batch multiple setters into a single camera application for perf
+  deferApply<T>(fn: () => T): T;
 
   // Coordinate conversions depend on projection; planar implements via a ground plane
   screenToWorld(screen: Vec2): Vector3 | null;

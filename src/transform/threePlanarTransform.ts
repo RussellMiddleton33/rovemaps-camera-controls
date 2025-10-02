@@ -31,6 +31,8 @@ export class ThreePlanarTransform implements ITransform {
   private _tmpVec3b = new Vector3();
   private _ray = new Ray();
   private _plane = new Plane();
+  private _deferDepth = 0;
+  private _needsApply = false;
   private _projDirty = true;
 
   constructor(opts: ThreePlanarTransformOptions) {
@@ -67,11 +69,12 @@ export class ThreePlanarTransform implements ITransform {
 
   setPadding(padding: Partial<Padding>): void {
     this._padding = { ...this._padding, ...padding };
+    // padding affects only view computations outside camera matrices; no apply needed
   }
 
   setCenter(center: Center): void {
     this._center = { x: center.x, y: center.y, z: center.z ?? 0 };
-    this._applyToCamera();
+    this._scheduleApply();
   }
 
   setZoom(zoom: number): void {
@@ -80,12 +83,12 @@ export class ThreePlanarTransform implements ITransform {
     // Perspective projection matrix does not depend on zoom; orthographic does.
     const cam = this._camera as any;
     if (cam && 'isOrthographicCamera' in cam && cam.isOrthographicCamera) this._projDirty = true;
-    this._applyToCamera();
+    this._scheduleApply();
   }
 
-  setBearing(bearing: number): void { this._bearing = normalizeAngleDeg(bearing); this._applyToCamera(); }
-  setPitch(pitch: number): void { this._pitch = clamp(pitch, this._constraints.minPitch, this._constraints.maxPitch); this._applyToCamera(); }
-  setRoll(roll: number): void { this._roll = normalizeAngleDeg(roll); this._applyToCamera(); }
+  setBearing(bearing: number): void { this._bearing = normalizeAngleDeg(bearing); this._scheduleApply(); }
+  setPitch(pitch: number): void { this._pitch = clamp(pitch, this._constraints.minPitch, this._constraints.maxPitch); this._scheduleApply(); }
+  setRoll(roll: number): void { this._roll = normalizeAngleDeg(roll); this._scheduleApply(); }
 
   setConstraints(constraints: Partial<TransformConstraints>): void {
     this._constraints = { ...this._constraints, ...constraints };
@@ -93,6 +96,19 @@ export class ThreePlanarTransform implements ITransform {
   }
 
   getPanBounds() { return this._constraints.panBounds; }
+
+  deferApply<T>(fn: () => T): T {
+    this._deferDepth++;
+    try {
+      return fn();
+    } finally {
+      this._deferDepth--;
+      if (this._deferDepth === 0 && this._needsApply) {
+        this._applyToCamera();
+        this._needsApply = false;
+      }
+    }
+  }
 
   screenToWorld(screen: Vec2): ThreeVector3 | null {
     // Custom strategy first
@@ -132,7 +148,7 @@ export class ThreePlanarTransform implements ITransform {
 
   adjustCenterByGroundDelta(dgx: number, dgz: number) {
     this._center = { x: this._center.x + dgx, y: this._center.y + dgz, z: this._center.z };
-    this._applyToCamera();
+    this._scheduleApply();
   }
 
   getGroundCenter() { return { gx: this._center.x, gz: this._center.y }; }
@@ -152,7 +168,7 @@ export class ThreePlanarTransform implements ITransform {
         z: this._center.z,
       };
     }
-    this._applyToCamera();
+    this._scheduleApply();
   }
 
   private _applyToCamera() {
@@ -234,6 +250,14 @@ export class ThreePlanarTransform implements ITransform {
       // Ortho frustum changes every zoom/viewport change
       cam.updateProjectionMatrix();
       cam.updateMatrixWorld();
+    }
+  }
+
+  private _scheduleApply() {
+    if (this._deferDepth > 0) {
+      this._needsApply = true;
+    } else {
+      this._applyToCamera();
     }
   }
 }

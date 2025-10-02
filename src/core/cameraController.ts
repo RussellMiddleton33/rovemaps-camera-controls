@@ -253,20 +253,22 @@ export class CameraController extends Evented<CameraMoveEvents> {
       const k = Math.min(1, (now - t0) / duration);
       const e = easing(k);
 
-      this.transform.setCenter({
-        x: start.center.x + (target.center.x - start.center.x) * e,
-        y: start.center.y + (target.center.y - start.center.y) * e,
-        z: start.center.z + ((target.center.z ?? 0) - (start.center.z ?? 0)) * e,
-      });
-      this.transform.setZoom(start.zoom + (target.zoom - start.zoom) * e);
-      this.transform.setBearing(start.bearing + (target.bearing - start.bearing) * e);
-      this.transform.setPitch(start.pitch + (target.pitch - start.pitch) * e);
-      this.transform.setRoll(start.roll + (target.roll - start.roll) * e);
-      this.transform.setPadding({
-        top: start.padding.top + (target.padding.top - start.padding.top) * e,
-        right: start.padding.right + (target.padding.right - start.padding.right) * e,
-        bottom: start.padding.bottom + (target.padding.bottom - start.padding.bottom) * e,
-        left: start.padding.left + (target.padding.left - start.padding.left) * e,
+      this.transform.deferApply(() => {
+        this.transform.setCenter({
+          x: start.center.x + (target.center.x - start.center.x) * e,
+          y: start.center.y + (target.center.y - start.center.y) * e,
+          z: start.center.z + ((target.center.z ?? 0) - (start.center.z ?? 0)) * e,
+        });
+        this.transform.setZoom(start.zoom + (target.zoom - start.zoom) * e);
+        this.transform.setBearing(start.bearing + (target.bearing - start.bearing) * e);
+        this.transform.setPitch(start.pitch + (target.pitch - start.pitch) * e);
+        this.transform.setRoll(start.roll + (target.roll - start.roll) * e);
+        this.transform.setPadding({
+          top: start.padding.top + (target.padding.top - start.padding.top) * e,
+          right: start.padding.right + (target.padding.right - start.padding.right) * e,
+          bottom: start.padding.bottom + (target.padding.bottom - start.padding.bottom) * e,
+          left: start.padding.left + (target.padding.left - start.padding.left) * e,
+        });
       });
 
       this._axisEmitDuring(axes);
@@ -388,11 +390,13 @@ export class CameraController extends Evented<CameraMoveEvents> {
         if (k < 1 && !signal.aborted) {
           this._animHandle = raf(loop);
         } else {
-          this.transform.setZoom(endZoom);
-          this.transform.setBearing(endBearing);
-          this.transform.setPitch(endPitch);
-          this.transform.setRoll(endRoll);
-          this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: endCenter.z ?? startCenter.z });
+          this.transform.deferApply(() => {
+            this.transform.setZoom(endZoom);
+            this.transform.setBearing(endBearing);
+            this.transform.setPitch(endPitch);
+            this.transform.setRoll(endRoll);
+            this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: endCenter.z ?? startCenter.z });
+          });
           if (endBearing !== startBearing) this._applyBearingSnap();
           this._applySoftPanBounds();
           this._axisEnd({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
@@ -427,10 +431,12 @@ export class CameraController extends Evented<CameraMoveEvents> {
       const b = startBearing + (endBearing - startBearing) * e;
       const p = startPitch + (endPitch - startPitch) * e;
       const r = startRoll + (endRoll - startRoll) * e;
-      this.transform.setZoom(z);
-      this.transform.setBearing(b);
-      this.transform.setPitch(p);
-      this.transform.setRoll(r);
+      this.transform.deferApply(() => {
+        this.transform.setZoom(z);
+        this.transform.setBearing(b);
+        this.transform.setPitch(p);
+        this.transform.setRoll(r);
+      });
 
       // Constant screen speed center motion
       const dt = (now - last) / 1000;
@@ -449,11 +455,13 @@ export class CameraController extends Evented<CameraMoveEvents> {
         this._animHandle = raf(loop);
       } else {
         // Ensure final state
-        this.transform.setZoom(endZoom);
-        this.transform.setBearing(endBearing);
-        this.transform.setPitch(endPitch);
-        this.transform.setRoll(endRoll);
-        this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: endCenter.z ?? startCenter.z });
+        this.transform.deferApply(() => {
+          this.transform.setZoom(endZoom);
+          this.transform.setBearing(endBearing);
+          this.transform.setPitch(endPitch);
+          this.transform.setRoll(endRoll);
+          this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: endCenter.z ?? startCenter.z });
+        });
         if (endBearing !== startBearing) this._applyBearingSnap();
         this._applySoftPanBounds();
         this._axisEnd({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });

@@ -22,6 +22,7 @@ class StubTransform implements ITransform {
   setPitch(pitch: number): void { this.pitch = pitch; }
   setRoll(roll: number): void { this.roll = roll; }
   setConstraints(): void {}
+  deferApply<T>(fn: () => T): T { return fn(); }
   clamp(): void {}
   worldToScreen(world: { x: number; y: number }): { x: number; y: number } | null {
     // Interpret world as ground (x,z) in y-up space

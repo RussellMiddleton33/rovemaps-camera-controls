@@ -26,10 +26,12 @@ export class PlanarCameraHelper implements ICameraHelper {
     dBearing: number,
     dZoom: number
   ): void {
-    transform.setRoll(normalizeAngleDeg(transform.roll + dRoll));
-    transform.setPitch(clamp(transform.pitch + dPitch, 0, 85));
-    transform.setBearing(normalizeAngleDeg(transform.bearing + dBearing));
-    transform.setZoom(transform.zoom + dZoom);
+    transform.deferApply(() => {
+      transform.setRoll(normalizeAngleDeg(transform.roll + dRoll));
+      transform.setPitch(clamp(transform.pitch + dPitch, 0, 85));
+      transform.setBearing(normalizeAngleDeg(transform.bearing + dBearing));
+      transform.setZoom(transform.zoom + dZoom);
+    });
   }
 
   handleJumpToCenterZoom(transform: ITransform, center?: { x: number; y: number; z?: number }, zoom?: number): void {
