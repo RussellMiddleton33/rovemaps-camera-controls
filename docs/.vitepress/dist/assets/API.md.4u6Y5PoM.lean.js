@@ -1,0 +1,1 @@
+import{_ as o,c as d,o as c,ae as t}from"./chunks/framework.BX0NALm0.js";const h=JSON.parse('{"title":"","description":"","frontmatter":{},"headers":[],"relativePath":"API.md","filePath":"API.md"}'),a={name:"API.md"};function i(n,e,r,l,s,m){return c(),d("div",null,[...e[0]||(e[0]=[t("",13)])])}const u=o(a,[["render",i]]);export{h as __pageData,u as default};

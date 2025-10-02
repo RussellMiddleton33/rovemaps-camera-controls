@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Three RoveMaps Camera Controls — Demo</title>
+    <script type="module" crossorigin src="/rovemaps-camera-controls/demo/assets/index-BQjZoQgE.js"></script>
+    <link rel="stylesheet" crossorigin href="/rovemaps-camera-controls/demo/assets/index-DjTaKFnr.css">
+  </head>
+  <body>
+    <div id="app">
+      <div id="toolbar">
+        <button id="btn-zoom-in">Zoom In</button>
+        <button id="btn-zoom-out">Zoom Out</button>
+        <button id="btn-rotate-left">Rotate Left</button>
+        <button id="btn-rotate-right">Rotate Right</button>
+        <button id="btn-pitch-up">Pitch Up</button>
+        <button id="btn-pitch-down">Pitch Down</button>
+        <label>Rubberband <input id="rubberband" type="range" min="0.1" max="1.5" step="0.1" value="0.5"/></label>
+        <label>Anchor Tightness <input id="anchor-tight" type="range" min="0" max="1" step="0.05" value="1"/></label>
+        <label><input id="around-pointer" type="checkbox" checked /> Around Pointer</label>
+        <label><input id="cooperative" type="checkbox" /> Cooperative Gestures (Ctrl+wheel to zoom)</label>
+        <label><input id="keyboard" type="checkbox" checked /> Keyboard</label>
+        <label><input id="dblclick" type="checkbox" checked /> Dblclick</label>
+        <label><input id="boxzoom" type="checkbox" checked /> Box Zoom</label>
+        <label><input id="antialias" type="checkbox" checked /> Antialias</label>
+        <label><input id="invert-zoom" type="checkbox" /> Invert Zoom</label>
+        <label><input id="invert-pitch" type="checkbox" /> Invert Pitch</label>
+        <label><input id="invert-twist" type="checkbox" /> Invert Twist</label>
+        <label><input id="invert-pany" type="checkbox" /> Invert Pan Y</label>
+        <label><input id="recenter-down" type="checkbox" /> Center on Down</label>
+        <label><input id="invert-inertia-y" type="checkbox" /> Invert Inertia Y</label>
+        <label><input id="invert-inertia-x" type="checkbox" /> Invert Inertia X</label>
+        <label><input id="show-debug" type="checkbox" /> Show Debug Gizmos</label>
+      <button id="btn-fly">FlyTo Demo</button>
+      <button id="btn-fit">Fit Bounds</button>
+      </div>
+      <div id="coop-hint" class="hint" hidden>Hold Ctrl (or ⌘) + scroll to zoom</div>
+      <div id="overlay"></div>
+      <canvas id="c"></canvas>
+      <div id="select-rect" hidden></div>
+    </div>
+  </body>
+  </html>
