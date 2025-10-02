@@ -9,7 +9,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -20,4 +20,3 @@
   "include": ["src", "tests", "examples"],
   "exclude": ["dist", "node_modules"]
 }
-
