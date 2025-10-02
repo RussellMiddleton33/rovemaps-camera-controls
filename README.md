@@ -104,10 +104,8 @@ Known differences / next steps
 - Fit bounds rigor: Use projection checks at higher pitch/bearing and confirm the binary‑search fit under padding/offset matches MapLibre semantics exactly.
 - Transform refactor: Formalize center as {x,z} across the transform to remove any remaining ambiguity (ground helpers already isolate the mapping).
 - Docs deploy: Keep the demo isolated from docs bundling during active iteration to avoid user‑visible TDZ cache issues.
-
-If you see behavior that still differs from MapLibre on your device, please share:
 - OS + browser, input (trackpad vs mouse), “natural scrolling” setting
 - Which toggles you needed (Invert Pitch/Pan‑Y/Inertia X/Y, Anchor Tightness)
 - A short clip or screenshot of the debug gizmos (green velocity arrow and world axes)
 
-We’ll codify those as defaults (per platform) and add tests so the feel is correct out of the box.
+

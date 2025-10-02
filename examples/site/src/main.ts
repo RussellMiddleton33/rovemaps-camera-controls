@@ -209,6 +209,16 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// Mobile menu toggle
+const menuBtn = document.getElementById('menu-toggle') as HTMLButtonElement;
+if (menuBtn) {
+  menuBtn.addEventListener('click', () => {
+    document.body.classList.toggle('menu-open');
+  });
+  // Auto-close menu when interacting with canvas
+  canvas.addEventListener('pointerdown', () => { document.body.classList.remove('menu-open'); }, { passive: true });
+}
+
 function updateOverlay() {
   const c = controller.getCenter();
   overlay.textContent = `center: ${c.x.toFixed(2)}, ${c.y.toFixed(2)}\nzoom: ${controller.getZoom().toFixed(2)}\n` +
