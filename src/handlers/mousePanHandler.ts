@@ -133,9 +133,9 @@ export class MousePanHandler {
     // Velocity for inertia (px/s)
     if (dt > 0) {
       const alpha = 0.3;
-      // Use sign-adjusted screen deltas for velocity to align with damping + inversion
-      const sdx = dx * (this.opts.panXSign ?? 1);
-      const sdy = dy * (this.opts.panYSign ?? 1);
+      // dx,dy already include panXSign/panYSign above; do not apply signs again
+      const sdx = dx;
+      const sdy = dy;
       this.vx = this.vx * (1 - alpha) + (sdx / dt) * alpha;
       this.vy = this.vy * (1 - alpha) + (sdy / dt) * alpha;
     }

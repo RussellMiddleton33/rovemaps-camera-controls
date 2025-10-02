@@ -24,8 +24,8 @@ function makeArrow(dir: THREE.Vector3, color: number, len = 80) {
 
 const worldXArrow = makeArrow(new THREE.Vector3(1, 0, 0), 0xff0000);
 const worldZArrow = makeArrow(new THREE.Vector3(0, 0, 1), 0x0000ff);
-const camRightArrow = makeArrow(new THREE.Vector3(1, 0, 0), 0xff00ff);
-const camFwdArrow = makeArrow(new THREE.Vector3(0, 0, 1), 0x00ffff);
+const camRightArrow = makeArrow(new THREE.Vector3(1, 0, 0), 0xff00ff); // magenta
+const camFwdArrow = makeArrow(new THREE.Vector3(0, 0, 1), 0xffaa00);   // orange (distinct from green)
 gizmoGroup.add(worldXArrow, worldZArrow, camRightArrow, camFwdArrow);
 
 const anchorSphere = new THREE.Mesh(

@@ -30409,7 +30409,7 @@ class MousePanHandler {
       };
     };
     this.onMove = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
       const dx = (e.clientX - this.lastX) * ((_a = this.opts.panXSign) != null ? _a : 1);
       const dy = (e.clientY - this.lastY) * ((_b = this.opts.panYSign) != null ? _b : 1);
       const dt = (performance.now() - this.lastTs) / 1e3;
@@ -30447,8 +30447,8 @@ class MousePanHandler {
       this.opts.onChange({ axes: { pan: true }, originalEvent: e });
       if (dt > 0) {
         const alpha = 0.3;
-        const sdx = dx * ((_l = this.opts.panXSign) != null ? _l : 1);
-        const sdy = dy * ((_m = this.opts.panYSign) != null ? _m : 1);
+        const sdx = dx;
+        const sdy = dy;
         this.vx = this.vx * (1 - alpha) + sdx / dt * alpha;
         this.vy = this.vy * (1 - alpha) + sdy / dt * alpha;
       }
@@ -31955,7 +31955,7 @@ function makeArrow(dir, color, len = 80) {
 const worldXArrow = makeArrow(new Vector3(1, 0, 0), 16711680);
 const worldZArrow = makeArrow(new Vector3(0, 0, 1), 255);
 const camRightArrow = makeArrow(new Vector3(1, 0, 0), 16711935);
-const camFwdArrow = makeArrow(new Vector3(0, 0, 1), 65535);
+const camFwdArrow = makeArrow(new Vector3(0, 0, 1), 16755200);
 gizmoGroup.add(worldXArrow, worldZArrow, camRightArrow, camFwdArrow);
 const anchorSphere = new Mesh(
   new SphereGeometry(3, 16, 16),
@@ -32281,4 +32281,4 @@ window.addEventListener("pointerup", (e) => {
     controller.fitBounds({ min: { x: Math.min(w0.x, w1.x), y: Math.min(w0.y, w1.y) }, max: { x: Math.max(w0.x, w1.x), y: Math.max(w0.y, w1.y) } }, { padding: { top: 10, right: 10, bottom: 10, left: 10 } });
   }
 });
-//# sourceMappingURL=index-Chx0qtfi.js.map
+//# sourceMappingURL=index-BgpA5muc.js.map
