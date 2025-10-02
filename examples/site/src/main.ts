@@ -57,7 +57,7 @@ let currentHandlers = {
   keyboard: true,
   dblclick: true,
   boxzoom: true,
-  rubber: 0.5,
+  rubber: 0,
   invertZoom: false,
   invertPitch: false,
   invertTwist: false,
