@@ -47,7 +47,8 @@ export class MousePanHandler {
     this.el = el;
     this.transform = transform;
     this.helper = helper;
-    this.opts = {
+    // Merge defaults, but avoid letting undefined override defaults
+    const merged: any = {
       button: 0,
       dragThresholdPx: 3,
       onChange: () => {},
@@ -59,8 +60,11 @@ export class MousePanHandler {
       inertiaPanYSign: 1,
       inertiaPanXSign: 1,
       anchorTightness: 1,
-      ...opts,
+      ...(opts || {}),
     };
+    if (opts && 'inertiaPanFriction' in opts && opts.inertiaPanFriction == null) delete merged.inertiaPanFriction;
+    if (opts && 'rubberbandStrength' in opts && opts.rubberbandStrength == null) delete merged.rubberbandStrength;
+    this.opts = merged as Required<MousePanOptions>;
   }
 
   enable() {
@@ -199,7 +203,9 @@ export class MousePanHandler {
 
   private runInertia() {
     let last = performance.now();
-    const friction = this.opts.inertiaPanFriction; // 1/s
+    const friction = Number.isFinite((this.opts as any).inertiaPanFriction)
+      ? (this.opts as any).inertiaPanFriction
+      : 6; // 1/s
     const step = () => {
       const now = performance.now();
       const dt = (now - last) / 1000;

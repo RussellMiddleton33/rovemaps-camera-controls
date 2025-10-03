@@ -70,40 +70,45 @@ export class HandlerManager {
     }
     // Mouse handlers (defaults enabled)
     const mpOpts = options?.mousePan ?? {};
-    this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, {
+    // Avoid passing undefined values that overwrite handler defaults
+    const basePan: any = {
       onChange: options?.onChange,
       rubberbandStrength: options?.rubberbandStrength,
-      inertiaPanFriction: options?.inertiaPanFriction,
       ...(typeof mpOpts === 'object' ? mpOpts : {}),
-    });
+    };
+    if (options?.inertiaPanFriction != null) basePan.inertiaPanFriction = options.inertiaPanFriction;
+    this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, basePan);
     this.mousePan.enable();
     // Optional: right button pans instead of rotate/pitch
     if (options?.rightButtonPan) {
-      this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, {
+      const basePanSecondary: any = {
         onChange: options?.onChange,
         rubberbandStrength: options?.rubberbandStrength,
-        inertiaPanFriction: options?.inertiaPanFriction,
         ...(typeof mpOpts === 'object' ? mpOpts : {}),
         button: 2,
-      });
+      };
+      if (options?.inertiaPanFriction != null) basePanSecondary.inertiaPanFriction = options.inertiaPanFriction;
+      this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, basePanSecondary);
       this.mousePanSecondary.enable();
     } else {
       const mrpOpts = options?.mouseRotatePitch ?? {};
-      this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, {
+      const mrpBase: any = {
         onChange: options?.onChange,
-        anchorTightness: options?.anchorTightness,
         ...(typeof mrpOpts === 'object' ? mrpOpts : {}),
-      });
+      };
+      if (options?.anchorTightness != null) mrpBase.anchorTightness = options.anchorTightness;
+      this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, mrpBase);
       this.mouseRotatePitch.enable();
     }
     // Touch handler (default enabled)
     const touchOpts = options?.touch ?? {};
-    this.touch = new TouchMultiHandler(
-      this.el,
-      this.transform,
-      this.helper,
-      typeof touchOpts === 'object' ? { anchorTightness: options?.anchorTightness, rubberbandStrength: options?.rubberbandStrength, inertiaPanFriction: options?.inertiaPanFriction, inertiaZoomFriction: options?.inertiaZoomFriction, inertiaRotateFriction: options?.inertiaRotateFriction, ...touchOpts } : { onChange: options?.onChange, rubberbandStrength: options?.rubberbandStrength, anchorTightness: options?.anchorTightness, inertiaPanFriction: options?.inertiaPanFriction, inertiaZoomFriction: options?.inertiaZoomFriction, inertiaRotateFriction: options?.inertiaRotateFriction }
-    );
+    const touchBase: any = typeof touchOpts === 'object' ? { ...touchOpts } : { onChange: options?.onChange };
+    if (options?.anchorTightness != null) touchBase.anchorTightness = options.anchorTightness;
+    if (options?.rubberbandStrength != null) touchBase.rubberbandStrength = options.rubberbandStrength;
+    if (options?.inertiaPanFriction != null) touchBase.inertiaPanFriction = options.inertiaPanFriction;
+    if (options?.inertiaZoomFriction != null) touchBase.inertiaZoomFriction = options.inertiaZoomFriction;
+    if (options?.inertiaRotateFriction != null) touchBase.inertiaRotateFriction = options.inertiaRotateFriction;
+    this.touch = new TouchMultiHandler(this.el, this.transform, this.helper, touchBase);
     this.touch.enable();
     // Keyboard handler (default enabled)
     const kbOpts = options?.keyboard ?? {};

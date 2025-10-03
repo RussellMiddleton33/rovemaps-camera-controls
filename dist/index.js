@@ -781,7 +781,7 @@ var MousePanHandler = class {
     this.el = el;
     this.transform = transform;
     this.helper = helper;
-    this.opts = {
+    const merged = {
       button: 0,
       dragThresholdPx: 3,
       onChange: () => {
@@ -794,8 +794,11 @@ var MousePanHandler = class {
       inertiaPanYSign: 1,
       inertiaPanXSign: 1,
       anchorTightness: 1,
-      ...opts
+      ...opts || {}
     };
+    if (opts && "inertiaPanFriction" in opts && opts.inertiaPanFriction == null) delete merged.inertiaPanFriction;
+    if (opts && "rubberbandStrength" in opts && opts.rubberbandStrength == null) delete merged.rubberbandStrength;
+    this.opts = merged;
   }
   enable() {
     if (typeof window === "undefined" || this.unbindDown) return;
@@ -813,7 +816,7 @@ var MousePanHandler = class {
   }
   runInertia() {
     let last = performance.now();
-    const friction = this.opts.inertiaPanFriction;
+    const friction = Number.isFinite(this.opts.inertiaPanFriction) ? this.opts.inertiaPanFriction : 6;
     const step = () => {
       var _a, _b, _c, _d;
       const now = performance.now();
@@ -1813,38 +1816,42 @@ var HandlerManager = class {
       this.scroll.enable();
     }
     const mpOpts = (_b = options == null ? void 0 : options.mousePan) != null ? _b : {};
-    this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, {
+    const basePan = {
       onChange: options == null ? void 0 : options.onChange,
       rubberbandStrength: options == null ? void 0 : options.rubberbandStrength,
-      inertiaPanFriction: options == null ? void 0 : options.inertiaPanFriction,
       ...typeof mpOpts === "object" ? mpOpts : {}
-    });
+    };
+    if ((options == null ? void 0 : options.inertiaPanFriction) != null) basePan.inertiaPanFriction = options.inertiaPanFriction;
+    this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, basePan);
     this.mousePan.enable();
     if (options == null ? void 0 : options.rightButtonPan) {
-      this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, {
+      const basePanSecondary = {
         onChange: options == null ? void 0 : options.onChange,
         rubberbandStrength: options == null ? void 0 : options.rubberbandStrength,
-        inertiaPanFriction: options == null ? void 0 : options.inertiaPanFriction,
         ...typeof mpOpts === "object" ? mpOpts : {},
         button: 2
-      });
+      };
+      if ((options == null ? void 0 : options.inertiaPanFriction) != null) basePanSecondary.inertiaPanFriction = options.inertiaPanFriction;
+      this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, basePanSecondary);
       this.mousePanSecondary.enable();
     } else {
       const mrpOpts = (_c = options == null ? void 0 : options.mouseRotatePitch) != null ? _c : {};
-      this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, {
+      const mrpBase = {
         onChange: options == null ? void 0 : options.onChange,
-        anchorTightness: options == null ? void 0 : options.anchorTightness,
         ...typeof mrpOpts === "object" ? mrpOpts : {}
-      });
+      };
+      if ((options == null ? void 0 : options.anchorTightness) != null) mrpBase.anchorTightness = options.anchorTightness;
+      this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, mrpBase);
       this.mouseRotatePitch.enable();
     }
     const touchOpts = (_d = options == null ? void 0 : options.touch) != null ? _d : {};
-    this.touch = new TouchMultiHandler(
-      this.el,
-      this.transform,
-      this.helper,
-      typeof touchOpts === "object" ? { anchorTightness: options == null ? void 0 : options.anchorTightness, rubberbandStrength: options == null ? void 0 : options.rubberbandStrength, inertiaPanFriction: options == null ? void 0 : options.inertiaPanFriction, inertiaZoomFriction: options == null ? void 0 : options.inertiaZoomFriction, inertiaRotateFriction: options == null ? void 0 : options.inertiaRotateFriction, ...touchOpts } : { onChange: options == null ? void 0 : options.onChange, rubberbandStrength: options == null ? void 0 : options.rubberbandStrength, anchorTightness: options == null ? void 0 : options.anchorTightness, inertiaPanFriction: options == null ? void 0 : options.inertiaPanFriction, inertiaZoomFriction: options == null ? void 0 : options.inertiaZoomFriction, inertiaRotateFriction: options == null ? void 0 : options.inertiaRotateFriction }
-    );
+    const touchBase = typeof touchOpts === "object" ? { ...touchOpts } : { onChange: options == null ? void 0 : options.onChange };
+    if ((options == null ? void 0 : options.anchorTightness) != null) touchBase.anchorTightness = options.anchorTightness;
+    if ((options == null ? void 0 : options.rubberbandStrength) != null) touchBase.rubberbandStrength = options.rubberbandStrength;
+    if ((options == null ? void 0 : options.inertiaPanFriction) != null) touchBase.inertiaPanFriction = options.inertiaPanFriction;
+    if ((options == null ? void 0 : options.inertiaZoomFriction) != null) touchBase.inertiaZoomFriction = options.inertiaZoomFriction;
+    if ((options == null ? void 0 : options.inertiaRotateFriction) != null) touchBase.inertiaRotateFriction = options.inertiaRotateFriction;
+    this.touch = new TouchMultiHandler(this.el, this.transform, this.helper, touchBase);
     this.touch.enable();
     const kbOpts = (_e = options == null ? void 0 : options.keyboard) != null ? _e : {};
     this.keyboard = new KeyboardHandler(
