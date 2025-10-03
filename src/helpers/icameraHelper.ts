@@ -6,6 +6,10 @@ export interface EaseOptions {
   animate?: boolean;
   essential?: boolean;
   around?: 'center' | 'pointer';
+  // When around === 'pointer', provide the screen point to preserve
+  aroundPoint?: { x: number; y: number };
+  // 0..1, how strongly to keep the pointer point fixed
+  anchorTightness?: number;
   offset?: { x: number; y: number };
   padding?: Partial<{ top: number; right: number; bottom: number; left: number }>;
 }

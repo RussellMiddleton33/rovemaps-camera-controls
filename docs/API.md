@@ -17,6 +17,7 @@ Methods:
 - Setters: `setCenter`, `setZoom`, `setBearing`, `setPitch`, `setRoll`, `setPadding`, `setConstraints`
 - Jump: `jumpTo(options)`
 - Ease: `easeTo(options)` with `duration`, `easing`, `padding`, `offset`, `around`, `essential`
+  - `easeTo` anchoring: when `around: 'pointer'`, provide `aroundPoint: {x,y}` and optional `anchorTightness` (0..1) to preserve the ground point under that screen coordinate across the ease.
 - Fly: `flyTo(options)` with `curve` (rho), `speed`, `screenSpeed`, `maxDuration`
 - Fit: `fitBounds(bounds, options)`, `cameraForBounds(bounds, options)`
 - Zoom: `zoomTo`, `zoomIn`, `zoomOut`
@@ -37,6 +38,7 @@ All events include `{ originalEvent?: Event }` when gesture-driven.
 ### Handlers config (handlers)
 
 - `scrollZoom?: { around?: 'center'|'pointer', maxDeltaPerEvent?: number, preventDefault?: boolean, onWheelModeChange?, onChange?, cooperative?: boolean, onCoopGestureHint? } | boolean`
+  - `zoomInertia?: boolean` (default false) to enable post-wheel momentum-like zoom.
 - `touch?: { enablePan?: boolean, enableZoom?: boolean, enableRotate?: boolean, enablePitch?: boolean, around?: 'center'|'pinch', pitchPerPx?: number, rotateThresholdDeg?: number, pitchThresholdPx?: number, zoomThreshold?: number, rubberbandStrength?: number } | boolean`
 - `keyboard?: { panStepPx?: number, zoomDelta?: number, rotateStepDeg?: number, pitchStepDeg?: number, preventDefault?: boolean } | boolean`
 - `dblclick?: { zoomDelta?: number, invertWithShift?: boolean, around?: 'center'|'pointer' } | boolean`

@@ -6,6 +6,10 @@ Quick links
 
 Drop-in GL JS camera controls for Three.js scenes with (jumpTo/easeTo/flyTo/fitBounds, pan/zoom/rotate/pitch/roll, around-point, padding/offset, events, inertia, reduced motion).
 
+Recent changes:
+- Programmatic `easeTo` supports around-point anchoring with `around: 'pointer'` and `aroundPoint: {x,y}` (plus `anchorTightness`).
+- Wheel zoom inertia is opt-in via `handlers.scrollZoom.zoomInertia` (default false for MapLibre parity).
+
 
 - In progress / next up:
 - Not started (planned):

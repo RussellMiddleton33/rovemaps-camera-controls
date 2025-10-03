@@ -15,6 +15,8 @@ export interface ScrollZoomOptions {
   onCoopGestureHint?: (req: { type: 'pinch' | 'rotate' }) => void;
   zoomSign?: 1 | -1; // invert zoom direction if needed
   anchorTightness?: number; // 0..1, how strongly to keep pointer fixed (default 1)
+  // Enable momentum-like zoom after wheel bursts (default: false for MapLibre parity)
+  zoomInertia?: boolean;
 }
 
 export class ScrollZoomHandler {
@@ -44,6 +46,7 @@ export class ScrollZoomHandler {
       onCoopGestureHint: () => {},
       zoomSign: 1,
       anchorTightness: 1,
+      zoomInertia: false,
       ...opts,
     };
   }
@@ -114,8 +117,10 @@ export class ScrollZoomHandler {
     // simple low-pass filter
     this.velocity = this.velocity * 0.7 + targetV * 0.3;
 
-    if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
-    this.inertiaHandle = requestAnimationFrame(() => this.runInertia());
+    if (this.opts.zoomInertia) {
+      if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
+      this.inertiaHandle = requestAnimationFrame(() => this.runInertia());
+    }
   };
 
   private applyZoomAround(dz: number, pointer: { x: number; y: number } | null) {

@@ -102,6 +102,11 @@ interface EaseOptions {
     animate?: boolean;
     essential?: boolean;
     around?: 'center' | 'pointer';
+    aroundPoint?: {
+        x: number;
+        y: number;
+    };
+    anchorTightness?: number;
     offset?: {
         x: number;
         y: number;
@@ -190,6 +195,7 @@ interface ScrollZoomOptions {
     }) => void;
     zoomSign?: 1 | -1;
     anchorTightness?: number;
+    zoomInertia?: boolean;
 }
 
 interface MousePanOptions {

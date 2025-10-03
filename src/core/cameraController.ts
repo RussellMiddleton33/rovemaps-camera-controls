@@ -126,7 +126,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
     if (this._easeAbort) this._easeAbort.abort();
     this._handlers?.dispose();
     if (this._moveEndTimer != null) {
-      window.clearTimeout(this._moveEndTimer);
+      (globalThis as any).clearTimeout?.(this._moveEndTimer);
       this._moveEndTimer = null;
     }
     this._endAllAxes();
@@ -144,10 +144,10 @@ export class CameraController extends Evented<CameraMoveEvents> {
   getPadding() { return this.transform.padding; }
 
   isMoving() { return this._moving; }
-  isZooming() { return false; }
-  isRotating() { return false; }
-  isPitching() { return false; }
-  isRolling() { return false; }
+  isZooming() { return this._zooming; }
+  isRotating() { return this._rotating; }
+  isPitching() { return this._pitching; }
+  isRolling() { return this._rolling; }
 
   setCenter(center: { x: number; y: number; z?: number }) { this.transform.setCenter(center); this._emitRender(); return this; }
   setZoom(zoom: number) { this.transform.setZoom(zoom); this._emitRender(); return this; }
@@ -233,12 +233,13 @@ export class CameraController extends Evented<CameraMoveEvents> {
 
     const duration = Math.max(0, options.duration ?? 300);
     const easing = options.easing ?? defaultEasing;
-    // Axis starts
+    // Axis starts (treat center/offset/around-pointer as pan involvement)
     const axes = {
       zoom: target.zoom !== start.zoom,
       rotate: target.bearing !== start.bearing,
       pitch: target.pitch !== start.pitch,
       roll: target.roll !== start.roll,
+      pan: !!(options.center || options.offset || (options as any).around === 'pointer')
     };
     this._startMoveLifecycle();
     this._axisStart(axes);
@@ -248,10 +249,16 @@ export class CameraController extends Evented<CameraMoveEvents> {
     const signal = this._easeAbort.signal;
 
     const t0 = browser.now();
+    const anchorPt = (options as any).aroundPoint as { x: number; y: number } | undefined;
+    const useAnchor = (options as any).around === 'pointer' && !!anchorPt;
+    const tight = Math.max(0, Math.min(1, (options as any).anchorTightness ?? 1));
     const loop = () => {
       const now = browser.now();
       const k = Math.min(1, (now - t0) / duration);
       const e = easing(k);
+
+      // Measure ground under anchor before applying frame changes
+      const groundBefore = useAnchor ? this.transform.groundFromScreen(anchorPt!) : null;
 
       this.transform.deferApply(() => {
         const startZ = start.center.z ?? 0;
@@ -272,6 +279,15 @@ export class CameraController extends Evented<CameraMoveEvents> {
           left: start.padding.left + (target.padding.left - start.padding.left) * e,
         });
       });
+
+      if (groundBefore) {
+        const groundAfter = this.transform.groundFromScreen(anchorPt!);
+        if (groundAfter) {
+          const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+          const dgz = (groundBefore.gz - groundAfter.gz) * tight;
+          if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
+        }
+      }
 
       this._axisEmitDuring(axes);
       this._emitRender();
@@ -510,16 +526,16 @@ export class CameraController extends Evented<CameraMoveEvents> {
     this._axisEmitDuring(axes, delta?.originalEvent);
     this._emitRender();
     if (this._moveEndTimer != null) {
-      window.clearTimeout(this._moveEndTimer);
+      (globalThis as any).clearTimeout?.(this._moveEndTimer);
     }
-    // Debounce moveend after burst of external changes
-    this._moveEndTimer = window.setTimeout(() => {
+    // Debounce moveend after burst of external changes (SSR-safe timers)
+    this._moveEndTimer = (globalThis as any).setTimeout?.(() => {
       if (axes.rotate) this._applyBearingSnap(delta?.originalEvent);
       this._applySoftPanBounds();
       this._axisEnd(axes, delta?.originalEvent);
       this._endMoveLifecycle();
       this._moveEndTimer = null;
-    }, 120);
+    }, 120) as any;
   }
 
   private _axisStart(axes: { zoom?: boolean; rotate?: boolean; pitch?: boolean; roll?: boolean; pan?: boolean }, originalEvent?: Event) {
@@ -580,8 +596,8 @@ export class CameraController extends Evented<CameraMoveEvents> {
       this._softClamping = true;
       // Smooth nudge back to bounds
       this.easeTo({ center: clamped, duration: 180, easing: defaultEasing, essential: true });
-      // Clear flag after short delay to avoid recursion
-      window.setTimeout(() => { this._softClamping = false; }, 220);
+      // Clear flag after short delay to avoid recursion (SSR-safe)
+      (globalThis as any).setTimeout?.(() => { this._softClamping = false; }, 220);
     }
   }
 }

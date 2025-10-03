@@ -55,6 +55,10 @@ describe('CameraController events', () => {
     ctl.on('zoomstart', () => events.push('zoomstart'));
     ctl.on('zoomend', () => events.push('zoomend'));
     ctl.on('moveend', () => events.push('moveend'));
+    let zoomStartIsZooming = false;
+    let zoomEndIsZooming = true;
+    ctl.on('zoomstart', () => { zoomStartIsZooming = ctl.isZooming(); });
+    ctl.on('zoomend', () => { zoomEndIsZooming = ctl.isZooming(); });
     await new Promise<void>((resolve) => {
       ctl.on('moveend', () => resolve());
       ctl.easeTo({ zoom: 2, duration: 30 });
@@ -67,6 +71,8 @@ describe('CameraController events', () => {
     expect(iStart).toBeGreaterThanOrEqual(0);
     expect(iEnd).toBeGreaterThan(iStart);
     expect(iMoveEnd).toBeGreaterThan(iEnd);
+    expect(zoomStartIsZooming).toBe(true);
+    expect(zoomEndIsZooming).toBe(false);
   });
 
   it('bearingSnap snaps to 0 on rotate end within threshold', async () => {

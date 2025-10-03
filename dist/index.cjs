@@ -553,8 +553,10 @@ var ScrollZoomHandler = class {
       this.lastWheelTs = now;
       const targetV = dz / (dt || 1 / 60);
       this.velocity = this.velocity * 0.7 + targetV * 0.3;
-      if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
-      this.inertiaHandle = requestAnimationFrame(() => this.runInertia());
+      if (this.opts.zoomInertia) {
+        if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
+        this.inertiaHandle = requestAnimationFrame(() => this.runInertia());
+      }
     };
     this.el = el;
     this.transform = transform;
@@ -572,6 +574,7 @@ var ScrollZoomHandler = class {
       },
       zoomSign: 1,
       anchorTightness: 1,
+      zoomInertia: false,
       ...opts
     };
   }
@@ -1983,7 +1986,7 @@ var CameraController = class extends Evented {
     });
   }
   dispose() {
-    var _a;
+    var _a, _b;
     if (this._animHandle != null) {
       caf(this._animHandle);
       this._animHandle = null;
@@ -1991,7 +1994,7 @@ var CameraController = class extends Evented {
     if (this._easeAbort) this._easeAbort.abort();
     (_a = this._handlers) == null ? void 0 : _a.dispose();
     if (this._moveEndTimer != null) {
-      window.clearTimeout(this._moveEndTimer);
+      (_b = globalThis.clearTimeout) == null ? void 0 : _b.call(globalThis, this._moveEndTimer);
       this._moveEndTimer = null;
     }
     this._endAllAxes();
@@ -2021,16 +2024,16 @@ var CameraController = class extends Evented {
     return this._moving;
   }
   isZooming() {
-    return false;
+    return this._zooming;
   }
   isRotating() {
-    return false;
+    return this._rotating;
   }
   isPitching() {
-    return false;
+    return this._pitching;
   }
   isRolling() {
-    return false;
+    return this._rolling;
   }
   setCenter(center) {
     this.transform.setCenter(center);
@@ -2114,7 +2117,7 @@ var CameraController = class extends Evented {
     return this.rollTo(this.getRoll() + delta, opts);
   }
   easeTo(options) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g;
     const essential = (_a = options.essential) != null ? _a : false;
     const animate = (_b = options.animate) != null ? _b : true;
     if (!essential && browser.reducedMotion()) {
@@ -2156,7 +2159,8 @@ var CameraController = class extends Evented {
       zoom: target.zoom !== start.zoom,
       rotate: target.bearing !== start.bearing,
       pitch: target.pitch !== start.pitch,
-      roll: target.roll !== start.roll
+      roll: target.roll !== start.roll,
+      pan: !!(options.center || options.offset || options.around === "pointer")
     };
     this._startMoveLifecycle();
     this._axisStart(axes);
@@ -2164,10 +2168,14 @@ var CameraController = class extends Evented {
     this._easeAbort = new AbortController();
     const signal = this._easeAbort.signal;
     const t0 = browser.now();
+    const anchorPt = options.aroundPoint;
+    const useAnchor = options.around === "pointer" && !!anchorPt;
+    const tight = Math.max(0, Math.min(1, (_g = options.anchorTightness) != null ? _g : 1));
     const loop = () => {
       const now = browser.now();
       const k = Math.min(1, (now - t0) / duration);
       const e = easing(k);
+      const groundBefore = useAnchor ? this.transform.groundFromScreen(anchorPt) : null;
       this.transform.deferApply(() => {
         var _a2, _b2;
         const startZ = (_a2 = start.center.z) != null ? _a2 : 0;
@@ -2188,6 +2196,14 @@ var CameraController = class extends Evented {
           left: start.padding.left + (target.padding.left - start.padding.left) * e
         });
       });
+      if (groundBefore) {
+        const groundAfter = this.transform.groundFromScreen(anchorPt);
+        if (groundAfter) {
+          const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+          const dgz = (groundBefore.gz - groundAfter.gz) * tight;
+          if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
+        }
+      }
       this._axisEmitDuring(axes);
       this._emitRender();
       if (k < 1 && !signal.aborted) {
@@ -2386,16 +2402,16 @@ var CameraController = class extends Evented {
     }
   }
   _externalChange(delta) {
-    var _a;
+    var _a, _b, _c;
     const axes = (_a = delta == null ? void 0 : delta.axes) != null ? _a : {};
     this._startMoveLifecycle();
     this._axisStart(axes, delta == null ? void 0 : delta.originalEvent);
     this._axisEmitDuring(axes, delta == null ? void 0 : delta.originalEvent);
     this._emitRender();
     if (this._moveEndTimer != null) {
-      window.clearTimeout(this._moveEndTimer);
+      (_b = globalThis.clearTimeout) == null ? void 0 : _b.call(globalThis, this._moveEndTimer);
     }
-    this._moveEndTimer = window.setTimeout(() => {
+    this._moveEndTimer = (_c = globalThis.setTimeout) == null ? void 0 : _c.call(globalThis, () => {
       if (axes.rotate) this._applyBearingSnap(delta == null ? void 0 : delta.originalEvent);
       this._applySoftPanBounds();
       this._axisEnd(axes, delta == null ? void 0 : delta.originalEvent);
@@ -2489,6 +2505,7 @@ var CameraController = class extends Evented {
     }
   }
   _applySoftPanBounds() {
+    var _a;
     if (this._softClamping) return;
     const bounds = this._constraints.panBounds;
     if (!bounds) return;
@@ -2501,7 +2518,7 @@ var CameraController = class extends Evented {
     if (clamped.x !== c.x || clamped.y !== c.y) {
       this._softClamping = true;
       this.easeTo({ center: clamped, duration: 180, easing: defaultEasing, essential: true });
-      window.setTimeout(() => {
+      (_a = globalThis.setTimeout) == null ? void 0 : _a.call(globalThis, () => {
         this._softClamping = false;
       }, 220);
     }
