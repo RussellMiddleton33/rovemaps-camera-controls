@@ -1,0 +1,1 @@
+import{_ as a,c as t,o as r,ae as o}from"./chunks/framework.BX0NALm0.js";const f=JSON.parse('{"title":"","description":"","frontmatter":{},"headers":[],"relativePath":"SSR-Next.md","filePath":"SSR-Next.md"}'),s={name:"SSR-Next.md"};function i(n,e,l,c,d,u){return r(),t("div",null,[...e[0]||(e[0]=[o("",7)])])}const S=a(s,[["render",i]]);export{f as __pageData,S as default};
