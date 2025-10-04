@@ -252,6 +252,7 @@ interface TouchMultiOptions {
     inertiaPanFriction?: number;
     inertiaZoomFriction?: number;
     inertiaRotateFriction?: number;
+    showDebugOverlay?: boolean;
 }
 
 interface KeyboardOptions {

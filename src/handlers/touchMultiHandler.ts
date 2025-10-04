@@ -31,6 +31,8 @@ export interface TouchMultiOptions {
   inertiaPanFriction?: number; // friction for pan (default: 12)
   inertiaZoomFriction?: number; // friction for zoom (default: 20)
   inertiaRotateFriction?: number; // friction for rotate/pitch (default: 12)
+  // Debug overlay for mobile testing (shows gesture detection state on screen)
+  showDebugOverlay?: boolean;
 }
 
 type Pt = { id: number; x: number; y: number };
@@ -70,6 +72,7 @@ export class TouchMultiHandler {
   private lastTs = 0;
   private firstTouchDownTs = 0;
   private allowPitchThisGesture = true;
+  private debugOverlay: HTMLDivElement | null = null;
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: TouchMultiOptions) {
     this.el = el;
@@ -103,6 +106,7 @@ export class TouchMultiHandler {
       inertiaPanFriction: 12,
       inertiaZoomFriction: 20,
       inertiaRotateFriction: 12,
+      showDebugOverlay: false,
       ...opts,
     };
   }
@@ -111,6 +115,9 @@ export class TouchMultiHandler {
     if (typeof window === 'undefined' || this.unbindDown) return;
     // Pointer Events first; passive true for down, move will be passive false if preventing default
     this.unbindDown = on(this.el, 'pointerdown', this.onDown as any, { passive: true });
+    if (this.opts.showDebugOverlay) {
+      this.createDebugOverlay();
+    }
   }
 
   destroy() {
@@ -119,6 +126,10 @@ export class TouchMultiHandler {
     if (this.unbindMoveUp) { this.unbindMoveUp(); this.unbindMoveUp = null; }
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
     this.pts.clear();
+    if (this.debugOverlay) {
+      this.debugOverlay.remove();
+      this.debugOverlay = null;
+    }
   }
 
   private onDown = (e: PointerEvent) => {
@@ -357,6 +368,25 @@ export class TouchMultiHandler {
       }
     }
 
+    // Update debug overlay if enabled
+    if (this.opts.showDebugOverlay) {
+      this.updateDebugOverlay({
+        mode: this.mode,
+        fingers: this.pts.size,
+        pitchStrong,
+        zoomStrong,
+        rotateStrong,
+        vA: { x: vA.x, y: vA.y, mag: Math.hypot(vA.x, vA.y), vertical: verticalA },
+        vB: { x: vB.x, y: vB.y, mag: Math.hypot(vB.x, vB.y), vertical: verticalB },
+        sameDir,
+        dpCand,
+        dzCand,
+        dDeg,
+        pitchApplied: axes.pitch || false,
+        currentPitch: this.transform.pitch || 0,
+      });
+    }
+
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastCenterEl = center;
     this.lastDist = dist;
@@ -471,5 +501,73 @@ export class TouchMultiHandler {
       this.inertiaHandle = requestAnimationFrame(step);
     };
     this.inertiaHandle = requestAnimationFrame(step);
+  }
+
+  private createDebugOverlay() {
+    if (typeof document === 'undefined') return;
+    this.debugOverlay = document.createElement('div');
+    this.debugOverlay.style.cssText = `
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.85);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      padding: 8px;
+      border-radius: 4px;
+      z-index: 99999;
+      max-width: 90vw;
+      pointer-events: none;
+      white-space: pre;
+    `;
+    document.body.appendChild(this.debugOverlay);
+  }
+
+  private updateDebugOverlay(data: {
+    mode: string;
+    fingers: number;
+    pitchStrong: boolean;
+    zoomStrong: boolean;
+    rotateStrong: boolean;
+    vA: { x: number; y: number; mag: number; vertical: boolean };
+    vB: { x: number; y: number; mag: number; vertical: boolean };
+    sameDir: boolean;
+    dpCand: number;
+    dzCand: number;
+    dDeg: number;
+    pitchApplied: boolean;
+    currentPitch: number;
+  }) {
+    if (!this.debugOverlay) return;
+    this.debugOverlay.textContent = `
+TOUCH DEBUG
+───────────
+Mode: ${data.mode}
+Fingers: ${data.fingers}
+
+DETECTION
+PitchStrong: ${data.pitchStrong ? 'YES ✓' : 'NO ✗'}
+ZoomStrong:  ${data.zoomStrong ? 'YES' : 'NO'}
+RotateStrong: ${data.rotateStrong ? 'YES' : 'NO'}
+
+FINGER A
+  dx: ${data.vA.x.toFixed(1)}  dy: ${data.vA.y.toFixed(1)}
+  mag: ${data.vA.mag.toFixed(1)}  vert: ${data.vA.vertical ? 'YES' : 'NO'}
+
+FINGER B
+  dx: ${data.vB.x.toFixed(1)}  dy: ${data.vB.y.toFixed(1)}
+  mag: ${data.vB.mag.toFixed(1)}  vert: ${data.vB.vertical ? 'YES' : 'NO'}
+
+SAME DIR: ${data.sameDir ? 'YES ✓' : 'NO ✗'}
+
+DELTAS
+Pitch: ${data.dpCand.toFixed(2)}° ${data.pitchApplied ? '✓ APPLIED' : '✗ NOT APPLIED'}
+Zoom:  ${data.dzCand.toFixed(3)}
+Rotate: ${data.dDeg.toFixed(1)}°
+
+CURRENT PITCH: ${data.currentPitch.toFixed(1)}°
+`.trim();
   }
 }
