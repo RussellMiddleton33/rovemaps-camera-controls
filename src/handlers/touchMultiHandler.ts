@@ -103,7 +103,7 @@ export class TouchMultiHandler {
       rotateSign: 1,
       allowedSingleTouchTimeMs: 999, // effectively disabled - allow pitch anytime (better UX than MapLibre's strict 100ms)
       pitchFirstMoveWindowMs: 120,
-      inertiaPanFriction: 12,
+      inertiaPanFriction: 6,
       inertiaZoomFriction: 20,
       inertiaRotateFriction: 12,
       showDebugOverlay: false,
@@ -519,7 +519,7 @@ export class TouchMultiHandler {
     if (Math.abs(this.vp) < 8) this.vp = 0;
     let last = performance.now();
     // Separate frictions per axis (configurable)
-    const frPan = this.opts.inertiaPanFriction ?? 12; // pan dies quickly
+    const frPan = this.opts.inertiaPanFriction ?? 6; // match mouse for smooth glide
     const frZoom = this.opts.inertiaZoomFriction ?? 20; // zoom off
     const frAng = this.opts.inertiaRotateFriction ?? 12; // rotate/pitch quick
     const step = () => {
@@ -530,9 +530,10 @@ export class TouchMultiHandler {
       const decayZoom = Math.exp(-frZoom * dt);
       const decayAng = Math.exp(-frAng * dt);
       this.vpx *= decayPan; this.vpy *= decayPan;
+      this.gvx *= decayPan; this.gvz *= decayPan;
       this.vz *= decayZoom; this.vb *= decayAng; this.vp *= decayAng;
-      const zAbs = Math.abs(this.vz), bAbs = Math.abs(this.vb), pAbs = Math.abs(this.vp), panAbs = Math.hypot(this.vpx, this.vpy);
-      if (zAbs < 1e-3 && bAbs < 1e-2 && pAbs < 1e-2 && panAbs < 2) {
+      const zAbs = Math.abs(this.vz), bAbs = Math.abs(this.vb), pAbs = Math.abs(this.vp), gvAbs = Math.hypot(this.gvx, this.gvz);
+      if (zAbs < 1e-3 && bAbs < 1e-2 && pAbs < 1e-2 && gvAbs < 1e-3) {
         this.inertiaHandle = null;
         return;
       }
