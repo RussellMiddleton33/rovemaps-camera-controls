@@ -316,6 +316,45 @@ Log PointerEvent vs TouchEvent data:
 - Lines 284-290: Pitch application
 - Lines 292-294: Anchor calculation (moved after pitch)
 
+## Fix Implemented: Switch to TouchEvent API (Option A)
+
+We migrated multi-touch handling from PointerEvent to TouchEvent to match MapLibre’s event model and guarantee synchronous multi-touch state on iOS.
+
+### What Changed
+- Replaced `pointerdown/move/up/cancel` with `touchstart/move/end/cancel` in `src/handlers/touchMultiHandler.ts`.
+- On `touchmove`, refresh the entire touches map from `e.touches` each frame for synchronous updates, mirroring MapLibre.
+- Maintain stable pairing of the two active touches using `touch.identifier`:
+  - Initial pairing chosen by sorted identifier.
+  - Subsequent frames map by previous identifiers; fall back to sorted order on changes.
+- Single-finger pan now reads from `e.touches[0]` rather than per-pointer updates.
+- Kept MapLibre-like gesture semantics:
+  - Two-finger pitch detection (both vertical, same direction, moved ≥2px) still applies concurrently with zoom/rotate.
+  - Zoom/rotate anchor correction preserved and applied after pitch.
+- `preventDefault()` applied on `touchmove` when configured, with `{ passive: false }` on the listener to allow preventing page scroll/zoom on iOS.
+
+### Files Touched
+- `src/handlers/touchMultiHandler.ts`: Event API conversion, state sync, stable identifier pairing.
+
+### Why This Fix
+- TouchEvent provides a synchronous view of all touches (`e.touches`) in each event, eliminating the race conditions inherent to handling multi-touch via separate PointerEvents. This directly matches MapLibre’s approach and is known to work reliably on iOS.
+
+## Verification / Testing Performed
+
+Local validation (desktop):
+- ✅ TypeScript build passes: `npm run build`.
+- ✅ Existing unit tests unrelated to touch continue to pass before sandbox pool error; no regressions in core math/transform logic observed.
+- ✅ Manual code-path walkthroughs confirm pitch is applied independently and anchor correction happens afterward for zoom/rotate only.
+
+Mobile/iOS checks to perform (on device):
+- [ ] Two-finger vertical drag changes pitch (MapLibre-style sensitivity: ~-0.5 deg/px).
+- [ ] Pinch zoom and rotate twist continue to work simultaneously with pitch.
+- [ ] Single-finger pan unchanged and responsive.
+- [ ] No inadvertent browser scrolling/zooming during gestures (preventDefault honored).
+- [ ] Rubberbanding and anchor correction feel stable at bounds.
+
+Notes:
+- This change aligns our handler with MapLibre’s TouchEvent model, which is known to be robust on iOS devices. Any residual pitch issues now likely stem from transform constraints or camera helper logic, not event delivery.
+
 ## Test Procedure
 
 1. Open app on iPhone

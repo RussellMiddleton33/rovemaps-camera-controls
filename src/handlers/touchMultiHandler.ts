@@ -113,8 +113,8 @@ export class TouchMultiHandler {
 
   enable() {
     if (typeof window === 'undefined' || this.unbindDown) return;
-    // Pointer Events first; passive true for down, move will be passive false if preventing default
-    this.unbindDown = on(this.el, 'pointerdown', this.onDown as any, { passive: true });
+    // Use TouchEvent API to match MapLibre and ensure synchronous multi-touch state
+    this.unbindDown = on(this.el, 'touchstart', this.onDown as any, { passive: true });
     if (this.opts.showDebugOverlay) {
       this.createDebugOverlay();
     }
@@ -132,40 +132,43 @@ export class TouchMultiHandler {
     }
   }
 
-  private onDown = (e: PointerEvent) => {
-    if (e.pointerType !== 'touch') return;
-    this.el.setPointerCapture?.(e.pointerId);
-    this.pts.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY });
-    if (this.pts.size === 1) {
+  private onDown = (e: TouchEvent) => {
+    // Sync all current touches into our map to ensure consistent multi-touch state
+    for (let i = 0; i < e.touches.length; i++) {
+      const t = e.touches.item(i)!;
+      this.pts.set(t.identifier, { id: t.identifier, x: t.clientX, y: t.clientY });
+    }
+    this.bindMoveUp();
+    if (e.touches.length === 1) {
       // Single-finger pan: initialize ground anchor at finger
-      this.bindMoveUp();
       this.firstTouchDownTs = performance.now();
+      const t = e.touches.item(0)!;
       const rect = this.el.getBoundingClientRect();
       const vv = (window as any).visualViewport as VisualViewport | undefined;
-      // Element-relative pointer with explicit visualViewport offset handling
-      const pointer = { x: (e.clientX + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: (e.clientY + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
+      const pointer = { x: (t.clientX + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: (t.clientY + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
       const gp = (this.transform as any).groundFromScreen?.(pointer) ?? null;
       this.lastSinglePt = pointer;
       this.lastSingleGround = gp;
       this.active = true;
       this.mode = 'pan';
       this.lastTs = performance.now();
-    } else if (this.pts.size === 2) {
-      this.startGesture(e);
+    } else if (e.touches.length === 2) {
+      this.startGesture();
     }
   };
 
   private bindMoveUp() {
     if (this.unbindMoveUp) return;
-    const offMove = on(window, 'pointermove', this.onMove as any, { passive: !this.opts.preventDefault });
-    const offUp = on(window, 'pointerup', this.onUp as any, { passive: true });
-    const offCancel = on(window, 'pointercancel', this.onUp as any, { passive: true });
+    const offMove = on(window, 'touchmove', this.onMove as any, { passive: !this.opts.preventDefault });
+    const offUp = on(window, 'touchend', this.onUp as any, { passive: true });
+    const offCancel = on(window, 'touchcancel', this.onUp as any, { passive: true });
     this.unbindMoveUp = () => { offMove(); offUp(); offCancel(); };
   }
 
-  private startGesture(_e: PointerEvent) {
+  private startGesture(_e?: TouchEvent) {
     const pts = [...this.pts.values()];
-    const [p0, p1] = pts;
+    // Choose two touches in a stable order (by identifier)
+    const [p0, p1] = pts.sort((a, b) => a.id - b.id);
     if (!p0 || !p1) return;
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
@@ -193,21 +196,24 @@ export class TouchMultiHandler {
     if (this.inertiaHandle != null) { cancelAnimationFrame(this.inertiaHandle); this.inertiaHandle = null; }
   }
 
-  private onMove = (e: PointerEvent) => {
-    if (e.pointerType !== 'touch') return;
-    const pt = this.pts.get(e.pointerId);
-    if (!pt) return;
-    pt.x = e.clientX; pt.y = e.clientY;
+  private onMove = (e: TouchEvent) => {
+    // Update all tracked touches from the synchronous TouchEvent.touches list
+    this.pts.clear();
+    for (let i = 0; i < e.touches.length; i++) {
+      const t = e.touches.item(i)!;
+      this.pts.set(t.identifier, { id: t.identifier, x: t.clientX, y: t.clientY });
+    }
     if (this.opts.preventDefault) e.preventDefault();
-    if (!this.active && this.pts.size === 2) this.startGesture(e);
+    if (!this.active && this.pts.size === 2) this.startGesture();
     // Single-finger pan path
-    if (this.pts.size === 1) {
+    if (this.pts.size === 1 && e.touches.length === 1) {
       const now = performance.now();
       const dt = Math.max(1 / 120, (now - this.lastTs) / 1000);
       this.lastTs = now;
       const rect = this.el.getBoundingClientRect();
       const vv = (window as any).visualViewport as VisualViewport | undefined;
-      const pointer = { x: (e.clientX + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: (e.clientY + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
+      const t = e.touches.item(0)!;
+      const pointer = { x: (t.clientX + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: (t.clientY + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
       const gpNow = (this.transform as any).groundFromScreen?.(pointer) ?? null;
       if (this.lastSingleGround && gpNow) {
         let dgx = (this.lastSingleGround.gx - gpNow.gx) * (this.opts.panXSign ?? 1);
@@ -244,7 +250,17 @@ export class TouchMultiHandler {
     if (!this.active || this.pts.size < 2) return;
 
     const rect = this.el.getBoundingClientRect();
-    const [p0, p1] = [...this.pts.values()];
+    // Keep pairing stable by previous identifiers where possible
+    let p0: Pt | undefined;
+    let p1: Pt | undefined;
+    if (this.lastP0 && this.lastP1) {
+      p0 = this.pts.get(this.lastP0.id) ?? undefined;
+      p1 = this.pts.get(this.lastP1.id) ?? undefined;
+    }
+    if (!p0 || !p1) {
+      const arr = [...this.pts.values()].sort((a, b) => a.id - b.id);
+      p0 = arr[0]; p1 = arr[1];
+    }
     if (!p0 || !p1) return;
     const vv = (window as any).visualViewport as VisualViewport | undefined;
     const center = { x: ((p0.x + p1.x) / 2 + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)), y: ((p0.y + p1.y) / 2 + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0)) };
@@ -396,9 +412,12 @@ export class TouchMultiHandler {
     this.opts.onChange({ axes, originalEvent: e });
   };
 
-  private onUp = (e: PointerEvent) => {
-    if (e.pointerType !== 'touch') return;
-    this.pts.delete(e.pointerId);
+  private onUp = (e: TouchEvent) => {
+    // Remove ended touches
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches.item(i)!;
+      this.pts.delete(t.identifier);
+    }
     if (this.pts.size < 2) {
       // end gesture and start inertia
       if (this.active) {

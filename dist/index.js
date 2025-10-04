@@ -995,42 +995,45 @@ var TouchMultiHandler = class {
     this.allowPitchThisGesture = true;
     this.debugOverlay = null;
     this.onDown = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-      if (e.pointerType !== "touch") return;
-      (_b = (_a = this.el).setPointerCapture) == null ? void 0 : _b.call(_a, e.pointerId);
-      this.pts.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY });
-      if (this.pts.size === 1) {
-        this.bindMoveUp();
+      var _a, _b, _c, _d, _e, _f, _g;
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches.item(i);
+        this.pts.set(t.identifier, { id: t.identifier, x: t.clientX, y: t.clientY });
+      }
+      this.bindMoveUp();
+      if (e.touches.length === 1) {
         this.firstTouchDownTs = performance.now();
+        const t = e.touches.item(0);
         const rect = this.el.getBoundingClientRect();
         const vv = window.visualViewport;
-        const pointer = { x: e.clientX + ((_c = vv == null ? void 0 : vv.offsetLeft) != null ? _c : 0) - (rect.left + ((_d = vv == null ? void 0 : vv.offsetLeft) != null ? _d : 0)), y: e.clientY + ((_e = vv == null ? void 0 : vv.offsetTop) != null ? _e : 0) - (rect.top + ((_f = vv == null ? void 0 : vv.offsetTop) != null ? _f : 0)) };
-        const gp = (_i = (_h = (_g = this.transform).groundFromScreen) == null ? void 0 : _h.call(_g, pointer)) != null ? _i : null;
+        const pointer = { x: t.clientX + ((_a = vv == null ? void 0 : vv.offsetLeft) != null ? _a : 0) - (rect.left + ((_b = vv == null ? void 0 : vv.offsetLeft) != null ? _b : 0)), y: t.clientY + ((_c = vv == null ? void 0 : vv.offsetTop) != null ? _c : 0) - (rect.top + ((_d = vv == null ? void 0 : vv.offsetTop) != null ? _d : 0)) };
+        const gp = (_g = (_f = (_e = this.transform).groundFromScreen) == null ? void 0 : _f.call(_e, pointer)) != null ? _g : null;
         this.lastSinglePt = pointer;
         this.lastSingleGround = gp;
         this.active = true;
         this.mode = "pan";
         this.lastTs = performance.now();
-      } else if (this.pts.size === 2) {
-        this.startGesture(e);
+      } else if (e.touches.length === 2) {
+        this.startGesture();
       }
     };
     this.onMove = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q;
-      if (e.pointerType !== "touch") return;
-      const pt = this.pts.get(e.pointerId);
-      if (!pt) return;
-      pt.x = e.clientX;
-      pt.y = e.clientY;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S;
+      this.pts.clear();
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches.item(i);
+        this.pts.set(t.identifier, { id: t.identifier, x: t.clientX, y: t.clientY });
+      }
       if (this.opts.preventDefault) e.preventDefault();
-      if (!this.active && this.pts.size === 2) this.startGesture(e);
-      if (this.pts.size === 1) {
+      if (!this.active && this.pts.size === 2) this.startGesture();
+      if (this.pts.size === 1 && e.touches.length === 1) {
         const now2 = performance.now();
         const dt2 = Math.max(1 / 120, (now2 - this.lastTs) / 1e3);
         this.lastTs = now2;
         const rect2 = this.el.getBoundingClientRect();
         const vv2 = window.visualViewport;
-        const pointer = { x: e.clientX + ((_a = vv2 == null ? void 0 : vv2.offsetLeft) != null ? _a : 0) - (rect2.left + ((_b = vv2 == null ? void 0 : vv2.offsetLeft) != null ? _b : 0)), y: e.clientY + ((_c = vv2 == null ? void 0 : vv2.offsetTop) != null ? _c : 0) - (rect2.top + ((_d = vv2 == null ? void 0 : vv2.offsetTop) != null ? _d : 0)) };
+        const t = e.touches.item(0);
+        const pointer = { x: t.clientX + ((_a = vv2 == null ? void 0 : vv2.offsetLeft) != null ? _a : 0) - (rect2.left + ((_b = vv2 == null ? void 0 : vv2.offsetLeft) != null ? _b : 0)), y: t.clientY + ((_c = vv2 == null ? void 0 : vv2.offsetTop) != null ? _c : 0) - (rect2.top + ((_d = vv2 == null ? void 0 : vv2.offsetTop) != null ? _d : 0)) };
         const gpNow = (_g = (_f = (_e = this.transform).groundFromScreen) == null ? void 0 : _f.call(_e, pointer)) != null ? _g : null;
         if (this.lastSingleGround && gpNow) {
           let dgx = (this.lastSingleGround.gx - gpNow.gx) * ((_h = this.opts.panXSign) != null ? _h : 1);
@@ -1067,18 +1070,28 @@ var TouchMultiHandler = class {
       }
       if (!this.active || this.pts.size < 2) return;
       const rect = this.el.getBoundingClientRect();
-      const [p0, p1] = [...this.pts.values()];
+      let p0;
+      let p1;
+      if (this.lastP0 && this.lastP1) {
+        p0 = (_u = this.pts.get(this.lastP0.id)) != null ? _u : void 0;
+        p1 = (_v = this.pts.get(this.lastP1.id)) != null ? _v : void 0;
+      }
+      if (!p0 || !p1) {
+        const arr = [...this.pts.values()].sort((a, b) => a.id - b.id);
+        p0 = arr[0];
+        p1 = arr[1];
+      }
       if (!p0 || !p1) return;
       const vv = window.visualViewport;
-      const center = { x: (p0.x + p1.x) / 2 + ((_u = vv == null ? void 0 : vv.offsetLeft) != null ? _u : 0) - (rect.left + ((_v = vv == null ? void 0 : vv.offsetLeft) != null ? _v : 0)), y: (p0.y + p1.y) / 2 + ((_w = vv == null ? void 0 : vv.offsetTop) != null ? _w : 0) - (rect.top + ((_x = vv == null ? void 0 : vv.offsetTop) != null ? _x : 0)) };
+      const center = { x: (p0.x + p1.x) / 2 + ((_w = vv == null ? void 0 : vv.offsetLeft) != null ? _w : 0) - (rect.left + ((_x = vv == null ? void 0 : vv.offsetLeft) != null ? _x : 0)), y: (p0.y + p1.y) / 2 + ((_y = vv == null ? void 0 : vv.offsetTop) != null ? _y : 0) - (rect.top + ((_z = vv == null ? void 0 : vv.offsetTop) != null ? _z : 0)) };
       this.lastPinchPointer = center;
       const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
       const angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
       const now = performance.now();
       const dt = Math.max(1 / 120, (now - this.lastTs) / 1e3);
       this.lastTs = now;
-      const dxPan = (center.x - this.lastCenterEl.x) * ((_y = this.opts.panXSign) != null ? _y : 1);
-      const dyPan = (center.y - this.lastCenterEl.y) * ((_z = this.opts.panYSign) != null ? _z : 1);
+      const dxPan = (center.x - this.lastCenterEl.x) * ((_A = this.opts.panXSign) != null ? _A : 1);
+      const dyPan = (center.y - this.lastCenterEl.y) * ((_B = this.opts.panYSign) != null ? _B : 1);
       const s = this.lastDist > 0 && dist > 0 ? dist / this.lastDist : 1;
       const dzCand = scaleZoom(s);
       let dAng = angle - this.lastAngle;
@@ -1093,11 +1106,11 @@ var TouchMultiHandler = class {
       const verticalB = Math.abs(vB.y) > Math.abs(vB.x);
       const sameDir = vA.y > 0 === vB.y > 0;
       const avgDy = (vA.y + vB.y) / 2;
-      const dpCand = -avgDy * ((_A = this.opts.pitchPerPx) != null ? _A : 0.5);
+      const dpCand = -avgDy * ((_C = this.opts.pitchPerPx) != null ? _C : 0.5);
       let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir;
       if (this.opts.allowedSingleTouchTimeMs < 999 && !this.allowPitchThisGesture) pitchStrong = false;
-      const zoomStrong = this.opts.enableZoom && Math.abs(dzCand) >= ((_B = this.opts.zoomThreshold) != null ? _B : 0.04);
-      const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= ((_C = this.opts.rotateThresholdDeg) != null ? _C : 0.5);
+      const zoomStrong = this.opts.enableZoom && Math.abs(dzCand) >= ((_D = this.opts.zoomThreshold) != null ? _D : 0.04);
+      const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= ((_E = this.opts.rotateThresholdDeg) != null ? _E : 0.5);
       if (this.mode === "idle") {
         if (zoomStrong || rotateStrong || pitchStrong) {
           this.mode = "zoomRotate";
@@ -1112,12 +1125,12 @@ var TouchMultiHandler = class {
       const ptr = this.opts.around === "pinch" ? center : null;
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (this.mode === "pan" && this.opts.enablePan) {
-        const gp = (_F = (_E = (_D = this.transform).groundFromScreen) == null ? void 0 : _E.call(_D, center)) != null ? _F : null;
+        const gp = (_H = (_G = (_F = this.transform).groundFromScreen) == null ? void 0 : _G.call(_F, center)) != null ? _H : null;
         if (gp) {
           if (this.lastGroundCenter) {
-            let dgx = (this.lastGroundCenter.gx - gp.gx) * ((_G = this.opts.panXSign) != null ? _G : 1);
-            let dgz = (this.lastGroundCenter.gz - gp.gz) * ((_H = this.opts.panYSign) != null ? _H : 1);
-            const bounds = (_J = (_I = this.transform).getPanBounds) == null ? void 0 : _J.call(_I);
+            let dgx = (this.lastGroundCenter.gx - gp.gx) * ((_I = this.opts.panXSign) != null ? _I : 1);
+            let dgz = (this.lastGroundCenter.gz - gp.gz) * ((_J = this.opts.panYSign) != null ? _J : 1);
+            const bounds = (_L = (_K = this.transform).getPanBounds) == null ? void 0 : _L.call(_K);
             if (bounds) {
               const nx = this.transform.center.x + dgx;
               const ny = this.transform.center.y + dgz;
@@ -1128,7 +1141,7 @@ var TouchMultiHandler = class {
               dgx *= damp(overX);
               dgz *= damp(overY);
             }
-            (_L = (_K = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _L.call(_K, dgx, dgz);
+            (_N = (_M = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _N.call(_M, dgx, dgz);
             if (dt > 0) {
               const alphaG = 0.3;
               const igx = dgx / dt;
@@ -1137,7 +1150,7 @@ var TouchMultiHandler = class {
               this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
             }
           }
-          const after = (_O = (_N = (_M = this.transform).groundFromScreen) == null ? void 0 : _N.call(_M, center)) != null ? _O : null;
+          const after = (_Q = (_P = (_O = this.transform).groundFromScreen) == null ? void 0 : _P.call(_O, center)) != null ? _Q : null;
           this.lastGroundCenter = after != null ? after : gp;
         } else {
           this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
@@ -1151,7 +1164,7 @@ var TouchMultiHandler = class {
         this.vpy = this.vpy * (1 - alpha) + vdy * alpha;
         axes.pan = true;
       } else if (this.mode === "zoomRotate") {
-        const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? -dDeg * ((_P = this.opts.rotateSign) != null ? _P : 1) : 0;
+        const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? -dDeg * ((_R = this.opts.rotateSign) != null ? _R : 1) : 0;
         const dZoom = this.opts.enableZoom ? dzCand : 0;
         if (dZoom) {
           this.vz = dZoom / dt;
@@ -1172,7 +1185,7 @@ var TouchMultiHandler = class {
       if (ptr && groundBefore) {
         const groundAfter = this.transform.groundFromScreen(ptr);
         if (groundAfter) {
-          const tight = Math.max(0, Math.min(1, (_Q = this.opts.anchorTightness) != null ? _Q : 1));
+          const tight = Math.max(0, Math.min(1, (_S = this.opts.anchorTightness) != null ? _S : 1));
           let dgx = (groundBefore.gx - groundAfter.gx) * tight;
           let dgz = (groundBefore.gz - groundAfter.gz) * tight;
           const maxShift = 500;
@@ -1210,8 +1223,10 @@ var TouchMultiHandler = class {
       this.opts.onChange({ axes, originalEvent: e });
     };
     this.onUp = (e) => {
-      if (e.pointerType !== "touch") return;
-      this.pts.delete(e.pointerId);
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches.item(i);
+        this.pts.delete(t.identifier);
+      }
       if (this.pts.size < 2) {
         if (this.active) {
           this.active = false;
@@ -1263,7 +1278,7 @@ var TouchMultiHandler = class {
   }
   enable() {
     if (typeof window === "undefined" || this.unbindDown) return;
-    this.unbindDown = on(this.el, "pointerdown", this.onDown, { passive: true });
+    this.unbindDown = on(this.el, "touchstart", this.onDown, { passive: true });
     if (this.opts.showDebugOverlay) {
       this.createDebugOverlay();
     }
@@ -1285,9 +1300,9 @@ var TouchMultiHandler = class {
   }
   bindMoveUp() {
     if (this.unbindMoveUp) return;
-    const offMove = on(window, "pointermove", this.onMove, { passive: !this.opts.preventDefault });
-    const offUp = on(window, "pointerup", this.onUp, { passive: true });
-    const offCancel = on(window, "pointercancel", this.onUp, { passive: true });
+    const offMove = on(window, "touchmove", this.onMove, { passive: !this.opts.preventDefault });
+    const offUp = on(window, "touchend", this.onUp, { passive: true });
+    const offCancel = on(window, "touchcancel", this.onUp, { passive: true });
     this.unbindMoveUp = () => {
       offMove();
       offUp();
@@ -1297,7 +1312,7 @@ var TouchMultiHandler = class {
   startGesture(_e) {
     var _a, _b, _c, _d, _e2, _f, _g, _h, _i, _j, _k, _l;
     const pts = [...this.pts.values()];
-    const [p0, p1] = pts;
+    const [p0, p1] = pts.sort((a, b) => a.id - b.id);
     if (!p0 || !p1) return;
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
