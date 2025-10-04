@@ -249,8 +249,12 @@ export class TouchMultiHandler {
         this.gvz = this.gvz * (1 - alpha) + igz * alpha;
         const sdx = (pointer.x - (this.lastSinglePt?.x ?? pointer.x));
         const sdy = (pointer.y - (this.lastSinglePt?.y ?? pointer.y));
-        this.vpx = this.vpx * (1 - alpha) + (sdx / dt) * alpha;
-        this.vpy = this.vpy * (1 - alpha) + (sdy / dt) * alpha;
+        const ivx = sdx / dt;
+        const ivy = sdy / dt;
+        this.instVpx = ivx;
+        this.instVpy = ivy;
+        this.vpx = this.vpx * (1 - alpha) + ivx * alpha;
+        this.vpy = this.vpy * (1 - alpha) + ivy * alpha;
       } else {
         this.lastSingleGround = gpNow;
       }
@@ -493,8 +497,10 @@ export class TouchMultiHandler {
 
   private startInertia() {
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
+    // Capture mode at release time (before it gets reset to 'idle' in onUp)
+    const modeAtRelease = this.mode;
     // If we weren't in pan mode, don't carry pan inertia into zoom/rotate release
-    if (this.mode !== 'pan') { this.vpx = 0; this.vpy = 0; this.gvx = 0; this.gvz = 0; }
+    if (modeAtRelease !== 'pan') { this.vpx = 0; this.vpy = 0; this.gvx = 0; this.gvz = 0; }
     // Directional clamp for pan inertia to avoid backslide at release
     const d = this.vpx * this.instVpx + this.vpy * this.instVpy;
     if (d <= 0) { this.vpx = 0; this.vpy = 0; }
@@ -534,13 +540,13 @@ export class TouchMultiHandler {
       const db = this.vb * dt;
       const dp = this.vp * dt;
       const axes: HandlerDelta['axes'] = {};
-      if (this.mode === 'zoomRotate') {
+      if (modeAtRelease === 'zoomRotate') {
         // We disable zoom inertia (vz zeroed) but keep logic here guarded
         if (this.opts.enableZoom && dz) { this.applyZoomAround(dz, this.lastPinchPointer ?? null); axes.zoom = true; }
         if (this.opts.enableRotate && db) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, db, 0, 'center'); axes.rotate = true; }
         // Pitch inertia applies here too (since pitch runs concurrently with zoom/rotate)
         if (this.opts.enablePitch && dp) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, 'center'); axes.pitch = true; }
-      } else if (this.mode === 'pan') {
+      } else if (modeAtRelease === 'pan') {
         if (this.opts.enablePan && (this.gvx || this.gvz)) {
           // Integrate stored ground-space velocity directly
           let dgx = this.gvx * dt;
