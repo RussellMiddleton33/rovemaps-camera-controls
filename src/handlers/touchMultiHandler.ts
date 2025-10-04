@@ -48,10 +48,8 @@ export class TouchMultiHandler {
   private lastCenterEl = { x: 0, y: 0 }; // element-relative centroid to avoid visualViewport drift
   private lastDist = 0;
   private lastAngle = 0; // radians
-  private mode: 'idle' | 'pan' | 'zoomRotate' | 'pitch' = 'idle';
+  private mode: 'idle' | 'pan' | 'zoomRotate' = 'idle';
   private lastGroundCenter: { gx: number; gz: number } | null = null;
-  // For touch on mobile, recompute bounding rect each move to avoid visualViewport shifts
-  private rectCache: DOMRect | null = null; // unused for move; kept for potential future batching
   private lastPinchPointer: { x: number; y: number } | null = null; // screen coords of last pinch centroid
   private lastSinglePt: { x: number; y: number } | null = null;
   private lastSingleGround: { gx: number; gz: number } | null = null;
@@ -68,13 +66,9 @@ export class TouchMultiHandler {
   private instVpy = 0;
   private gvx = 0; // ground-space pan velocity (world/s)
   private gvz = 0;
-  private igvx = 0; // instantaneous ground-space velocity
-  private igvz = 0;
   private inertiaHandle: number | null = null;
   private lastTs = 0;
   private firstTouchDownTs = 0;
-  private gestureStartTs = 0;
-  private firstPitchMoveSeen = false;
   private allowPitchThisGesture = true;
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: TouchMultiOptions) {
@@ -86,7 +80,7 @@ export class TouchMultiHandler {
       enableZoom: true,
       enableRotate: true,
       enablePitch: true,
-      pitchPerPx: 0.25,
+      pitchPerPx: 0.5, // match MapLibre sensitivity
       // MapLibre-like, reduce accidental mode switching on touch
       rotateThresholdDeg: 0.5,
       // Lower pitch threshold for MapLibre-like responsiveness
@@ -104,7 +98,7 @@ export class TouchMultiHandler {
       inertiaPanXSign: 1,
       inertiaPanYSign: 1,
       rotateSign: 1,
-      allowedSingleTouchTimeMs: 200, // match MapLibre's timing window for deliberate two-finger gestures
+      allowedSingleTouchTimeMs: 999, // effectively disabled - allow pitch anytime (better UX than MapLibre's strict 100ms)
       pitchFirstMoveWindowMs: 120,
       inertiaPanFriction: 12,
       inertiaZoomFriction: 20,
@@ -170,11 +164,8 @@ export class TouchMultiHandler {
     this.active = true;
     this.lastTs = performance.now();
     this.mode = 'idle';
-    // MapLibre-style pitch gating flags
-    const now = this.lastTs;
-    this.gestureStartTs = now;
-    this.firstPitchMoveSeen = false;
-    this.allowPitchThisGesture = (now - this.firstTouchDownTs) <= this.opts.allowedSingleTouchTimeMs;
+    // Optional pitch gating (effectively disabled by default with 999ms threshold)
+    this.allowPitchThisGesture = (performance.now() - this.firstTouchDownTs) <= this.opts.allowedSingleTouchTimeMs;
     // Seed ground center so first movement immediately pans (grab feel)
     // Use fresh rect per move to avoid iOS visual viewport shifts
     const rect = this.el.getBoundingClientRect();
@@ -183,10 +174,7 @@ export class TouchMultiHandler {
     this.lastCenterEl = centerEl;
     const gp = (this.transform as any).groundFromScreen?.(centerEl) ?? null;
     this.lastGroundCenter = gp;
-    this.rectCache = this.el.getBoundingClientRect();
     if (this.opts.recenterOnGestureStart && this.opts.around === 'pinch') {
-    // Fresh rect per frame
-    const rect = this.el.getBoundingClientRect();
       const gp = (this.transform as any).groundFromScreen?.(centerEl) ?? null;
       if (gp) (this.transform as any).setGroundCenter?.(gp);
     }
@@ -227,8 +215,8 @@ export class TouchMultiHandler {
         this.lastSingleGround = after ?? gpNow;
         // velocity
         const alpha = 0.3;
-        const igx = dgx / dt; const igz = dgz / dt;
-        this.igvx = igx; this.igvz = igz;
+        const igx = dgx / dt;
+        const igz = dgz / dt;
         this.gvx = this.gvx * (1 - alpha) + igx * alpha;
         this.gvz = this.gvz * (1 - alpha) + igz * alpha;
         const sdx = (pointer.x - (this.lastSinglePt?.x ?? pointer.x));
@@ -273,36 +261,31 @@ export class TouchMultiHandler {
     const verticalB = Math.abs(vB.y) > Math.abs(vB.x);
     const sameDir = (vA.y > 0) === (vB.y > 0);
     const avgDy = (vA.y + vB.y) / 2;
-    const dpCand = -avgDy * (this.opts.pitchPerPx ?? 0.25);
+    const dpCand = -avgDy * (this.opts.pitchPerPx ?? 0.5);
 
     // MapLibre-style pitch detection: both fingers vertical, same direction, both moved
+    // Note: We allow pitch to run concurrently with zoom/rotate (like MapLibre's separate handlers)
     let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir;
-    // Re-enable timing-based gating to prevent accidental pitch during single-finger pan→zoom transitions
-    if (!this.allowPitchThisGesture) pitchStrong = false;
+    // Optional timing gate (disabled by default for better UX)
+    if (this.opts.allowedSingleTouchTimeMs < 999 && !this.allowPitchThisGesture) pitchStrong = false;
     const zoomStrong = this.opts.enableZoom && (Math.abs(dzCand) >= (this.opts.zoomThreshold ?? 0.04));
     const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= (this.opts.rotateThresholdDeg ?? 0.5);
 
+    // Determine primary mode for pan vs zoom/rotate (pitch runs independently)
     if (this.mode === 'idle') {
-      // Prioritize pitch when both fingers clearly move vertically together (MapLibre behavior)
-      // This ensures pitch takes precedence over accidental slight pinch/rotation
-      if (pitchStrong) {
-        this.mode = 'pitch';
-      } else if (zoomStrong || rotateStrong) {
+      if (zoomStrong || rotateStrong) {
         this.mode = 'zoomRotate';
       }
-    } else if (this.mode === 'zoomRotate') {
-      // Allow switching to pitch mid-gesture only if pitch is strongly indicated
-      if (pitchStrong) this.mode = 'pitch';
-    } else if (this.mode === 'pitch') {
-      // Once in pitch mode, stay in pitch unless gesture clearly changes to zoom/rotate
-      // This prevents jitter when fingers aren't perfectly synchronized
-      if (!pitchStrong && (zoomStrong || rotateStrong)) this.mode = 'zoomRotate';
+      // Note: pitch applies regardless of mode when conditions are met
     }
 
-    // Apply based on locked mode, preserving around-point using centroid when enabled
+    // Apply transformations - note pitch can apply concurrently with zoom/rotate (MapLibre behavior)
     const axes: HandlerDelta['axes'] = {};
+    const ptr = this.opts.around === 'pinch' ? center : null;
+    const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
+
     if (this.mode === 'pan' && this.opts.enablePan) {
-      // Pointer-anchored pan based on centroid
+      // Two-finger pan mode (rare, only when no zoom/rotate detected)
       const gp = (this.transform as any).groundFromScreen?.(center) ?? null;
       if (gp) {
         if (this.lastGroundCenter) {
@@ -317,64 +300,59 @@ export class TouchMultiHandler {
             dgx *= damp(overX); dgz *= damp(overY);
           }
           (this.transform as any).adjustCenterByGroundDelta?.(dgx, dgz);
-          // Update ground-space velocity based on applied delta
           if (dt > 0) {
             const alphaG = 0.3;
-            const igx = dgx / dt; const igz = dgz / dt;
-            this.igvx = igx; this.igvz = igz;
+            const igx = dgx / dt;
+            const igz = dgz / dt;
             this.gvx = this.gvx * (1 - alphaG) + igx * alphaG;
             this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
           }
         }
-        // Recompute ground under centroid after adjustment to keep anchor locked
         const after = (this.transform as any).groundFromScreen?.(center) ?? null;
         this.lastGroundCenter = after ?? gp;
       } else {
         this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
       }
-      // Velocity aligned with applied (sign-adjusted) deltas after damping
-      // dxPan/dyPan already include panXSign/panYSign; do not apply signs again
       const vdx = dxPan / dt;
       const vdy = dyPan / dt;
       this.instVpx = vdx; this.instVpy = vdy;
-      const alpha = 0.3; // low-pass filter to stabilize inertia
+      const alpha = 0.3;
       this.vpx = this.vpx * (1 - alpha) + vdx * alpha;
       this.vpy = this.vpy * (1 - alpha) + vdy * alpha;
       axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
-      const ptr = this.opts.around === 'pinch' ? center : null;
-      // Preserve the ground point under the centroid across combined rotate/zoom in a single apply
-      const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
-      // Negate rotation for touch to match natural gesture (compensates for negated bearing in camera transform)
+      // Apply zoom/rotate
       const dRot = (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) ? (-dDeg * (this.opts.rotateSign ?? 1)) : 0;
       const dZoom = this.opts.enableZoom ? dzCand : 0;
+      // Apply pitch FIRST if detected (like MapLibre's handler priority)
+      if (pitchStrong && dpCand) {
+        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, 'center');
+        this.vp = dpCand / dt;
+        axes.pitch = true;
+      }
+      // Then apply zoom/rotate
       if (dZoom) { this.vz = dZoom / dt; axes.zoom = true; }
       if (dRot) { this.vb = dRot / dt; axes.rotate = true; }
       if (dZoom || dRot) {
-        // Apply both in one helper call to avoid intermediate camera states
         this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dRot, dZoom, 'center');
       }
-      if (ptr && groundBefore) {
-        const groundAfter = this.transform.groundFromScreen(ptr);
-        if (groundAfter) {
-          const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
-          let dgx = (groundBefore.gx - groundAfter.gx) * tight;
-          let dgz = (groundBefore.gz - groundAfter.gz) * tight;
-          // Safety clamp: prevent extreme corrections from numerical jitter on mobile
-          const maxShift = 500; // world units per frame cap (tunable)
-          if (dgx > maxShift) dgx = maxShift; else if (dgx < -maxShift) dgx = -maxShift;
-          if (dgz > maxShift) dgz = maxShift; else if (dgz < -maxShift) dgz = -maxShift;
-          this.transform.adjustCenterByGroundDelta(dgx, dgz);
-          this.lastGroundCenter = groundAfter;
-        }
-      }
-      // Clear pan velocities to avoid lateral inertia after zoom-only gestures
+      // Clear pan velocities
       this.vpx = 0; this.vpy = 0; this.gvx = 0; this.gvz = 0;
-    } else if (this.mode === 'pitch' && this.opts.enablePitch) {
-      const ptr = this.opts.around === 'pinch' ? center : null;
-      const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
-      if (dpCand) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, 'center'); this.vp = dpCand / dt; axes.pitch = true; }
-      if (ptr && groundBefore) { const groundAfter = this.transform.groundFromScreen(ptr); if (groundAfter) { const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1)); const dgx = (groundBefore.gx - groundAfter.gx) * tight; const dgz = (groundBefore.gz - groundAfter.gz) * tight; this.transform.adjustCenterByGroundDelta(dgx, dgz); } }
+    }
+
+    // Anchor correction (for both zoom/rotate and pitch)
+    if (ptr && groundBefore) {
+      const groundAfter = this.transform.groundFromScreen(ptr);
+      if (groundAfter) {
+        const tight = Math.max(0, Math.min(1, this.opts.anchorTightness ?? 1));
+        let dgx = (groundBefore.gx - groundAfter.gx) * tight;
+        let dgz = (groundBefore.gz - groundAfter.gz) * tight;
+        const maxShift = 500;
+        if (dgx > maxShift) dgx = maxShift; else if (dgx < -maxShift) dgx = -maxShift;
+        if (dgz > maxShift) dgz = maxShift; else if (dgz < -maxShift) dgz = -maxShift;
+        this.transform.adjustCenterByGroundDelta(dgx, dgz);
+        this.lastGroundCenter = groundAfter;
+      }
     }
 
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
@@ -395,7 +373,6 @@ export class TouchMultiHandler {
         this.active = false;
         this.startInertia();
       }
-      this.rectCache = null;
     }
     if (this.pts.size === 0 && this.unbindMoveUp) {
       this.unbindMoveUp();
@@ -464,13 +441,12 @@ export class TouchMultiHandler {
       const dz = this.vz * dt;
       const db = this.vb * dt;
       const dp = this.vp * dt;
-      let dx = this.vpx * dt; let dy = this.vpy * dt;
       const axes: HandlerDelta['axes'] = {};
       if (this.mode === 'zoomRotate') {
         // We disable zoom inertia (vz zeroed) but keep logic here guarded
         if (this.opts.enableZoom && dz) { this.applyZoomAround(dz, this.lastPinchPointer ?? null); axes.zoom = true; }
         if (this.opts.enableRotate && db) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, db, 0, 'center'); axes.rotate = true; }
-      } else if (this.mode === 'pitch') {
+        // Pitch inertia applies here too (since pitch runs concurrently with zoom/rotate)
         if (this.opts.enablePitch && dp) { this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, 'center'); axes.pitch = true; }
       } else if (this.mode === 'pan') {
         if (this.opts.enablePan && (this.gvx || this.gvz)) {
