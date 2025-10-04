@@ -271,18 +271,24 @@ export class TouchMultiHandler {
     const zoomStrong = this.opts.enableZoom && (Math.abs(dzCand) >= (this.opts.zoomThreshold ?? 0.04));
     const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= (this.opts.rotateThresholdDeg ?? 0.5);
 
-    // Determine primary mode for pan vs zoom/rotate (pitch runs independently)
+    // Determine primary mode for pan vs zoom/rotate
     if (this.mode === 'idle') {
-      if (zoomStrong || rotateStrong) {
+      if (zoomStrong || rotateStrong || pitchStrong) {
         this.mode = 'zoomRotate';
       }
-      // Note: pitch applies regardless of mode when conditions are met
     }
 
-    // Apply transformations - note pitch can apply concurrently with zoom/rotate (MapLibre behavior)
+    // Apply transformations
     const axes: HandlerDelta['axes'] = {};
     const ptr = this.opts.around === 'pinch' ? center : null;
     const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
+
+    // PITCH: Apply independently like MapLibre's separate handler (runs regardless of mode)
+    if (pitchStrong && dpCand && this.opts.enablePitch) {
+      this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, 'center');
+      this.vp = dpCand / dt;
+      axes.pitch = true;
+    }
 
     if (this.mode === 'pan' && this.opts.enablePan) {
       // Two-finger pan mode (rare, only when no zoom/rotate detected)
@@ -321,16 +327,9 @@ export class TouchMultiHandler {
       this.vpy = this.vpy * (1 - alpha) + vdy * alpha;
       axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
-      // Apply zoom/rotate
+      // Apply zoom/rotate (pitch already applied above independently)
       const dRot = (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) ? (-dDeg * (this.opts.rotateSign ?? 1)) : 0;
       const dZoom = this.opts.enableZoom ? dzCand : 0;
-      // Apply pitch FIRST if detected (like MapLibre's handler priority)
-      if (pitchStrong && dpCand) {
-        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, 'center');
-        this.vp = dpCand / dt;
-        axes.pitch = true;
-      }
-      // Then apply zoom/rotate
       if (dZoom) { this.vz = dZoom / dt; axes.zoom = true; }
       if (dRot) { this.vb = dRot / dt; axes.rotate = true; }
       if (dZoom || dRot) {

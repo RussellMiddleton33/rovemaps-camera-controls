@@ -1098,13 +1098,18 @@ var TouchMultiHandler = class {
       const zoomStrong = this.opts.enableZoom && Math.abs(dzCand) >= ((_B = this.opts.zoomThreshold) != null ? _B : 0.04);
       const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= ((_C = this.opts.rotateThresholdDeg) != null ? _C : 0.5);
       if (this.mode === "idle") {
-        if (zoomStrong || rotateStrong) {
+        if (zoomStrong || rotateStrong || pitchStrong) {
           this.mode = "zoomRotate";
         }
       }
       const axes = {};
       const ptr = this.opts.around === "pinch" ? center : null;
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
+      if (pitchStrong && dpCand && this.opts.enablePitch) {
+        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, "center");
+        this.vp = dpCand / dt;
+        axes.pitch = true;
+      }
       if (this.mode === "pan" && this.opts.enablePan) {
         const gp = (_F = (_E = (_D = this.transform).groundFromScreen) == null ? void 0 : _E.call(_D, center)) != null ? _F : null;
         if (gp) {
@@ -1147,11 +1152,6 @@ var TouchMultiHandler = class {
       } else if (this.mode === "zoomRotate") {
         const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? -dDeg * ((_P = this.opts.rotateSign) != null ? _P : 1) : 0;
         const dZoom = this.opts.enableZoom ? dzCand : 0;
-        if (pitchStrong && dpCand) {
-          this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, "center");
-          this.vp = dpCand / dt;
-          axes.pitch = true;
-        }
         if (dZoom) {
           this.vz = dZoom / dt;
           axes.zoom = true;
