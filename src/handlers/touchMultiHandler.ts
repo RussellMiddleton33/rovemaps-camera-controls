@@ -89,8 +89,8 @@ export class TouchMultiHandler {
       pitchPerPx: 0.25,
       // MapLibre-like, reduce accidental mode switching on touch
       rotateThresholdDeg: 0.5,
-      // Slightly higher pitch threshold for touch reliability
-      pitchThresholdPx: 14,
+      // Lower pitch threshold for MapLibre-like responsiveness
+      pitchThresholdPx: 5,
       zoomThreshold: 0.04,
       onChange: () => {},
       preventDefault: true,
@@ -104,7 +104,7 @@ export class TouchMultiHandler {
       inertiaPanXSign: 1,
       inertiaPanYSign: 1,
       rotateSign: 1,
-      allowedSingleTouchTimeMs: 200,
+      allowedSingleTouchTimeMs: 200, // match MapLibre's timing window for deliberate two-finger gestures
       pitchFirstMoveWindowMs: 120,
       inertiaPanFriction: 12,
       inertiaZoomFriction: 20,
@@ -275,28 +275,27 @@ export class TouchMultiHandler {
     const avgDy = (vA.y + vB.y) / 2;
     const dpCand = -avgDy * (this.opts.pitchPerPx ?? 0.25);
 
-    // Determine mode if not locked
-    let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir && Math.abs(avgDy) >= (this.opts.pitchThresholdPx ?? 14);
-    // MapLibre-style gating: disabled for now to allow pitch anytime (users expect this)
-    // if (!this.allowPitchThisGesture) pitchStrong = false;
-    // First-move timing window: disabled to allow pitch anytime during gesture
-    // if (pitchStrong && !this.firstPitchMoveSeen) {
-    //   const withinFirst = (now - this.gestureStartTs) <= this.opts.pitchFirstMoveWindowMs;
-    //   if (!withinFirst) pitchStrong = false;
-    //   else this.firstPitchMoveSeen = true;
-    // }
+    // MapLibre-style pitch detection: both fingers vertical, same direction, both moved
+    let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir;
+    // Re-enable timing-based gating to prevent accidental pitch during single-finger pan→zoom transitions
+    if (!this.allowPitchThisGesture) pitchStrong = false;
     const zoomStrong = this.opts.enableZoom && (Math.abs(dzCand) >= (this.opts.zoomThreshold ?? 0.04));
     const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= (this.opts.rotateThresholdDeg ?? 0.5);
 
     if (this.mode === 'idle') {
-      // Prefer pitch when clearly indicated; otherwise enter zoom/rotate if either is strong
-      if (pitchStrong) this.mode = 'pitch';
-      else if (zoomStrong || rotateStrong) this.mode = 'zoomRotate';
+      // Prioritize pitch when both fingers clearly move vertically together (MapLibre behavior)
+      // This ensures pitch takes precedence over accidental slight pinch/rotation
+      if (pitchStrong) {
+        this.mode = 'pitch';
+      } else if (zoomStrong || rotateStrong) {
+        this.mode = 'zoomRotate';
+      }
     } else if (this.mode === 'zoomRotate') {
-      // Allow switching to pitch mid-gesture if both fingers move vertically together
+      // Allow switching to pitch mid-gesture only if pitch is strongly indicated
       if (pitchStrong) this.mode = 'pitch';
     } else if (this.mode === 'pitch') {
-      // If pitch no longer strong but zoom/rotate is, allow switching back
+      // Once in pitch mode, stay in pitch unless gesture clearly changes to zoom/rotate
+      // This prevents jitter when fingers aren't perfectly synchronized
       if (!pitchStrong && (zoomStrong || rotateStrong)) this.mode = 'zoomRotate';
     }
 
