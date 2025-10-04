@@ -1105,13 +1105,13 @@ var TouchMultiHandler = class {
         }
       }
       const axes = {};
-      const ptr = this.opts.around === "pinch" ? center : null;
-      const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (pitchStrong && dpCand && this.opts.enablePitch) {
         this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, "center");
         this.vp = dpCand / dt;
         axes.pitch = true;
       }
+      const ptr = this.opts.around === "pinch" ? center : null;
+      const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (this.mode === "pan" && this.opts.enablePan) {
         const gp = (_F = (_E = (_D = this.transform).groundFromScreen) == null ? void 0 : _E.call(_D, center)) != null ? _F : null;
         if (gp) {

@@ -280,15 +280,18 @@ export class TouchMultiHandler {
 
     // Apply transformations
     const axes: HandlerDelta['axes'] = {};
-    const ptr = this.opts.around === 'pinch' ? center : null;
-    const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
 
-    // PITCH: Apply independently like MapLibre's separate handler (runs regardless of mode)
+    // PITCH: Apply independently WITHOUT anchor correction (like MapLibre's pitch handler)
+    // Pitch changes viewing angle, so anchor-to-pointer doesn't make sense
     if (pitchStrong && dpCand && this.opts.enablePitch) {
       this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, 'center');
       this.vp = dpCand / dt;
       axes.pitch = true;
     }
+
+    // Calculate anchor point AFTER pitch (for zoom/rotate only)
+    const ptr = this.opts.around === 'pinch' ? center : null;
+    const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
 
     if (this.mode === 'pan' && this.opts.enablePan) {
       // Two-finger pan mode (rare, only when no zoom/rotate detected)
