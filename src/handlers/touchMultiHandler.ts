@@ -329,6 +329,8 @@ export class TouchMultiHandler {
       this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, 'center');
       this.vp = dpCand / dt;
       axes.pitch = true;
+    } else {
+      this.vp = 0; // Clear pitch velocity when not pitching
     }
 
     // Calculate anchor point AFTER pitch (for zoom/rotate only)
@@ -377,6 +379,7 @@ export class TouchMultiHandler {
       const dZoom = this.opts.enableZoom ? dzCand : 0;
       if (dZoom) { this.vz = dZoom / dt; axes.zoom = true; }
       if (dRot) { this.vb = dRot / dt; axes.rotate = true; }
+      else { this.vb = 0; } // Clear rotation velocity when not rotating to prevent unwanted inertia
       if (dZoom || dRot) {
         this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dRot, dZoom, 'center');
       }
