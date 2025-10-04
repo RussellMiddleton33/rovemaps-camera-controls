@@ -433,7 +433,37 @@ export class TouchMultiHandler {
       // end gesture and start inertia
       if (this.active) {
         this.active = false;
+
+        // Clear multi-touch state to prevent jumps
+        this.lastGroundCenter = null;
+        this.lastPinchPointer = null;
+        this.lastP0 = null;
+        this.lastP1 = null;
+
+        // Start inertia BEFORE resetting mode (so inertia sees correct previous mode)
         this.startInertia();
+
+        // If transitioning from 2→1 finger, initialize single-finger state from remaining touch
+        if (this.pts.size === 1) {
+          const remaining = [...this.pts.values()][0];
+          if (remaining) {
+            const rect = this.el.getBoundingClientRect();
+            const vv = (window as any).visualViewport as VisualViewport | undefined;
+            const pointer = {
+              x: (remaining.x + (vv?.offsetLeft ?? 0)) - (rect.left + (vv?.offsetLeft ?? 0)),
+              y: (remaining.y + (vv?.offsetTop ?? 0)) - (rect.top + (vv?.offsetTop ?? 0))
+            };
+            const gp = (this.transform as any).groundFromScreen?.(pointer) ?? null;
+            this.lastSinglePt = pointer;
+            this.lastSingleGround = gp;
+          }
+          this.mode = 'pan'; // Reset mode for next gesture
+        } else {
+          // Transitioning to 0 fingers - clear single-finger state
+          this.lastSinglePt = null;
+          this.lastSingleGround = null;
+          this.mode = 'idle';
+        }
       }
     }
     if (this.pts.size === 0 && this.unbindMoveUp) {

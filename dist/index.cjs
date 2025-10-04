@@ -1225,6 +1225,7 @@ var TouchMultiHandler = class {
       this.opts.onChange({ axes, originalEvent: e });
     };
     this.onUp = (e) => {
+      var _a, _b, _c, _d, _e, _f, _g;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches.item(i);
         this.pts.delete(t.identifier);
@@ -1232,7 +1233,30 @@ var TouchMultiHandler = class {
       if (this.pts.size < 2) {
         if (this.active) {
           this.active = false;
+          this.lastGroundCenter = null;
+          this.lastPinchPointer = null;
+          this.lastP0 = null;
+          this.lastP1 = null;
           this.startInertia();
+          if (this.pts.size === 1) {
+            const remaining = [...this.pts.values()][0];
+            if (remaining) {
+              const rect = this.el.getBoundingClientRect();
+              const vv = window.visualViewport;
+              const pointer = {
+                x: remaining.x + ((_a = vv == null ? void 0 : vv.offsetLeft) != null ? _a : 0) - (rect.left + ((_b = vv == null ? void 0 : vv.offsetLeft) != null ? _b : 0)),
+                y: remaining.y + ((_c = vv == null ? void 0 : vv.offsetTop) != null ? _c : 0) - (rect.top + ((_d = vv == null ? void 0 : vv.offsetTop) != null ? _d : 0))
+              };
+              const gp = (_g = (_f = (_e = this.transform).groundFromScreen) == null ? void 0 : _f.call(_e, pointer)) != null ? _g : null;
+              this.lastSinglePt = pointer;
+              this.lastSingleGround = gp;
+            }
+            this.mode = "pan";
+          } else {
+            this.lastSinglePt = null;
+            this.lastSingleGround = null;
+            this.mode = "idle";
+          }
         }
       }
       if (this.pts.size === 0 && this.unbindMoveUp) {
