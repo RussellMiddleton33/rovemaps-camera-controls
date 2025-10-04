@@ -1,7 +1,7 @@
 {
   "name": "three-rovemaps-camera-controls",
   "version": "0.0.0-dev",
-  "description": "RoveMaps GL JS-compatible camera controls for Three.js",
+  "description": "RoveMaps MAP Camera Controls for Three.js",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.cjs",
