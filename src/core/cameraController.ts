@@ -3,7 +3,7 @@ import { Evented } from './evented';
 import { PlanarCameraHelper } from '../helpers/planarCameraHelper';
 import type { ICameraHelper, EaseOptions, FlyToOptions } from '../helpers/icameraHelper';
 import { ThreePlanarTransform } from '../transform/threePlanarTransform';
-import type { ITransform, Padding, TransformConstraints, Bounds2D } from '../transform/interfaces';
+import type { ITransform, Padding, TransformConstraints, Bounds2D, MethodOptions } from '../transform/interfaces';
 import { browser, raf, caf } from '../util/browser';
 import { defaultEasing } from '../util/easing';
 import { HandlerManager, type HandlerManagerOptions } from '../handlers/handlerManager';
@@ -17,15 +17,30 @@ export interface CameraControllerOptions {
   width?: number;
   height?: number;
   devicePixelRatio?: number;
-  projection?: Projection;
+
+  // Coordinate system & projection
+  upAxis?: 'y' | 'z'; // default 'y' (Three.js standard), 'z' for GIS-style
+  projection?: Projection | import('../transform/interfaces').ProjectionAdapter;
+  baseScale?: number; // Base scale factor for coordinate conversion
+
+  // Behavior
   bearingSnap?: number;
   bearingSnapEpsilon?: number;
   handlers?: HandlerManagerOptions;
+
+  // Constraints
   minZoom?: number;
   maxZoom?: number;
   minPitch?: number;
   maxPitch?: number;
   panBounds?: Bounds2D;
+
+  // Event control
+  suppressEvents?: boolean; // Globally suppress events
+
+  // Animation loop control
+  useExternalAnimationLoop?: boolean; // Don't start internal loop, user calls update()
+  observeResize?: boolean; // Auto-setup ResizeObserver
 }
 
 export type CameraMoveEvents = {
@@ -70,6 +85,10 @@ export class CameraController extends Evented<CameraMoveEvents> {
   private _dragging = false;
   private _constraints: TransformConstraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0.01, maxPitch: 85 };
   private _softClamping = false;
+  private _suppressEvents: boolean = false;
+  private _isInternalUpdate: boolean = false;
+  private _resizeObserver?: ResizeObserver;
+  private _useExternalLoop: boolean = false;
 
   constructor(opts: CameraControllerOptions) {
     super();
@@ -85,19 +104,30 @@ export class CameraController extends Evented<CameraMoveEvents> {
         width: opts.width ?? 0,
         height: opts.height ?? 0,
         devicePixelRatio: opts.devicePixelRatio,
+        upAxis: opts.upAxis,
+        projection: typeof opts.projection === 'object' ? opts.projection : undefined,
+        baseScale: opts.baseScale,
       });
       this._bearingSnap = opts.bearingSnap ?? 7;
+      this._suppressEvents = opts.suppressEvents ?? false;
+      this._useExternalLoop = opts.useExternalAnimationLoop ?? false;
       return;
     }
 
     this._camera = opts.camera;
     this._dom = opts.domElement;
     this._helper = new PlanarCameraHelper();
+    this._suppressEvents = opts.suppressEvents ?? false;
+    this._useExternalLoop = opts.useExternalAnimationLoop ?? false;
+
     this.transform = new ThreePlanarTransform({
       camera: opts.camera,
       width: opts.width ?? this._dom.clientWidth,
       height: opts.height ?? this._dom.clientHeight,
       devicePixelRatio: opts.devicePixelRatio,
+      upAxis: opts.upAxis,
+      projection: typeof opts.projection === 'object' ? opts.projection : undefined,
+      baseScale: opts.baseScale,
     });
     this._bearingSnap = opts.bearingSnap ?? 7;
     this._bearingSnapEps = opts.bearingSnapEpsilon ?? 0.001;
@@ -116,6 +146,17 @@ export class CameraController extends Evented<CameraMoveEvents> {
       scrollZoom: opts.handlers?.scrollZoom ?? { around: 'center' },
       onChange: (delta) => this._externalChange(delta),
     });
+
+    // Setup resize observer if requested
+    if (opts.observeResize && typeof ResizeObserver !== 'undefined') {
+      this._resizeObserver = new ResizeObserver(() => {
+        this.setViewport({
+          width: this._dom.clientWidth,
+          height: this._dom.clientHeight
+        });
+      });
+      this._resizeObserver.observe(this._dom);
+    }
   }
 
   dispose() {
@@ -125,11 +166,23 @@ export class CameraController extends Evented<CameraMoveEvents> {
     }
     if (this._easeAbort) this._easeAbort.abort();
     this._handlers?.dispose();
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = undefined;
+    }
     if (this._moveEndTimer != null) {
       (globalThis as any).clearTimeout?.(this._moveEndTimer);
       this._moveEndTimer = null;
     }
     this._endAllAxes();
+  }
+
+  // Internal fire method that respects event suppression
+  private _fire<T extends keyof CameraMoveEvents>(type: T, data: CameraMoveEvents[T]) {
+    if (this._suppressEvents || this._isInternalUpdate) {
+      return; // Don't fire events
+    }
+    this.fire(type, data);
   }
 
   // Enable/disable the mobile touch debug overlay at runtime
@@ -162,7 +215,10 @@ export class CameraController extends Evented<CameraMoveEvents> {
   setPadding(padding: Partial<Padding>) { this.transform.setPadding(padding); this._emitRender(); return this; }
   setConstraints(c: Partial<TransformConstraints>) { this._constraints = { ...this._constraints, ...c }; this.transform.setConstraints(this._constraints); this._emitRender(); return this; }
 
-  jumpTo(options: { center?: { x: number; y: number; z?: number }; zoom?: number; bearing?: number; pitch?: number; roll?: number; padding?: Partial<Padding> }) {
+  jumpTo(options: { center?: { x: number; y: number; z?: number }; zoom?: number; bearing?: number; pitch?: number; roll?: number; padding?: Partial<Padding> }, methodOpts?: MethodOptions) {
+    const wasSuppressed = this._isInternalUpdate;
+    if (methodOpts?.silent) this._isInternalUpdate = true;
+
     if (options.center) this.transform.setCenter(options.center);
     if (typeof options.zoom === 'number') this.transform.setZoom(options.zoom);
     if (typeof options.bearing === 'number') this.transform.setBearing(options.bearing);
@@ -170,6 +226,8 @@ export class CameraController extends Evented<CameraMoveEvents> {
     if (typeof options.roll === 'number') this.transform.setRoll(options.roll);
     if (options.padding) this.transform.setPadding(options.padding);
     this._emitRender();
+
+    this._isInternalUpdate = wasSuppressed;
     return this;
   }
 
@@ -505,22 +563,45 @@ export class CameraController extends Evented<CameraMoveEvents> {
     return new PlanarCameraHelper().cameraForBoxAndBearing(this.transform, bounds, options);
   }
 
+  // State snapshot methods for programmatic control without events
+  getStateSnapshot() {
+    return {
+      center: this.getCenter(),
+      zoom: this.getZoom(),
+      bearing: this.getBearing(),
+      pitch: this.getPitch(),
+      roll: this.getRoll(),
+      padding: this.getPadding()
+    };
+  }
+
+  setStateSnapshot(state: {
+    center?: { x: number; y: number; z?: number };
+    zoom?: number;
+    bearing?: number;
+    pitch?: number;
+    roll?: number;
+    padding?: Partial<Padding>;
+  }, methodOpts?: MethodOptions) {
+    return this.jumpTo(state, methodOpts);
+  }
+
   private _emitRender() {
-    this.fire('renderFrame', {});
+    this._fire('renderFrame', {});
   }
 
   private _startMoveLifecycle() {
     if (!this._moving) {
       this._moving = true;
-      this.fire('movestart', {});
+      this._fire('movestart', {});
     }
-    this.fire('move', {});
+    this._fire('move', {});
   }
 
   private _endMoveLifecycle() {
     if (this._moving) {
       this._moving = false;
-      this.fire('moveend', {});
+      this._fire('moveend', {});
     }
   }
 
@@ -544,35 +625,35 @@ export class CameraController extends Evented<CameraMoveEvents> {
   }
 
   private _axisStart(axes: { zoom?: boolean; rotate?: boolean; pitch?: boolean; roll?: boolean; pan?: boolean }, originalEvent?: Event) {
-    if (axes.zoom && !this._zooming) { this._zooming = true; this.fire('zoomstart', { originalEvent }); }
-    if (axes.rotate && !this._rotating) { this._rotating = true; this.fire('rotatestart', { originalEvent }); }
-    if (axes.pitch && !this._pitching) { this._pitching = true; this.fire('pitchstart', { originalEvent }); }
-    if (axes.roll && !this._rolling) { this._rolling = true; this.fire('rollstart', { originalEvent }); }
-    if (axes.pan && !this._dragging) { this._dragging = true; this.fire('dragstart', { originalEvent }); }
+    if (axes.zoom && !this._zooming) { this._zooming = true; this._fire('zoomstart', { originalEvent }); }
+    if (axes.rotate && !this._rotating) { this._rotating = true; this._fire('rotatestart', { originalEvent }); }
+    if (axes.pitch && !this._pitching) { this._pitching = true; this._fire('pitchstart', { originalEvent }); }
+    if (axes.roll && !this._rolling) { this._rolling = true; this._fire('rollstart', { originalEvent }); }
+    if (axes.pan && !this._dragging) { this._dragging = true; this._fire('dragstart', { originalEvent }); }
   }
 
   private _axisEmitDuring(axes: { zoom?: boolean; rotate?: boolean; pitch?: boolean; roll?: boolean; pan?: boolean }, originalEvent?: Event) {
-    if (axes.zoom) this.fire('zoom', { originalEvent });
-    if (axes.rotate) this.fire('rotate', { originalEvent });
-    if (axes.pitch) this.fire('pitch', { originalEvent });
-    if (axes.roll) this.fire('roll', { originalEvent });
-    if (axes.pan) this.fire('drag', { originalEvent });
+    if (axes.zoom) this._fire('zoom', { originalEvent });
+    if (axes.rotate) this._fire('rotate', { originalEvent });
+    if (axes.pitch) this._fire('pitch', { originalEvent });
+    if (axes.roll) this._fire('roll', { originalEvent });
+    if (axes.pan) this._fire('drag', { originalEvent });
   }
 
   private _axisEnd(axes: { zoom?: boolean; rotate?: boolean; pitch?: boolean; roll?: boolean; pan?: boolean }, originalEvent?: Event) {
-    if (axes.zoom && this._zooming) { this._zooming = false; this.fire('zoomend', { originalEvent }); }
-    if (axes.rotate && this._rotating) { this._rotating = false; this.fire('rotateend', { originalEvent }); }
-    if (axes.pitch && this._pitching) { this._pitching = false; this.fire('pitchend', { originalEvent }); }
-    if (axes.roll && this._rolling) { this._rolling = false; this.fire('rollend', { originalEvent }); }
-    if (axes.pan && this._dragging) { this._dragging = false; this.fire('dragend', { originalEvent }); }
+    if (axes.zoom && this._zooming) { this._zooming = false; this._fire('zoomend', { originalEvent }); }
+    if (axes.rotate && this._rotating) { this._rotating = false; this._fire('rotateend', { originalEvent }); }
+    if (axes.pitch && this._pitching) { this._pitching = false; this._fire('pitchend', { originalEvent }); }
+    if (axes.roll && this._rolling) { this._rolling = false; this._fire('rollend', { originalEvent }); }
+    if (axes.pan && this._dragging) { this._dragging = false; this._fire('dragend', { originalEvent }); }
   }
 
   private _endAllAxes() {
-    if (this._zooming) { this._zooming = false; this.fire('zoomend', {}); }
-    if (this._rotating) { this._applyBearingSnap(); this._rotating = false; this.fire('rotateend', {}); }
-    if (this._pitching) { this._pitching = false; this.fire('pitchend', {}); }
-    if (this._rolling) { this._rolling = false; this.fire('rollend', {}); }
-    if (this._dragging) { this._dragging = false; this.fire('dragend', {}); }
+    if (this._zooming) { this._zooming = false; this._fire('zoomend', {}); }
+    if (this._rotating) { this._applyBearingSnap(); this._rotating = false; this._fire('rotateend', {}); }
+    if (this._pitching) { this._pitching = false; this._fire('pitchend', {}); }
+    if (this._rolling) { this._rolling = false; this._fire('rollend', {}); }
+    if (this._dragging) { this._dragging = false; this._fire('dragend', {}); }
   }
 
   private _applyBearingSnap(originalEvent?: Event) {
@@ -581,7 +662,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
       const b = this.getBearing();
       if (Math.abs(b) <= snap + this._bearingSnapEps) {
         this.transform.setBearing(0);
-        this.fire('rotate', { originalEvent });
+        this._fire('rotate', { originalEvent });
         this._emitRender();
       }
     }

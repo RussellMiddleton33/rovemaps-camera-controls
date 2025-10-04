@@ -1,15 +1,6 @@
 import { Vector3, PerspectiveCamera, OrthographicCamera } from 'three';
 export { Camera } from 'three';
 
-type Listener = (ev?: any) => void;
-declare class Evented<TEvents extends Record<string, any> = any> {
-    private listeners;
-    on<K extends keyof TEvents & string>(type: K, fn: (ev: TEvents[K]) => void): this;
-    once<K extends keyof TEvents & string>(type: K, fn: (ev: TEvents[K]) => void): this;
-    off<K extends keyof TEvents & string>(type: K, fn: (ev: TEvents[K]) => void): this;
-    fire<K extends keyof TEvents & string>(type: K, ev: TEvents[K]): this;
-}
-
 type Padding = {
     top: number;
     right: number;
@@ -75,6 +66,8 @@ interface ThreePlanarTransformOptions {
     zoomMode?: ZoomMode;
     getGroundIntersection?: GroundIntersectionFn;
     tileSize?: number;
+    projection?: ProjectionAdapter;
+    baseScale?: number;
 }
 declare const TILE_SIZE = 256;
 declare function worldSizeForZoom(zoom: number, tileSize?: number): number;
@@ -94,6 +87,30 @@ interface TransformConstraints {
     minPitch: number;
     maxPitch: number;
     panBounds?: Bounds2D;
+}
+interface ProjectionAdapter {
+    project(lngLat: [number, number]): {
+        x: number;
+        y: number;
+    };
+    unproject(point: {
+        x: number;
+        y: number;
+    }): [number, number];
+    sceneToLngLat?(x: number, y: number): [number, number];
+    lngLatToScene?(lng: number, lat: number, z?: number): [number, number, number];
+}
+interface MethodOptions {
+    silent?: boolean;
+}
+
+type Listener = (ev?: any) => void;
+declare class Evented<TEvents extends Record<string, any> = any> {
+    private listeners;
+    on<K extends keyof TEvents & string>(type: K, fn: (ev: TEvents[K]) => void): this;
+    once<K extends keyof TEvents & string>(type: K, fn: (ev: TEvents[K]) => void): this;
+    off<K extends keyof TEvents & string>(type: K, fn: (ev: TEvents[K]) => void): this;
+    fire<K extends keyof TEvents & string>(type: K, ev: TEvents[K]): this;
 }
 
 interface EaseOptions {
@@ -315,7 +332,9 @@ interface CameraControllerOptions {
     width?: number;
     height?: number;
     devicePixelRatio?: number;
-    projection?: Projection;
+    upAxis?: 'y' | 'z';
+    projection?: Projection | ProjectionAdapter;
+    baseScale?: number;
     bearingSnap?: number;
     bearingSnapEpsilon?: number;
     handlers?: HandlerManagerOptions;
@@ -324,6 +343,9 @@ interface CameraControllerOptions {
     minPitch?: number;
     maxPitch?: number;
     panBounds?: Bounds2D;
+    suppressEvents?: boolean;
+    useExternalAnimationLoop?: boolean;
+    observeResize?: boolean;
 }
 type CameraMoveEvents = {
     movestart: {
@@ -404,8 +426,13 @@ declare class CameraController extends Evented<CameraMoveEvents> {
     private _dragging;
     private _constraints;
     private _softClamping;
+    private _suppressEvents;
+    private _isInternalUpdate;
+    private _resizeObserver?;
+    private _useExternalLoop;
     constructor(opts: CameraControllerOptions);
     dispose(): void;
+    private _fire;
     setTouchDebugOverlay(enabled: boolean): void;
     setViewport(view: {
         width: number;
@@ -445,7 +472,7 @@ declare class CameraController extends Evented<CameraMoveEvents> {
         pitch?: number;
         roll?: number;
         padding?: Partial<Padding>;
-    }): this;
+    }, methodOpts?: MethodOptions): this;
     panBy(offset: {
         x: number;
         y: number;
@@ -529,6 +556,26 @@ declare class CameraController extends Evented<CameraMoveEvents> {
         bearing: number;
         pitch: number;
     };
+    getStateSnapshot(): {
+        center: Center;
+        zoom: number;
+        bearing: number;
+        pitch: number;
+        roll: number;
+        padding: Padding;
+    };
+    setStateSnapshot(state: {
+        center?: {
+            x: number;
+            y: number;
+            z?: number;
+        };
+        zoom?: number;
+        bearing?: number;
+        pitch?: number;
+        roll?: number;
+        padding?: Partial<Padding>;
+    }, methodOpts?: MethodOptions): this;
     private _emitRender;
     private _startMoveLifecycle;
     private _endMoveLifecycle;
@@ -569,4 +616,4 @@ type ListenerOptions = boolean | AddEventListenerOptions;
 declare function on<K extends keyof HTMLElementEventMap>(el: HTMLElement | Window | Document, type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: ListenerOptions): () => void;
 declare function off<K extends keyof HTMLElementEventMap>(el: HTMLElement | Window | Document, type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: ListenerOptions): void;
 
-export { type Bounds2D, CameraController, type CameraControllerOptions, type CameraForBoundsOptions, type CameraMoveEvents, type Center, type ControllerOptions, type EaseOptions, type Easing, Evented, type FlyToOptions, type GroundIntersectionFn, type GroundPoint, type ICameraHelper, type IReadonlyTransform, type ITransform, type Listener, type ListenerOptions, type Padding, type Projection, TILE_SIZE, type ThreePlanarTransformOptions, type TransformConstraints, type Vec2, type ZoomMode, browser, caf, clamp, createController, createControllerForNext, cubicBezier, defaultEasing, degToRad, lerp, mod, normalizeAngleDeg, off, on, radToDeg, raf, scaleZoom, worldSizeForZoom, zoomScale };
+export { type Bounds2D, CameraController, type CameraControllerOptions, type CameraForBoundsOptions, type CameraMoveEvents, type Center, type ControllerOptions, type EaseOptions, type Easing, Evented, type FlyToOptions, type GroundIntersectionFn, type GroundPoint, type ICameraHelper, type IReadonlyTransform, type ITransform, type Listener, type ListenerOptions, type MethodOptions, type Padding, type Projection, type ProjectionAdapter, TILE_SIZE, type ThreePlanarTransformOptions, type TransformConstraints, type Vec2, type ZoomMode, browser, caf, clamp, createController, createControllerForNext, cubicBezier, defaultEasing, degToRad, lerp, mod, normalizeAngleDeg, off, on, radToDeg, raf, scaleZoom, worldSizeForZoom, zoomScale };

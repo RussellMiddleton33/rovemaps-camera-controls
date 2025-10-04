@@ -53,10 +53,12 @@ export interface ThreePlanarTransformOptions {
   width: number;
   height: number;
   devicePixelRatio?: number;
-  upAxis?: 'y' | 'z';
+  upAxis?: 'y' | 'z'; // default 'y' (Three.js standard), 'z' for GIS-style
   zoomMode?: ZoomMode;
   getGroundIntersection?: GroundIntersectionFn;
   tileSize?: number; // default 256
+  projection?: ProjectionAdapter; // External projection (e.g., Mercator)
+  baseScale?: number; // Base scale factor for coordinate conversion
 }
 
 export const TILE_SIZE = 256;
@@ -74,4 +76,18 @@ export interface TransformConstraints {
   minPitch: number;
   maxPitch: number;
   panBounds?: Bounds2D; // world coordinate bounds
+}
+
+// External projection adapter for custom coordinate systems (e.g., Mercator)
+export interface ProjectionAdapter {
+  project(lngLat: [number, number]): { x: number; y: number };
+  unproject(point: { x: number; y: number }): [number, number];
+  // Optional aliases for clearer semantics
+  sceneToLngLat?(x: number, y: number): [number, number];
+  lngLatToScene?(lng: number, lat: number, z?: number): [number, number, number];
+}
+
+// Method options for camera movement methods
+export interface MethodOptions {
+  silent?: boolean; // Don't fire events during this operation
 }

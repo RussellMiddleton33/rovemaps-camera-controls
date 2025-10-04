@@ -202,7 +202,7 @@ var ThreePlanarTransform = class {
     this._deferDepth = 0;
     this._needsApply = false;
     this._projDirty = true;
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
     this._camera = opts.camera;
     this._width = opts.width;
     this._height = opts.height;
@@ -211,6 +211,13 @@ var ThreePlanarTransform = class {
     this._zoomMode = (_c = opts.zoomMode) != null ? _c : "fov";
     this._upAxis = (_d = opts.upAxis) != null ? _d : "y";
     this._getGroundIntersection = opts.getGroundIntersection;
+    this._projection = opts.projection;
+    this._baseScale = (_e = opts.baseScale) != null ? _e : 1;
+    if (this._upAxis === "z") {
+      (_g = (_f = this._camera.up) == null ? void 0 : _f.set) == null ? void 0 : _g.call(_f, 0, 0, 1);
+    } else {
+      (_i = (_h = this._camera.up) == null ? void 0 : _h.set) == null ? void 0 : _i.call(_h, 0, 1, 0);
+    }
     this._applyToCamera();
   }
   get camera() {
@@ -245,6 +252,26 @@ var ThreePlanarTransform = class {
   }
   get worldSize() {
     return worldSizeForZoom(this._zoom, this._tileSize);
+  }
+  // Projection adapter helpers
+  projectLngLat(lngLat) {
+    if (this._projection) {
+      if (this._projection.lngLatToScene) {
+        const [x, y] = this._projection.lngLatToScene(lngLat[0], lngLat[1]);
+        return { x, y };
+      }
+      return this._projection.project(lngLat);
+    }
+    return { x: lngLat[0] * this._baseScale, y: lngLat[1] * this._baseScale };
+  }
+  unprojectPoint(point) {
+    if (this._projection) {
+      if (this._projection.sceneToLngLat) {
+        return this._projection.sceneToLngLat(point.x, point.y);
+      }
+      return this._projection.unproject(point);
+    }
+    return [point.x / this._baseScale, point.y / this._baseScale];
   }
   setViewport(view) {
     this._width = view.width;
@@ -352,13 +379,19 @@ var ThreePlanarTransform = class {
     this._scheduleApply();
   }
   _applyToCamera() {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H;
     const cam = this._camera;
     if (!cam) return;
-    if (this._upAxis !== "y") ;
-    const targetX = this._center.x;
-    const targetZ = this._center.y;
-    const targetY = 0;
+    let targetX, targetY, targetZ;
+    if (this._upAxis === "z") {
+      targetX = this._center.x;
+      targetY = this._center.y;
+      targetZ = 0;
+    } else {
+      targetX = this._center.x;
+      targetZ = this._center.y;
+      targetY = 0;
+    }
     if ("isPerspectiveCamera" in cam && cam.isPerspectiveCamera) {
       const fovRad = cam.fov * Math.PI / 180;
       const s = Math.pow(2, this._zoom);
@@ -366,28 +399,42 @@ var ThreePlanarTransform = class {
       const dist = visibleWorldHeight / 2 / Math.tan(fovRad / 2);
       const bearingRad = -this._bearing * Math.PI / 180;
       const pitchRad = this._pitch * Math.PI / 180;
-      const horiz = dist * Math.sin(pitchRad);
-      const y = dist * Math.cos(pitchRad);
-      const ox = horiz * Math.sin(bearingRad);
-      const oz = horiz * Math.cos(bearingRad);
-      (_b = (_a = cam.position) == null ? void 0 : _a.set) == null ? void 0 : _b.call(_a, targetX + ox, targetY + y, targetZ + oz);
-      const eps = 1e-6;
-      if (Math.abs(pitchRad) <= eps) {
-        (_d = (_c = cam.up) == null ? void 0 : _c.set) == null ? void 0 : _d.call(_c, Math.sin(bearingRad), 0, Math.cos(bearingRad));
+      if (this._upAxis === "z") {
+        const horiz = dist * Math.sin(pitchRad);
+        const z = dist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oy = horiz * Math.cos(bearingRad);
+        (_b = (_a = cam.position) == null ? void 0 : _a.set) == null ? void 0 : _b.call(_a, targetX + ox, targetY + oy, targetZ + z);
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          (_d = (_c = cam.up) == null ? void 0 : _c.set) == null ? void 0 : _d.call(_c, Math.sin(bearingRad), Math.cos(bearingRad), 0);
+        } else {
+          (_f = (_e = cam.up) == null ? void 0 : _e.set) == null ? void 0 : _f.call(_e, 0, 0, 1);
+        }
       } else {
-        (_f = (_e = cam.up) == null ? void 0 : _e.set) == null ? void 0 : _f.call(_e, 0, 1, 0);
+        const horiz = dist * Math.sin(pitchRad);
+        const y = dist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oz = horiz * Math.cos(bearingRad);
+        (_h = (_g = cam.position) == null ? void 0 : _g.set) == null ? void 0 : _h.call(_g, targetX + ox, targetY + y, targetZ + oz);
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          (_j = (_i = cam.up) == null ? void 0 : _i.set) == null ? void 0 : _j.call(_i, Math.sin(bearingRad), 0, Math.cos(bearingRad));
+        } else {
+          (_l = (_k = cam.up) == null ? void 0 : _k.set) == null ? void 0 : _l.call(_k, 0, 1, 0);
+        }
       }
-      (_g = cam.lookAt) == null ? void 0 : _g.call(cam, targetX, targetY, targetZ);
+      (_m = cam.lookAt) == null ? void 0 : _m.call(cam, targetX, targetY, targetZ);
       if (this._roll) {
         const rollRad = this._roll * Math.PI / 180;
-        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_h = cam.quaternion) != null ? _h : this._tmpVec3b.set(0, 0, -1));
-        (_i = cam.rotateOnWorldAxis) == null ? void 0 : _i.call(cam, dir, rollRad);
+        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_n = cam.quaternion) != null ? _n : this._tmpVec3b.set(0, 0, -1));
+        (_o = cam.rotateOnWorldAxis) == null ? void 0 : _o.call(cam, dir, rollRad);
       }
       if (this._projDirty) {
-        (_j = cam.updateProjectionMatrix) == null ? void 0 : _j.call(cam);
+        (_p = cam.updateProjectionMatrix) == null ? void 0 : _p.call(cam);
         this._projDirty = false;
       }
-      (_k = cam.updateMatrixWorld) == null ? void 0 : _k.call(cam);
+      (_q = cam.updateMatrixWorld) == null ? void 0 : _q.call(cam);
     } else if ("isOrthographicCamera" in cam && cam.isOrthographicCamera) {
       const s = Math.pow(2, this._zoom);
       const halfW = this._width / (2 * s);
@@ -399,25 +446,39 @@ var ThreePlanarTransform = class {
       const baseDist = 1e3;
       const bearingRad = -this._bearing * Math.PI / 180;
       const pitchRad = this._pitch * Math.PI / 180;
-      const horiz = baseDist * Math.sin(pitchRad);
-      const y = baseDist * Math.cos(pitchRad);
-      const ox = horiz * Math.sin(bearingRad);
-      const oz = horiz * Math.cos(bearingRad);
-      (_m = (_l = cam.position) == null ? void 0 : _l.set) == null ? void 0 : _m.call(_l, targetX + ox, targetY + y, targetZ + oz);
-      const eps = 1e-6;
-      if (Math.abs(pitchRad) <= eps) {
-        (_o = (_n = cam.up) == null ? void 0 : _n.set) == null ? void 0 : _o.call(_n, Math.sin(bearingRad), 0, Math.cos(bearingRad));
+      if (this._upAxis === "z") {
+        const horiz = baseDist * Math.sin(pitchRad);
+        const z = baseDist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oy = horiz * Math.cos(bearingRad);
+        (_s = (_r = cam.position) == null ? void 0 : _r.set) == null ? void 0 : _s.call(_r, targetX + ox, targetY + oy, targetZ + z);
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          (_u = (_t = cam.up) == null ? void 0 : _t.set) == null ? void 0 : _u.call(_t, Math.sin(bearingRad), Math.cos(bearingRad), 0);
+        } else {
+          (_w = (_v = cam.up) == null ? void 0 : _v.set) == null ? void 0 : _w.call(_v, 0, 0, 1);
+        }
       } else {
-        (_q = (_p = cam.up) == null ? void 0 : _p.set) == null ? void 0 : _q.call(_p, 0, 1, 0);
+        const horiz = baseDist * Math.sin(pitchRad);
+        const y = baseDist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oz = horiz * Math.cos(bearingRad);
+        (_y = (_x = cam.position) == null ? void 0 : _x.set) == null ? void 0 : _y.call(_x, targetX + ox, targetY + y, targetZ + oz);
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          (_A = (_z = cam.up) == null ? void 0 : _z.set) == null ? void 0 : _A.call(_z, Math.sin(bearingRad), 0, Math.cos(bearingRad));
+        } else {
+          (_C = (_B = cam.up) == null ? void 0 : _B.set) == null ? void 0 : _C.call(_B, 0, 1, 0);
+        }
       }
-      (_r = cam.lookAt) == null ? void 0 : _r.call(cam, targetX, targetY, targetZ);
+      (_D = cam.lookAt) == null ? void 0 : _D.call(cam, targetX, targetY, targetZ);
       if (this._roll) {
         const rollRad = this._roll * Math.PI / 180;
-        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_s = cam.quaternion) != null ? _s : this._tmpVec3b.set(0, 0, -1));
-        (_t = cam.rotateOnWorldAxis) == null ? void 0 : _t.call(cam, dir, rollRad);
+        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_E = cam.quaternion) != null ? _E : this._tmpVec3b.set(0, 0, -1));
+        (_F = cam.rotateOnWorldAxis) == null ? void 0 : _F.call(cam, dir, rollRad);
       }
-      (_u = cam.updateProjectionMatrix) == null ? void 0 : _u.call(cam);
-      (_v = cam.updateMatrixWorld) == null ? void 0 : _v.call(cam);
+      (_G = cam.updateProjectionMatrix) == null ? void 0 : _G.call(cam);
+      (_H = cam.updateMatrixWorld) == null ? void 0 : _H.call(cam);
     }
   }
   _scheduleApply() {
@@ -1061,8 +1122,12 @@ var TouchMultiHandler = class {
           this.gvz = this.gvz * (1 - alpha) + igz * alpha;
           const sdx = pointer.x - ((_r = (_q = this.lastSinglePt) == null ? void 0 : _q.x) != null ? _r : pointer.x);
           const sdy = pointer.y - ((_t = (_s = this.lastSinglePt) == null ? void 0 : _s.y) != null ? _t : pointer.y);
-          this.vpx = this.vpx * (1 - alpha) + sdx / dt2 * alpha;
-          this.vpy = this.vpy * (1 - alpha) + sdy / dt2 * alpha;
+          const ivx = sdx / dt2;
+          const ivy = sdy / dt2;
+          this.instVpx = ivx;
+          this.instVpy = ivy;
+          this.vpx = this.vpx * (1 - alpha) + ivx * alpha;
+          this.vpy = this.vpy * (1 - alpha) + ivy * alpha;
         } else {
           this.lastSingleGround = gpNow;
         }
@@ -1123,6 +1188,8 @@ var TouchMultiHandler = class {
         this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, "center");
         this.vp = dpCand / dt;
         axes.pitch = true;
+      } else {
+        this.vp = 0;
       }
       const ptr = this.opts.around === "pinch" ? center : null;
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
@@ -1175,6 +1242,8 @@ var TouchMultiHandler = class {
         if (dRot) {
           this.vb = dRot / dt;
           axes.rotate = true;
+        } else {
+          this.vb = 0;
         }
         if (dZoom || dRot) {
           this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dRot, dZoom, "center");
@@ -1295,7 +1364,7 @@ var TouchMultiHandler = class {
       allowedSingleTouchTimeMs: 999,
       // effectively disabled - allow pitch anytime (better UX than MapLibre's strict 100ms)
       pitchFirstMoveWindowMs: 120,
-      inertiaPanFriction: 12,
+      inertiaPanFriction: 6,
       inertiaZoomFriction: 20,
       inertiaRotateFriction: 12,
       showDebugOverlay: false,
@@ -1398,7 +1467,8 @@ var TouchMultiHandler = class {
   startInertia() {
     var _a, _b, _c;
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
-    if (this.mode !== "pan") {
+    const modeAtRelease = this.mode;
+    if (modeAtRelease !== "pan") {
       this.vpx = 0;
       this.vpy = 0;
       this.gvx = 0;
@@ -1429,7 +1499,7 @@ var TouchMultiHandler = class {
     if (Math.abs(this.vb) < 8) this.vb = 0;
     if (Math.abs(this.vp) < 8) this.vp = 0;
     let last = performance.now();
-    const frPan = (_a = this.opts.inertiaPanFriction) != null ? _a : 12;
+    const frPan = (_a = this.opts.inertiaPanFriction) != null ? _a : 6;
     const frZoom = (_b = this.opts.inertiaZoomFriction) != null ? _b : 20;
     const frAng = (_c = this.opts.inertiaRotateFriction) != null ? _c : 12;
     const step = () => {
@@ -1442,11 +1512,13 @@ var TouchMultiHandler = class {
       const decayAng = Math.exp(-frAng * dt);
       this.vpx *= decayPan;
       this.vpy *= decayPan;
+      this.gvx *= decayPan;
+      this.gvz *= decayPan;
       this.vz *= decayZoom;
       this.vb *= decayAng;
       this.vp *= decayAng;
-      const zAbs = Math.abs(this.vz), bAbs = Math.abs(this.vb), pAbs = Math.abs(this.vp), panAbs = Math.hypot(this.vpx, this.vpy);
-      if (zAbs < 1e-3 && bAbs < 0.01 && pAbs < 0.01 && panAbs < 2) {
+      const zAbs = Math.abs(this.vz), bAbs = Math.abs(this.vb), pAbs = Math.abs(this.vp), gvAbs = Math.hypot(this.gvx, this.gvz);
+      if (zAbs < 1e-3 && bAbs < 0.01 && pAbs < 0.01 && gvAbs < 1e-3) {
         this.inertiaHandle = null;
         return;
       }
@@ -1454,7 +1526,7 @@ var TouchMultiHandler = class {
       const db = this.vb * dt;
       const dp = this.vp * dt;
       const axes = {};
-      if (this.mode === "zoomRotate") {
+      if (modeAtRelease === "zoomRotate") {
         if (this.opts.enableZoom && dz) {
           this.applyZoomAround(dz, (_a2 = this.lastPinchPointer) != null ? _a2 : null);
           axes.zoom = true;
@@ -1467,7 +1539,7 @@ var TouchMultiHandler = class {
           this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, "center");
           axes.pitch = true;
         }
-      } else if (this.mode === "pan") {
+      } else if (modeAtRelease === "pan") {
         if (this.opts.enablePan && (this.gvx || this.gvz)) {
           let dgx = this.gvx * dt;
           let dgz = this.gvz * dt;
@@ -2041,7 +2113,7 @@ function uAt(params, s) {
 // src/core/cameraController.ts
 var CameraController = class extends Evented {
   constructor(opts) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
     super();
     this._moving = false;
     this._animHandle = null;
@@ -2054,6 +2126,9 @@ var CameraController = class extends Evented {
     this._dragging = false;
     this._constraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0.01, maxPitch: 85 };
     this._softClamping = false;
+    this._suppressEvents = false;
+    this._isInternalUpdate = false;
+    this._useExternalLoop = false;
     if (typeof window === "undefined") {
       this._camera = opts.camera;
       this._dom = {};
@@ -2062,34 +2137,53 @@ var CameraController = class extends Evented {
         camera: opts.camera,
         width: (_a = opts.width) != null ? _a : 0,
         height: (_b = opts.height) != null ? _b : 0,
-        devicePixelRatio: opts.devicePixelRatio
+        devicePixelRatio: opts.devicePixelRatio,
+        upAxis: opts.upAxis,
+        projection: typeof opts.projection === "object" ? opts.projection : void 0,
+        baseScale: opts.baseScale
       });
       this._bearingSnap = (_c = opts.bearingSnap) != null ? _c : 7;
+      this._suppressEvents = (_d = opts.suppressEvents) != null ? _d : false;
+      this._useExternalLoop = (_e = opts.useExternalAnimationLoop) != null ? _e : false;
       return;
     }
     this._camera = opts.camera;
     this._dom = opts.domElement;
     this._helper = new PlanarCameraHelper();
+    this._suppressEvents = (_f = opts.suppressEvents) != null ? _f : false;
+    this._useExternalLoop = (_g = opts.useExternalAnimationLoop) != null ? _g : false;
     this.transform = new ThreePlanarTransform({
       camera: opts.camera,
-      width: (_d = opts.width) != null ? _d : this._dom.clientWidth,
-      height: (_e = opts.height) != null ? _e : this._dom.clientHeight,
-      devicePixelRatio: opts.devicePixelRatio
+      width: (_h = opts.width) != null ? _h : this._dom.clientWidth,
+      height: (_i = opts.height) != null ? _i : this._dom.clientHeight,
+      devicePixelRatio: opts.devicePixelRatio,
+      upAxis: opts.upAxis,
+      projection: typeof opts.projection === "object" ? opts.projection : void 0,
+      baseScale: opts.baseScale
     });
-    this._bearingSnap = (_f = opts.bearingSnap) != null ? _f : 7;
-    this._bearingSnapEps = (_g = opts.bearingSnapEpsilon) != null ? _g : 1e-3;
+    this._bearingSnap = (_j = opts.bearingSnap) != null ? _j : 7;
+    this._bearingSnapEps = (_k = opts.bearingSnapEpsilon) != null ? _k : 1e-3;
     this._constraints = {
-      minZoom: (_h = opts.minZoom) != null ? _h : -Infinity,
-      maxZoom: (_i = opts.maxZoom) != null ? _i : Infinity,
-      minPitch: (_j = opts.minPitch) != null ? _j : 0.01,
-      maxPitch: (_k = opts.maxPitch) != null ? _k : 85,
+      minZoom: (_l = opts.minZoom) != null ? _l : -Infinity,
+      maxZoom: (_m = opts.maxZoom) != null ? _m : Infinity,
+      minPitch: (_n = opts.minPitch) != null ? _n : 0.01,
+      maxPitch: (_o = opts.maxPitch) != null ? _o : 85,
       panBounds: opts.panBounds
     };
     this.transform.setConstraints(this._constraints);
     this._handlers = new HandlerManager(this._dom, this.transform, this._helper, {
-      scrollZoom: (_m = (_l = opts.handlers) == null ? void 0 : _l.scrollZoom) != null ? _m : { around: "center" },
+      scrollZoom: (_q = (_p = opts.handlers) == null ? void 0 : _p.scrollZoom) != null ? _q : { around: "center" },
       onChange: (delta) => this._externalChange(delta)
     });
+    if (opts.observeResize && typeof ResizeObserver !== "undefined") {
+      this._resizeObserver = new ResizeObserver(() => {
+        this.setViewport({
+          width: this._dom.clientWidth,
+          height: this._dom.clientHeight
+        });
+      });
+      this._resizeObserver.observe(this._dom);
+    }
   }
   dispose() {
     var _a, _b;
@@ -2099,11 +2193,22 @@ var CameraController = class extends Evented {
     }
     if (this._easeAbort) this._easeAbort.abort();
     (_a = this._handlers) == null ? void 0 : _a.dispose();
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = void 0;
+    }
     if (this._moveEndTimer != null) {
       (_b = globalThis.clearTimeout) == null ? void 0 : _b.call(globalThis, this._moveEndTimer);
       this._moveEndTimer = null;
     }
     this._endAllAxes();
+  }
+  // Internal fire method that respects event suppression
+  _fire(type, data) {
+    if (this._suppressEvents || this._isInternalUpdate) {
+      return;
+    }
+    this.fire(type, data);
   }
   // Enable/disable the mobile touch debug overlay at runtime
   setTouchDebugOverlay(enabled) {
@@ -2182,7 +2287,9 @@ var CameraController = class extends Evented {
     this._emitRender();
     return this;
   }
-  jumpTo(options) {
+  jumpTo(options, methodOpts) {
+    const wasSuppressed = this._isInternalUpdate;
+    if (methodOpts == null ? void 0 : methodOpts.silent) this._isInternalUpdate = true;
     if (options.center) this.transform.setCenter(options.center);
     if (typeof options.zoom === "number") this.transform.setZoom(options.zoom);
     if (typeof options.bearing === "number") this.transform.setBearing(options.bearing);
@@ -2190,6 +2297,7 @@ var CameraController = class extends Evented {
     if (typeof options.roll === "number") this.transform.setRoll(options.roll);
     if (options.padding) this.transform.setPadding(options.padding);
     this._emitRender();
+    this._isInternalUpdate = wasSuppressed;
     return this;
   }
   panBy(offset, _opts) {
@@ -2496,20 +2604,34 @@ var CameraController = class extends Evented {
   cameraForBounds(bounds, options) {
     return new PlanarCameraHelper().cameraForBoxAndBearing(this.transform, bounds, options);
   }
+  // State snapshot methods for programmatic control without events
+  getStateSnapshot() {
+    return {
+      center: this.getCenter(),
+      zoom: this.getZoom(),
+      bearing: this.getBearing(),
+      pitch: this.getPitch(),
+      roll: this.getRoll(),
+      padding: this.getPadding()
+    };
+  }
+  setStateSnapshot(state, methodOpts) {
+    return this.jumpTo(state, methodOpts);
+  }
   _emitRender() {
-    this.fire("renderFrame", {});
+    this._fire("renderFrame", {});
   }
   _startMoveLifecycle() {
     if (!this._moving) {
       this._moving = true;
-      this.fire("movestart", {});
+      this._fire("movestart", {});
     }
-    this.fire("move", {});
+    this._fire("move", {});
   }
   _endMoveLifecycle() {
     if (this._moving) {
       this._moving = false;
-      this.fire("moveend", {});
+      this._fire("moveend", {});
     }
   }
   _externalChange(delta) {
@@ -2533,75 +2655,75 @@ var CameraController = class extends Evented {
   _axisStart(axes, originalEvent) {
     if (axes.zoom && !this._zooming) {
       this._zooming = true;
-      this.fire("zoomstart", { originalEvent });
+      this._fire("zoomstart", { originalEvent });
     }
     if (axes.rotate && !this._rotating) {
       this._rotating = true;
-      this.fire("rotatestart", { originalEvent });
+      this._fire("rotatestart", { originalEvent });
     }
     if (axes.pitch && !this._pitching) {
       this._pitching = true;
-      this.fire("pitchstart", { originalEvent });
+      this._fire("pitchstart", { originalEvent });
     }
     if (axes.roll && !this._rolling) {
       this._rolling = true;
-      this.fire("rollstart", { originalEvent });
+      this._fire("rollstart", { originalEvent });
     }
     if (axes.pan && !this._dragging) {
       this._dragging = true;
-      this.fire("dragstart", { originalEvent });
+      this._fire("dragstart", { originalEvent });
     }
   }
   _axisEmitDuring(axes, originalEvent) {
-    if (axes.zoom) this.fire("zoom", { originalEvent });
-    if (axes.rotate) this.fire("rotate", { originalEvent });
-    if (axes.pitch) this.fire("pitch", { originalEvent });
-    if (axes.roll) this.fire("roll", { originalEvent });
-    if (axes.pan) this.fire("drag", { originalEvent });
+    if (axes.zoom) this._fire("zoom", { originalEvent });
+    if (axes.rotate) this._fire("rotate", { originalEvent });
+    if (axes.pitch) this._fire("pitch", { originalEvent });
+    if (axes.roll) this._fire("roll", { originalEvent });
+    if (axes.pan) this._fire("drag", { originalEvent });
   }
   _axisEnd(axes, originalEvent) {
     if (axes.zoom && this._zooming) {
       this._zooming = false;
-      this.fire("zoomend", { originalEvent });
+      this._fire("zoomend", { originalEvent });
     }
     if (axes.rotate && this._rotating) {
       this._rotating = false;
-      this.fire("rotateend", { originalEvent });
+      this._fire("rotateend", { originalEvent });
     }
     if (axes.pitch && this._pitching) {
       this._pitching = false;
-      this.fire("pitchend", { originalEvent });
+      this._fire("pitchend", { originalEvent });
     }
     if (axes.roll && this._rolling) {
       this._rolling = false;
-      this.fire("rollend", { originalEvent });
+      this._fire("rollend", { originalEvent });
     }
     if (axes.pan && this._dragging) {
       this._dragging = false;
-      this.fire("dragend", { originalEvent });
+      this._fire("dragend", { originalEvent });
     }
   }
   _endAllAxes() {
     if (this._zooming) {
       this._zooming = false;
-      this.fire("zoomend", {});
+      this._fire("zoomend", {});
     }
     if (this._rotating) {
       this._applyBearingSnap();
       this._rotating = false;
-      this.fire("rotateend", {});
+      this._fire("rotateend", {});
     }
     if (this._pitching) {
       this._pitching = false;
-      this.fire("pitchend", {});
+      this._fire("pitchend", {});
     }
     if (this._rolling) {
       this._rolling = false;
-      this.fire("rollend", {});
+      this._fire("rollend", {});
     }
     if (this._dragging) {
       this._dragging = false;
-      this.fire("dragend", {});
+      this._fire("dragend", {});
     }
   }
   _applyBearingSnap(originalEvent) {
@@ -2610,7 +2732,7 @@ var CameraController = class extends Evented {
       const b = this.getBearing();
       if (Math.abs(b) <= snap + this._bearingSnapEps) {
         this.transform.setBearing(0);
-        this.fire("rotate", { originalEvent });
+        this._fire("rotate", { originalEvent });
         this._emitRender();
       }
     }

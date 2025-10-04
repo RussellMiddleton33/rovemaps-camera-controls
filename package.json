@@ -1,7 +1,7 @@
 {
   "name": "three-rovemaps-camera-controls",
-  "version": "0.0.0-dev",
-  "description": "RoveMaps MAP Camera Controls for Three.js",
+  "version": "0.2.0",
+  "description": "MapLibre GL JS-compatible camera controls for Three.js with jumpTo/easeTo/flyTo/fitBounds API, gestures, events, inertia, and Z-up GIS support",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.cjs",
@@ -14,7 +14,37 @@
       "require": "./dist/index.cjs"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": false,
+  "author": "Russell Middleton",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/russellmiddleton33/rovemaps-camera-controls.git"
+  },
+  "bugs": {
+    "url": "https://github.com/russellmiddleton33/rovemaps-camera-controls/issues"
+  },
+  "homepage": "https://russellmiddleton33.github.io/rovemaps-camera-controls/",
+  "keywords": [
+    "three",
+    "threejs",
+    "three.js",
+    "camera",
+    "controls",
+    "maplibre",
+    "map",
+    "camera-controls",
+    "gestures",
+    "pan",
+    "zoom",
+    "rotate",
+    "pitch",
+    "inertia"
+  ],
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
@@ -22,12 +52,13 @@
     "format": "prettier --write .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
   "peerDependencies": {
-    "three": ">=0.153 <0.170"
+    "three": ">=0.153"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

@@ -35,6 +35,9 @@ export class ThreePlanarTransform implements ITransform {
   private _needsApply = false;
   private _projDirty = true;
 
+  private _projection?: import('./interfaces').ProjectionAdapter;
+  private _baseScale: number;
+
   constructor(opts: ThreePlanarTransformOptions) {
     this._camera = opts.camera;
     this._width = opts.width;
@@ -44,6 +47,16 @@ export class ThreePlanarTransform implements ITransform {
     this._zoomMode = opts.zoomMode ?? 'fov';
     this._upAxis = opts.upAxis ?? 'y';
     this._getGroundIntersection = opts.getGroundIntersection;
+    this._projection = opts.projection;
+    this._baseScale = opts.baseScale ?? 1;
+
+    // Set camera up axis
+    if (this._upAxis === 'z') {
+      (this._camera as any).up?.set?.(0, 0, 1);
+    } else {
+      (this._camera as any).up?.set?.(0, 1, 0);
+    }
+
     this._applyToCamera();
   }
 
@@ -58,6 +71,30 @@ export class ThreePlanarTransform implements ITransform {
   get roll() { return this._roll; }
   get padding() { return this._padding; }
   get worldSize() { return worldSizeForZoom(this._zoom, this._tileSize); }
+
+  // Projection adapter helpers
+  projectLngLat(lngLat: [number, number]): { x: number; y: number } {
+    if (this._projection) {
+      if (this._projection.lngLatToScene) {
+        const [x, y] = this._projection.lngLatToScene(lngLat[0], lngLat[1]);
+        return { x, y };
+      }
+      return this._projection.project(lngLat);
+    }
+    // Default: simple planar with base scale
+    return { x: lngLat[0] * this._baseScale, y: lngLat[1] * this._baseScale };
+  }
+
+  unprojectPoint(point: { x: number; y: number }): [number, number] {
+    if (this._projection) {
+      if (this._projection.sceneToLngLat) {
+        return this._projection.sceneToLngLat(point.x, point.y);
+      }
+      return this._projection.unproject(point);
+    }
+    // Default: simple planar with base scale
+    return [point.x / this._baseScale, point.y / this._baseScale];
+  }
 
   setViewport(view: { width: number; height: number; devicePixelRatio?: number; }): void {
     this._width = view.width;
@@ -174,13 +211,21 @@ export class ThreePlanarTransform implements ITransform {
   private _applyToCamera() {
     const cam = this._camera as any;
     if (!cam) return;
-    if (this._upAxis !== 'y') {
-      // Basic support; focus on y-up for now
+
+    // Compute target point based on coordinate system
+    let targetX: number, targetY: number, targetZ: number;
+
+    if (this._upAxis === 'z') {
+      // Z-up: ground plane is XY (z=0)
+      targetX = this._center.x;
+      targetY = this._center.y;
+      targetZ = 0;
+    } else {
+      // Y-up: ground plane is XZ (y=0)
+      targetX = this._center.x;
+      targetZ = this._center.y;
+      targetY = 0;
     }
-    // Compute target point on ground plane (y=0) for y-up
-    const targetX = this._center.x;
-    const targetZ = this._center.y;
-    const targetY = 0;
 
     if ('isPerspectiveCamera' in cam && cam.isPerspectiveCamera) {
       // Perspective: compute distance to achieve desired pixels-per-world at center when pitch=0.
@@ -189,33 +234,57 @@ export class ThreePlanarTransform implements ITransform {
       const visibleWorldHeight = this._height / s; // world units
       const dist = (visibleWorldHeight / 2) / Math.tan(fovRad / 2);
 
-      // Bearing (yaw) around Y-up, pitch tilts downward from vertical
       // Negate bearing so increasing bearing rotates view clockwise (not camera orbit)
       const bearingRad = (-this._bearing * Math.PI) / 180;
       const pitchRad = (this._pitch * Math.PI) / 180;
-      const horiz = dist * Math.sin(pitchRad);
-      const y = dist * Math.cos(pitchRad);
-      const ox = horiz * Math.sin(bearingRad);
-      const oz = horiz * Math.cos(bearingRad);
 
-      cam.position?.set?.(targetX + ox, targetY + y, targetZ + oz);
-      // Handle top-down singularity: when pitch ~ 0, bearing should rotate the view in-plane.
-      // Use camera.up to encode bearing so lookAt can orient consistently.
-      const eps = 1e-6;
-      if (Math.abs(pitchRad) <= eps) {
-        // Up vector aligned with ground "north" rotated by bearing (already negated)
-        cam.up?.set?.(Math.sin(bearingRad), 0, Math.cos(bearingRad));
+      if (this._upAxis === 'z') {
+        // Z-up: Camera orbits in 3D with Z as vertical axis
+        // Pitch=0 is bird's eye (looking straight down), Pitch=90 is horizontal
+        const horiz = dist * Math.sin(pitchRad); // Horizontal distance from target
+        const z = dist * Math.cos(pitchRad);     // Height above ground
+
+        // Bearing rotates around Z axis (horizontal plane)
+        const ox = horiz * Math.sin(bearingRad);
+        const oy = horiz * Math.cos(bearingRad);
+
+        cam.position?.set?.(targetX + ox, targetY + oy, targetZ + z);
+
+        // Handle top-down singularity
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          // Up vector aligned with "north" rotated by bearing
+          cam.up?.set?.(Math.sin(bearingRad), Math.cos(bearingRad), 0);
+        } else {
+          cam.up?.set?.(0, 0, 1);
+        }
       } else {
-        cam.up?.set?.(0, 1, 0);
+        // Y-up: Camera orbits in 3D with Y as vertical axis
+        const horiz = dist * Math.sin(pitchRad);
+        const y = dist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oz = horiz * Math.cos(bearingRad);
+
+        cam.position?.set?.(targetX + ox, targetY + y, targetZ + oz);
+
+        // Handle top-down singularity
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          cam.up?.set?.(Math.sin(bearingRad), 0, Math.cos(bearingRad));
+        } else {
+          cam.up?.set?.(0, 1, 0);
+        }
       }
+
       cam.lookAt?.(targetX, targetY, targetZ);
+
       // Apply roll about forward axis
       if (this._roll) {
         const rollRad = (this._roll * Math.PI) / 180;
-        // Rotate camera around its look vector
         const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((cam as any).quaternion ?? this._tmpVec3b.set(0,0,-1));
         cam.rotateOnWorldAxis?.(dir, rollRad);
       }
+
       if (this._projDirty) {
         cam.updateProjectionMatrix?.();
         this._projDirty = false;
@@ -227,29 +296,52 @@ export class ThreePlanarTransform implements ITransform {
       const halfW = this._width / (2 * s);
       const halfH = this._height / (2 * s);
       cam.left = -halfW; cam.right = halfW; cam.top = halfH; cam.bottom = -halfH;
+
       // Place camera above ground with pitch and bearing
       const baseDist = 1000; // arbitrary; irrelevant for projection, but needed for near/far
-      // Negate bearing so increasing bearing rotates view clockwise (not camera orbit)
       const bearingRad = (-this._bearing * Math.PI) / 180;
       const pitchRad = (this._pitch * Math.PI) / 180;
-      const horiz = baseDist * Math.sin(pitchRad);
-      const y = baseDist * Math.cos(pitchRad);
-      const ox = horiz * Math.sin(bearingRad);
-      const oz = horiz * Math.cos(bearingRad);
-      cam.position?.set?.(targetX + ox, targetY + y, targetZ + oz);
-      const eps = 1e-6;
-      if (Math.abs(pitchRad) <= eps) {
-        // Up vector aligned with ground "north" rotated by bearing (already negated)
-        cam.up?.set?.(Math.sin(bearingRad), 0, Math.cos(bearingRad));
+
+      if (this._upAxis === 'z') {
+        // Z-up orthographic
+        const horiz = baseDist * Math.sin(pitchRad);
+        const z = baseDist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oy = horiz * Math.cos(bearingRad);
+
+        cam.position?.set?.(targetX + ox, targetY + oy, targetZ + z);
+
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          cam.up?.set?.(Math.sin(bearingRad), Math.cos(bearingRad), 0);
+        } else {
+          cam.up?.set?.(0, 0, 1);
+        }
       } else {
-        cam.up?.set?.(0, 1, 0);
+        // Y-up orthographic
+        const horiz = baseDist * Math.sin(pitchRad);
+        const y = baseDist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oz = horiz * Math.cos(bearingRad);
+
+        cam.position?.set?.(targetX + ox, targetY + y, targetZ + oz);
+
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          cam.up?.set?.(Math.sin(bearingRad), 0, Math.cos(bearingRad));
+        } else {
+          cam.up?.set?.(0, 1, 0);
+        }
       }
+
       cam.lookAt?.(targetX, targetY, targetZ);
+
       if (this._roll) {
         const rollRad = (this._roll * Math.PI) / 180;
         const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((cam as any).quaternion ?? this._tmpVec3b.set(0,0,-1));
         cam.rotateOnWorldAxis?.(dir, rollRad);
       }
+
       // Ortho frustum changes every zoom/viewport change
       cam.updateProjectionMatrix?.();
       cam.updateMatrixWorld?.();
