@@ -1276,6 +1276,16 @@ var TouchMultiHandler = class {
       ...opts
     };
   }
+  // Enable/disable on-screen debug overlay at runtime
+  setShowDebugOverlay(enabled) {
+    this.opts.showDebugOverlay = !!enabled;
+    if (enabled) {
+      if (!this.debugOverlay) this.createDebugOverlay();
+    } else if (this.debugOverlay) {
+      this.debugOverlay.remove();
+      this.debugOverlay = null;
+    }
+  }
   enable() {
     if (typeof window === "undefined" || this.unbindDown) return;
     this.unbindDown = on(this.el, "touchstart", this.onDown, { passive: true });
@@ -1966,6 +1976,11 @@ var HandlerManager = class {
     (_h = this.boxZoom) == null ? void 0 : _h.destroy();
     (_i = this.safariGestures) == null ? void 0 : _i.destroy();
   }
+  // Runtime control: enable/disable touch debug overlay
+  setTouchDebugOverlay(enabled) {
+    var _a;
+    (_a = this.touch) == null ? void 0 : _a.setShowDebugOverlay(enabled);
+  }
 };
 
 // src/util/flight.ts
@@ -2063,6 +2078,11 @@ var CameraController = class extends Evented {
       this._moveEndTimer = null;
     }
     this._endAllAxes();
+  }
+  // Enable/disable the mobile touch debug overlay at runtime
+  setTouchDebugOverlay(enabled) {
+    var _a, _b;
+    (_b = (_a = this._handlers) == null ? void 0 : _a.setTouchDebugOverlay) == null ? void 0 : _b.call(_a, enabled);
   }
   setViewport(view) {
     this.transform.setViewport(view);

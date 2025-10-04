@@ -111,6 +111,17 @@ export class TouchMultiHandler {
     };
   }
 
+  // Enable/disable on-screen debug overlay at runtime
+  setShowDebugOverlay(enabled: boolean) {
+    (this.opts as any).showDebugOverlay = !!enabled;
+    if (enabled) {
+      if (!this.debugOverlay) this.createDebugOverlay();
+    } else if (this.debugOverlay) {
+      this.debugOverlay.remove();
+      this.debugOverlay = null;
+    }
+  }
+
   enable() {
     if (typeof window === 'undefined' || this.unbindDown) return;
     // Use TouchEvent API to match MapLibre and ensure synchronous multi-touch state

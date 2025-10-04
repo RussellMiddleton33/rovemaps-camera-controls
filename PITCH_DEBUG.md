@@ -226,19 +226,32 @@ const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
 **ENABLED:** On-screen debug overlay now available for mobile testing!
 
 ### How to Enable
+Use any of the following:
 
-Pass `showDebugOverlay: true` when creating the TouchMultiHandler:
-
-```typescript
-const touchHandler = new TouchMultiHandler(
-  element,
-  transform,
-  helper,
-  {
-    showDebugOverlay: true  // Enable debug overlay
+1) Via CameraController options (recommended):
+```ts
+const controller = new CameraController({
+  camera,
+  domElement: canvas,
+  handlers: {
+    touch: { showDebugOverlay: true }
   }
-);
+});
+```
+
+2) Toggle at runtime (no reload):
+```ts
+controller.setTouchDebugOverlay(true);   // enable
+// ... later
+controller.setTouchDebugOverlay(false);  // disable
+```
+
+3) Direct handler usage (if wiring handlers manually):
+```ts
+const touchHandler = new TouchMultiHandler(el, transform, helper, { showDebugOverlay: true });
 touchHandler.enable();
+// or toggle later
+touchHandler.setShowDebugOverlay(true);
 ```
 
 ### What the Overlay Shows

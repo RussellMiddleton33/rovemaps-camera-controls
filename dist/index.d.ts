@@ -406,6 +406,7 @@ declare class CameraController extends Evented<CameraMoveEvents> {
     private _softClamping;
     constructor(opts: CameraControllerOptions);
     dispose(): void;
+    setTouchDebugOverlay(enabled: boolean): void;
     setViewport(view: {
         width: number;
         height: number;

@@ -132,6 +132,11 @@ export class CameraController extends Evented<CameraMoveEvents> {
     this._endAllAxes();
   }
 
+  // Enable/disable the mobile touch debug overlay at runtime
+  setTouchDebugOverlay(enabled: boolean) {
+    this._handlers?.setTouchDebugOverlay?.(enabled);
+  }
+
   setViewport(view: { width: number; height: number; devicePixelRatio?: number }) {
     this.transform.setViewport(view);
   }

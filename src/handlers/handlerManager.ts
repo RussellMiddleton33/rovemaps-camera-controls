@@ -169,4 +169,9 @@ export class HandlerManager {
     this.boxZoom?.destroy();
     this.safariGestures?.destroy();
   }
+
+  // Runtime control: enable/disable touch debug overlay
+  setTouchDebugOverlay(enabled: boolean) {
+    this.touch?.setShowDebugOverlay(enabled);
+  }
 }
