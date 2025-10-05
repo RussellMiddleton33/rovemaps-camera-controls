@@ -1,6 +1,6 @@
 {
   "name": "three-rovemaps-camera-controls",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "MapLibre GL JS-compatible camera controls for Three.js with jumpTo/easeTo/flyTo/fitBounds API, gestures, events, inertia, and Z-up GIS support",
   "license": "MIT",
   "type": "module",
