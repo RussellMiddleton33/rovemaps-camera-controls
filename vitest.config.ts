@@ -4,6 +4,13 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['tests/**/*.{test,spec}.ts']
+    include: ['tests/**/*.{test,spec}.ts'],
+    // Fix for jsdom environment pooling issues in CI
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: false
+      }
+    }
   }
 });
