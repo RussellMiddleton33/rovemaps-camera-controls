@@ -1,11 +1,10 @@
-./maplibre_camera_controls
-*./maplibre_camera_controls
-./dist
-./build
-./coverage
-./dist
-./build
-./coverage
-./dist
-./build
-./coverage
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Project-specific
+maplibre_camera_controls/
