@@ -31,6 +31,7 @@ jobs:
         working-directory: examples/site
         run: |
           npm install
+          rm -rf node_modules/.vite
           VITE_BASE=/rovemaps-camera-controls/demo/ npm run build
       - name: Assemble static site
         run: |
