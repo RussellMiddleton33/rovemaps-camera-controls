@@ -8,10 +8,6 @@ Drop-in GL JS camera controls for Three.js scenes with (jumpTo/easeTo/flyTo/fitB
 
 Recent changes:
 
-- **v0.3.1** (UPCOMING): Fixed birds-eye view (pitch=0) gimbal lock bug
-  - Replaced `lookAt()` + up vector with quaternion-based orientation
-  - Eliminates ~90° bearing twist when pitching to 0°
-  - Applies to all camera types (perspective/orthographic) and coordinate systems (Y-up/Z-up)
 
 - In progress / next up:
 - Not started (planned):
@@ -65,6 +61,7 @@ git commit -m 'Fix Errors'
 git push origin HEAD:main
 
 ## Updating NPM
+
 
  Make sure you're logged into npm first (npm whoami to check).
 
