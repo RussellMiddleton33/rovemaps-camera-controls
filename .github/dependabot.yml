@@ -1,0 +1,41 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    # Limit to 10 open pull requests at a time
+    open-pull-requests-limit: 10
+    # Group all minor and patch updates together
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Only create security update PRs automatically
+    # Keep other dependencies grouped but require manual approval
+    versioning-strategy: auto
+    # Add labels for easy filtering
+    labels:
+      - "dependencies"
+      - "automated"
+    # Add reviewers if you have a team (optional)
+    # reviewers:
+    #   - "username"
+
+  # Monitor GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "github-actions"
+      - "automated"

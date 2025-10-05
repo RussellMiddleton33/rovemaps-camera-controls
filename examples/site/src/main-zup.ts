@@ -40,6 +40,11 @@ scene.add(anchorSphere);
 const velArrow = makeArrow(new THREE.Vector3(1, 0, 0), 0x00ff00, 60);
 scene.add(velArrow);
 
+// Bounding box visualization (red outline)
+const boundsHelper = new THREE.Box3Helper(new THREE.Box3(), 0xff0000);
+boundsHelper.visible = false;
+scene.add(boundsHelper);
+
 const boxGeo = new THREE.BoxGeometry(20, 20, 20);
 for (let i = 0; i < 30; i++) {
   const m = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(i / 30, 0.6, 0.5) });
@@ -233,6 +238,61 @@ toolbar.fit.addEventListener('click', () => {
   const bounds = { min: { x: -150, y: -80 }, max: { x: 150, y: 80 } };
   controller.fitBounds(bounds, { padding: { top: 20, right: 60, bottom: 20, left: 60 }, offset: { x: 80, y: -40 } });
 });
+
+// Reusable function to fit camera to a list of meshes
+function fitToMeshes(meshes: THREE.Mesh[]) {
+  if (meshes.length === 0) {
+    boundsHelper.visible = false;
+    return;
+  }
+
+  // Calculate bounding box from all meshes
+  const box3 = new THREE.Box3();
+  meshes.forEach((mesh) => {
+    const meshBox = new THREE.Box3().setFromObject(mesh);
+    box3.expandByPoint(meshBox.min);
+    box3.expandByPoint(meshBox.max);
+  });
+
+  // Update visual helper to show the calculated box
+  boundsHelper.box.copy(box3);
+  boundsHelper.visible = true;
+
+  // Convert to 2D bounds (Z-up: use X and Y from box3)
+  const bounds = {
+    min: { x: box3.min.x, y: box3.min.y },
+    max: { x: box3.max.x, y: box3.max.y }
+  };
+
+  controller.fitBounds(bounds, { padding: { top: 20, right: 20, bottom: 20, left: 20 } });
+}
+
+// Find meshes in scene by hue range and fit to them
+function fitToColorRange(minHue: number, maxHue: number) {
+  const meshes: THREE.Mesh[] = [];
+
+  scene.traverse((obj) => {
+    if (obj instanceof THREE.Mesh && obj.material instanceof THREE.MeshStandardMaterial) {
+      const color = obj.material.color;
+      const hsl = { h: 0, s: 0, l: 0 };
+      color.getHSL(hsl);
+
+      if (hsl.h >= minHue && hsl.h < maxHue) {
+        meshes.push(obj);
+      }
+    }
+  });
+
+  fitToMeshes(meshes);
+}
+
+// Color-specific fit button handlers
+document.getElementById('btn-fit-red')?.addEventListener('click', () => fitToColorRange(0, 0.15));
+document.getElementById('btn-fit-yellow')?.addEventListener('click', () => fitToColorRange(0.15, 0.25));
+document.getElementById('btn-fit-green')?.addEventListener('click', () => fitToColorRange(0.25, 0.45));
+document.getElementById('btn-fit-cyan')?.addEventListener('click', () => fitToColorRange(0.45, 0.60));
+document.getElementById('btn-fit-blue')?.addEventListener('click', () => fitToColorRange(0.60, 0.75));
+document.getElementById('btn-fit-magenta')?.addEventListener('click', () => fitToColorRange(0.75, 1.0));
 
 function resize() {
   const rect = canvas.getBoundingClientRect();

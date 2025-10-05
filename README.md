@@ -6,12 +6,9 @@ Quick links
 
 Drop-in GL JS camera controls for Three.js scenes with (jumpTo/easeTo/flyTo/fitBounds, pan/zoom/rotate/pitch/roll, around-point, padding/offset, events, inertia, reduced motion).
 
-Recent changes:
-
 
 - In progress / next up:
-- Not started (planned):
-  - Globe/spherical projection helper.
+  - Fit To Bounds Helpers for waypoint + mesh Feature based on a rotation (starting rotation) and padding adjustments settings taking into acount viewport. Also to add with a few animation preset options with pitch to 0, zoom out then zoom in to those bounds like maps do. 
   
 
 ## Quick Start (conceptual)
@@ -31,6 +28,25 @@ SSR/Next.js:
 import { createControllerForNext } from 'three-rovemaps-camera-controls';
 const controller = createControllerForNext(() => ({ camera, domElement }));
 ```
+
+## Security
+
+This library is built with security in mind:
+
+- **Zero production dependencies** (only peer dependency on Three.js)
+- **Regular security audits** - production dependencies checked in CI
+- **TypeScript strict mode** - prevents common runtime errors
+- **SSR-safe** - proper guards for server-side rendering
+- **Memory-safe** - automatic cleanup of event listeners and resources
+
+### Security Best Practices
+
+1. **Always call `dispose()`** when unmounting the controller to prevent memory leaks
+2. **Context Menu**: By default, the library suppresses native context menus to enable right-drag gestures. Set `suppressContextMenu: false` if you need native menus.
+3. **Debug Features**: Never enable `showDebugOverlay` in production - it's for mobile development only
+4. **Keep Updated**: Run `npm update` regularly to get security patches
+
+For security vulnerabilities, see [SECURITY.md](./SECURITY.md)
 
 ## Goals
 
