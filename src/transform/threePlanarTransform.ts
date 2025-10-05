@@ -304,7 +304,7 @@ export class ThreePlanarTransform implements ITransform {
         // Z-up orthographic
         const horiz = baseDist * Math.sin(pitchEff);
         const z = baseDist * Math.cos(pitchEff);
-        const ox = -horiz * Math.sin(bearingRad);
+        const ox = horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
 
         cam.position?.set?.(targetX + ox, targetY + oy, targetZ + z);
