@@ -253,8 +253,7 @@ export class ThreePlanarTransform implements ITransform {
         const z = dist * Math.cos(pitchEff);     // Height above ground
 
         // Bearing rotates around Z axis (horizontal plane)
-        // Negate ox to match rotation direction of Y-up (handedness correction)
-        const ox = -horiz * Math.sin(bearingRad);
+        const ox = horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
 
         cam.position?.set?.(targetX + ox, targetY + oy, targetZ + z);
