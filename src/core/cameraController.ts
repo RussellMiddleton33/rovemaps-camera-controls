@@ -3,7 +3,7 @@ import { Evented } from './evented';
 import { PlanarCameraHelper } from '../helpers/planarCameraHelper';
 import type { ICameraHelper, EaseOptions, FlyToOptions } from '../helpers/icameraHelper';
 import { ThreePlanarTransform } from '../transform/threePlanarTransform';
-import type { ITransform, Padding, TransformConstraints, Bounds2D, MethodOptions } from '../transform/interfaces';
+import type { ITransform, Padding, TransformConstraints, Bounds2D, MethodOptions, Center } from '../transform/interfaces';
 import { browser, raf, caf } from '../util/browser';
 import { defaultEasing } from '../util/easing';
 import { HandlerManager, type HandlerManagerOptions } from '../handlers/handlerManager';
@@ -66,6 +66,66 @@ export type CameraMoveEvents = {
   error: { error: Error };
 };
 
+// Animation state for external loop support
+type AnimationState = {
+  type: 'ease' | 'fly';
+  t0: number;
+  duration: number;
+  easing: (t: number) => number;
+  start: {
+    center: Center;
+    zoom: number;
+    bearing: number;
+    pitch: number;
+    roll: number;
+    padding: Padding;
+  };
+  target: {
+    center: Center;
+    zoom: number;
+    bearing: number;
+    pitch: number;
+    roll: number;
+    padding: Padding;
+  };
+  axes: {
+    zoom: boolean;
+    rotate: boolean;
+    pitch: boolean;
+    roll: boolean;
+    pan: boolean;
+  };
+  // easeTo-specific
+  anchorPt?: { x: number; y: number };
+  anchorTightness?: number;
+  // flyTo-specific
+  flyParams?: {
+    useScreenSpeed: boolean;
+    screenSpeed?: number;
+    S: number;
+    w0: number;
+    w1: number;
+    u1: number;
+    rho: number;
+    params: any;
+    dirX: number;
+    dirY: number;
+    traveled?: number;
+    last?: number;
+    startCenter: Center;
+    endCenter: Center;
+    startZoom: number;
+    endZoom: number;
+    startBearing: number;
+    endBearing: number;
+    startPitch: number;
+    endPitch: number;
+    startRoll: number;
+    endRoll: number;
+    worldDist: number;
+  };
+};
+
 export class CameraController extends Evented<CameraMoveEvents> {
   private readonly _camera: PerspectiveCamera | OrthographicCamera;
   private readonly _dom: HTMLElement;
@@ -89,6 +149,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
   private _isInternalUpdate: boolean = false;
   private _resizeObserver?: ResizeObserver;
   private _useExternalLoop: boolean = false;
+  private _activeAnimation: AnimationState | null = null;
 
   constructor(opts: CameraControllerOptions) {
     super();
@@ -165,6 +226,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
       this._animHandle = null;
     }
     if (this._easeAbort) this._easeAbort.abort();
+    this._activeAnimation = null;
     this._handlers?.dispose();
     if (this._resizeObserver) {
       this._resizeObserver.disconnect();
@@ -309,61 +371,37 @@ export class CameraController extends Evented<CameraMoveEvents> {
 
     if (this._easeAbort) this._easeAbort.abort();
     this._easeAbort = new AbortController();
-    const signal = this._easeAbort.signal;
 
     const t0 = browser.now();
     const anchorPt = (options as any).aroundPoint as { x: number; y: number } | undefined;
     const useAnchor = (options as any).around === 'pointer' && !!anchorPt;
     const tight = Math.max(0, Math.min(1, (options as any).anchorTightness ?? 1));
+
+    // Store animation state
+    this._activeAnimation = {
+      type: 'ease',
+      t0,
+      duration,
+      easing,
+      start,
+      target,
+      axes,
+      anchorPt: useAnchor ? anchorPt : undefined,
+      anchorTightness: useAnchor ? tight : undefined,
+    };
+
+    // If using external loop, caller will drive animation via update()
+    if (this._useExternalLoop) {
+      return this;
+    }
+
+    // Otherwise, use internal RAF loop
     const loop = () => {
-      const now = browser.now();
-      const k = Math.min(1, (now - t0) / duration);
-      const e = easing(k);
-
-      // Measure ground under anchor before applying frame changes
-      const groundBefore = useAnchor ? this.transform.groundFromScreen(anchorPt!) : null;
-
-      this.transform.deferApply(() => {
-        const startZ = start.center.z ?? 0;
-        const targetZ = target.center.z ?? 0;
-        this.transform.setCenter({
-          x: start.center.x + (target.center.x - start.center.x) * e,
-          y: start.center.y + (target.center.y - start.center.y) * e,
-          z: startZ + (targetZ - startZ) * e,
-        });
-        this.transform.setZoom(start.zoom + (target.zoom - start.zoom) * e);
-        this.transform.setBearing(start.bearing + (target.bearing - start.bearing) * e);
-        this.transform.setPitch(start.pitch + (target.pitch - start.pitch) * e);
-        this.transform.setRoll(start.roll + (target.roll - start.roll) * e);
-        this.transform.setPadding({
-          top: start.padding.top + (target.padding.top - start.padding.top) * e,
-          right: start.padding.right + (target.padding.right - start.padding.right) * e,
-          bottom: start.padding.bottom + (target.padding.bottom - start.padding.bottom) * e,
-          left: start.padding.left + (target.padding.left - start.padding.left) * e,
-        });
-      });
-
-      if (groundBefore) {
-        const groundAfter = this.transform.groundFromScreen(anchorPt!);
-        if (groundAfter) {
-          const dgx = (groundBefore.gx - groundAfter.gx) * tight;
-          const dgz = (groundBefore.gz - groundAfter.gz) * tight;
-          if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
-        }
-      }
-
-      this._axisEmitDuring(axes);
-      this._emitRender();
-
-      if (k < 1 && !signal.aborted) {
+      const continues = this._advanceAnimation(browser.now());
+      if (continues) {
         this._animHandle = raf(loop);
       } else {
         this._animHandle = null;
-        // Bearing snap on animation end
-        if (axes.rotate) this._applyBearingSnap();
-        this._applySoftPanBounds();
-        this._axisEnd(axes);
-        this._endMoveLifecycle();
       }
     };
     this._animHandle = raf(loop);
@@ -432,56 +470,58 @@ export class CameraController extends Evented<CameraMoveEvents> {
       duration = Math.max(duration!, rotDur, pitDur, rolDur);
       if (options.maxDuration != null) duration = Math.min(duration, options.maxDuration);
       const easing = options.easing ?? defaultEasing;
+      const axes = { zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 };
       this._startMoveLifecycle();
-      this._axisStart({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
+      this._axisStart(axes);
       if (this._easeAbort) this._easeAbort.abort();
       this._easeAbort = new AbortController();
-      const signal = this._easeAbort.signal;
 
       const t0 = browser.now();
+
+      // Store animation state
+      this._activeAnimation = {
+        type: 'fly',
+        t0,
+        duration: duration!,
+        easing,
+        start: { center: startCenter, zoom: startZoom, bearing: startBearing, pitch: startPitch, roll: startRoll, padding: this.getPadding() },
+        target: { center: endCenter, zoom: endZoom, bearing: endBearing, pitch: endPitch, roll: endRoll, padding: this.getPadding() },
+        axes,
+        flyParams: {
+          useScreenSpeed: false,
+          S,
+          w0,
+          w1,
+          u1,
+          rho,
+          params,
+          dirX: 0,
+          dirY: 0,
+          startCenter,
+          endCenter,
+          startZoom,
+          endZoom,
+          startBearing,
+          endBearing,
+          startPitch,
+          endPitch,
+          startRoll,
+          endRoll,
+          worldDist,
+        },
+      };
+
+      // If using external loop, caller will drive animation via update()
+      if (this._useExternalLoop) {
+        return this;
+      }
+
+      // Otherwise, use internal RAF loop
       const loop = () => {
-        const now = browser.now();
-        const k = Math.min(1, (now - t0) / (duration!));
-        // Map eased time to s in [0, S]
-        const e = easing(k);
-        const s = S * e;
-        // Width/scale along path
-        const w = widthAt(params, s);
-        const scaleRatio = w0 / w; // relative to start
-        const z = startZoom + Math.log2(scaleRatio);
-        // Distance traveled along line in pixels
-        const u = uAt(params, s);
-        const fu = Math.max(0, Math.min(1, u / u1));
-        const cx = startCenter.x + dx * (fu / (worldDist || 1));
-        const cy = startCenter.y + dy * (fu / (worldDist || 1));
-        // Interpolate angles linearly by eased time
-        const b = startBearing + (endBearing - startBearing) * e;
-        const p = startPitch + (endPitch - startPitch) * e;
-        const rr = startRoll + (endRoll - startRoll) * e;
-
-        this.transform.setZoom(z);
-        this.transform.setBearing(b);
-        this.transform.setPitch(p);
-        this.transform.setRoll(rr);
-        this.transform.setCenter({ x: cx, y: cy, z: startCenter.z });
-
-        this._axisEmitDuring({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
-        this._emitRender();
-
-        if (k < 1 && !signal.aborted) {
+        const continues = this._advanceAnimation(browser.now());
+        if (continues) {
           this._animHandle = raf(loop);
         } else {
-          this.transform.deferApply(() => {
-            this.transform.setZoom(endZoom);
-            this.transform.setBearing(endBearing);
-            this.transform.setPitch(endPitch);
-            this.transform.setRoll(endRoll);
-            this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: endCenter.z ?? startCenter.z });
-          });
-          if (endBearing !== startBearing) this._applyBearingSnap();
-          this._applySoftPanBounds();
-          this._axisEnd({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
-          this._endMoveLifecycle();
           this._animHandle = null;
         }
       };
@@ -490,63 +530,63 @@ export class CameraController extends Evented<CameraMoveEvents> {
     }
 
     const easing = options.easing ?? defaultEasing;
+    const axes = { zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 };
     this._startMoveLifecycle();
-    this._axisStart({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
+    this._axisStart(axes);
     if (this._easeAbort) this._easeAbort.abort();
     this._easeAbort = new AbortController();
-    const signal = this._easeAbort.signal;
 
     const t0 = browser.now();
     const dirX = worldDist > 0 ? dx / worldDist : 0;
     const dirY = worldDist > 0 ? dy / worldDist : 0;
-    let traveled = 0; // world units
-    let last = t0;
 
+    // Store animation state
+    this._activeAnimation = {
+      type: 'fly',
+      t0,
+      duration: duration!,
+      easing,
+      start: { center: startCenter, zoom: startZoom, bearing: startBearing, pitch: startPitch, roll: startRoll, padding: this.getPadding() },
+      target: { center: endCenter, zoom: endZoom, bearing: endBearing, pitch: endPitch, roll: endRoll, padding: this.getPadding() },
+      axes,
+      flyParams: {
+        useScreenSpeed: true,
+        screenSpeed: options.screenSpeed,
+        S: 0, // not used for screenSpeed path
+        w0: 0,
+        w1: 0,
+        u1: 0,
+        rho: 0,
+        params: null,
+        dirX,
+        dirY,
+        traveled: 0,
+        last: t0,
+        startCenter,
+        endCenter,
+        startZoom,
+        endZoom,
+        startBearing,
+        endBearing,
+        startPitch,
+        endPitch,
+        startRoll,
+        endRoll,
+        worldDist,
+      },
+    };
+
+    // If using external loop, caller will drive animation via update()
+    if (this._useExternalLoop) {
+      return this;
+    }
+
+    // Otherwise, use internal RAF loop
     const loop = () => {
-      const now = browser.now();
-      const k = Math.min(1, (now - t0) / duration!);
-      const e = easing(k);
-
-      // Eased zoom/bearing/pitch/roll
-      const z = startZoom + (endZoom - startZoom) * e;
-      const b = startBearing + (endBearing - startBearing) * e;
-      const p = startPitch + (endPitch - startPitch) * e;
-      const r = startRoll + (endRoll - startRoll) * e;
-      this.transform.deferApply(() => {
-        this.transform.setZoom(z);
-        this.transform.setBearing(b);
-        this.transform.setPitch(p);
-        this.transform.setRoll(r);
-      });
-
-      // Constant screen speed center motion
-      const dt = (now - last) / 1000;
-      last = now;
-      const scale = Math.pow(2, z);
-      const stepWorld = (options.screenSpeed! * dt) / scale;
-      traveled = Math.min(worldDist, traveled + stepWorld);
-      const cx = startCenter.x + dirX * traveled;
-      const cy = startCenter.y + dirY * traveled;
-      this.transform.setCenter({ x: cx, y: cy, z: startCenter.z });
-
-      this._axisEmitDuring({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
-      this._emitRender();
-
-      if (k < 1 && traveled < worldDist && !signal.aborted) {
+      const continues = this._advanceAnimation(browser.now());
+      if (continues) {
         this._animHandle = raf(loop);
       } else {
-        // Ensure final state
-        this.transform.deferApply(() => {
-          this.transform.setZoom(endZoom);
-          this.transform.setBearing(endBearing);
-          this.transform.setPitch(endPitch);
-          this.transform.setRoll(endRoll);
-          this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: endCenter.z ?? startCenter.z });
-        });
-        if (endBearing !== startBearing) this._applyBearingSnap();
-        this._applySoftPanBounds();
-        this._axisEnd({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
-        this._endMoveLifecycle();
         this._animHandle = null;
       }
     };
@@ -584,6 +624,176 @@ export class CameraController extends Evented<CameraMoveEvents> {
     padding?: Partial<Padding>;
   }, methodOpts?: MethodOptions) {
     return this.jumpTo(state, methodOpts);
+  }
+
+  /**
+   * Update animation state (for external animation loops).
+   * Call this from your animation loop (e.g., React Three Fiber's useFrame) when
+   * useExternalAnimationLoop is true. This advances any active easeTo/flyTo animation.
+   *
+   * @param deltaTime - Optional delta time in seconds (currently unused, for future use)
+   * @returns this for chaining
+   */
+  update(deltaTime?: number): this {
+    if (this._activeAnimation) {
+      this._advanceAnimation(browser.now());
+    }
+    return this;
+  }
+
+  /**
+   * Advance the active animation by one frame.
+   * Returns true if animation continues, false if complete.
+   * @internal
+   */
+  private _advanceAnimation(now: number): boolean {
+    if (!this._activeAnimation) return false;
+
+    const anim = this._activeAnimation;
+    const k = Math.min(1, (now - anim.t0) / anim.duration);
+    const e = anim.easing(k);
+
+    if (anim.type === 'ease') {
+      // easeTo animation
+      const groundBefore = anim.anchorPt ? this.transform.groundFromScreen(anim.anchorPt) : null;
+
+      this.transform.deferApply(() => {
+        const startZ = anim.start.center.z ?? 0;
+        const targetZ = anim.target.center.z ?? 0;
+        this.transform.setCenter({
+          x: anim.start.center.x + (anim.target.center.x - anim.start.center.x) * e,
+          y: anim.start.center.y + (anim.target.center.y - anim.start.center.y) * e,
+          z: startZ + (targetZ - startZ) * e,
+        });
+        this.transform.setZoom(anim.start.zoom + (anim.target.zoom - anim.start.zoom) * e);
+        this.transform.setBearing(anim.start.bearing + (anim.target.bearing - anim.start.bearing) * e);
+        this.transform.setPitch(anim.start.pitch + (anim.target.pitch - anim.start.pitch) * e);
+        this.transform.setRoll(anim.start.roll + (anim.target.roll - anim.start.roll) * e);
+        this.transform.setPadding({
+          top: anim.start.padding.top + (anim.target.padding.top - anim.start.padding.top) * e,
+          right: anim.start.padding.right + (anim.target.padding.right - anim.start.padding.right) * e,
+          bottom: anim.start.padding.bottom + (anim.target.padding.bottom - anim.start.padding.bottom) * e,
+          left: anim.start.padding.left + (anim.target.padding.left - anim.start.padding.left) * e,
+        });
+      });
+
+      if (groundBefore && anim.anchorPt) {
+        const groundAfter = this.transform.groundFromScreen(anim.anchorPt);
+        if (groundAfter) {
+          const tight = anim.anchorTightness ?? 1;
+          const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+          const dgz = (groundBefore.gz - groundAfter.gz) * tight;
+          if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
+        }
+      }
+
+      this._axisEmitDuring(anim.axes);
+      this._emitRender();
+
+      if (k < 1 && this._easeAbort && !this._easeAbort.signal.aborted) {
+        return true; // Continue
+      } else {
+        // Complete
+        if (anim.axes.rotate) this._applyBearingSnap();
+        this._applySoftPanBounds();
+        this._axisEnd(anim.axes);
+        this._endMoveLifecycle();
+        this._activeAnimation = null;
+        return false;
+      }
+    } else if (anim.type === 'fly' && anim.flyParams) {
+      // flyTo animation
+      const fp = anim.flyParams;
+
+      if (fp.useScreenSpeed) {
+        // Constant screen speed path
+        const z = fp.startZoom + (fp.endZoom - fp.startZoom) * e;
+        const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
+        const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
+        const r = fp.startRoll + (fp.endRoll - fp.startRoll) * e;
+        this.transform.deferApply(() => {
+          this.transform.setZoom(z);
+          this.transform.setBearing(b);
+          this.transform.setPitch(p);
+          this.transform.setRoll(r);
+        });
+
+        // Constant screen speed center motion
+        const dt = (now - (fp.last ?? anim.t0)) / 1000;
+        fp.last = now;
+        const scale = Math.pow(2, z);
+        const stepWorld = ((fp.screenSpeed ?? 0) * dt) / scale;
+        const traveled = Math.min(fp.worldDist, (fp.traveled ?? 0) + stepWorld);
+        fp.traveled = traveled;
+        const cx = fp.startCenter.x + fp.dirX * traveled;
+        const cy = fp.startCenter.y + fp.dirY * traveled;
+        this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
+
+        this._axisEmitDuring(anim.axes);
+        this._emitRender();
+
+        if (k < 1 && traveled < fp.worldDist && this._easeAbort && !this._easeAbort.signal.aborted) {
+          return true; // Continue
+        } else {
+          // Ensure final state
+          this.transform.deferApply(() => {
+            this.transform.setZoom(fp.endZoom);
+            this.transform.setBearing(fp.endBearing);
+            this.transform.setPitch(fp.endPitch);
+            this.transform.setRoll(fp.endRoll);
+            this.transform.setCenter({ x: fp.endCenter.x, y: fp.endCenter.y, z: fp.endCenter.z ?? fp.startCenter.z });
+          });
+          if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
+          this._applySoftPanBounds();
+          this._axisEnd(anim.axes);
+          this._endMoveLifecycle();
+          this._activeAnimation = null;
+          return false;
+        }
+      } else {
+        // Van Wijk path
+        const s = fp.S * e;
+        const w = widthAt(fp.params, s);
+        const scaleRatio = fp.w0 / w;
+        const z = fp.startZoom + Math.log2(scaleRatio);
+        const u = uAt(fp.params, s);
+        const fu = Math.max(0, Math.min(1, u / fp.u1));
+        const cx = fp.startCenter.x + (fp.endCenter.x - fp.startCenter.x) * (fu / (fp.worldDist || 1));
+        const cy = fp.startCenter.y + (fp.endCenter.y - fp.startCenter.y) * (fu / (fp.worldDist || 1));
+        const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
+        const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
+        const rr = fp.startRoll + (fp.endRoll - fp.startRoll) * e;
+
+        this.transform.setZoom(z);
+        this.transform.setBearing(b);
+        this.transform.setPitch(p);
+        this.transform.setRoll(rr);
+        this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
+
+        this._axisEmitDuring(anim.axes);
+        this._emitRender();
+
+        if (k < 1 && this._easeAbort && !this._easeAbort.signal.aborted) {
+          return true; // Continue
+        } else {
+          this.transform.deferApply(() => {
+            this.transform.setZoom(fp.endZoom);
+            this.transform.setBearing(fp.endBearing);
+            this.transform.setPitch(fp.endPitch);
+            this.transform.setRoll(fp.endRoll);
+            this.transform.setCenter({ x: fp.endCenter.x, y: fp.endCenter.y, z: fp.endCenter.z ?? fp.startCenter.z });
+          });
+          if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
+          this._applySoftPanBounds();
+          this._axisEnd(anim.axes);
+          this._endMoveLifecycle();
+          this._activeAnimation = null;
+          return false;
+        }
+      }
+    }
+
+    return false;
   }
 
   private _emitRender() {

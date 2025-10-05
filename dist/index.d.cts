@@ -430,6 +430,7 @@ declare class CameraController extends Evented<CameraMoveEvents> {
     private _isInternalUpdate;
     private _resizeObserver?;
     private _useExternalLoop;
+    private _activeAnimation;
     constructor(opts: CameraControllerOptions);
     dispose(): void;
     private _fire;
@@ -576,6 +577,21 @@ declare class CameraController extends Evented<CameraMoveEvents> {
         roll?: number;
         padding?: Partial<Padding>;
     }, methodOpts?: MethodOptions): this;
+    /**
+     * Update animation state (for external animation loops).
+     * Call this from your animation loop (e.g., React Three Fiber's useFrame) when
+     * useExternalAnimationLoop is true. This advances any active easeTo/flyTo animation.
+     *
+     * @param deltaTime - Optional delta time in seconds (currently unused, for future use)
+     * @returns this for chaining
+     */
+    update(deltaTime?: number): this;
+    /**
+     * Advance the active animation by one frame.
+     * Returns true if animation continues, false if complete.
+     * @internal
+     */
+    private _advanceAnimation;
     private _emitRender;
     private _startMoveLifecycle;
     private _endMoveLifecycle;
