@@ -158,9 +158,10 @@ export class MousePanHandler {
       this.lastGround = currGround;
       if (dt > 0) {
         // Estimate ground delta from screen dx,dy mapping
-        const scale = Math.pow(2, this.transform.zoom);
-        const rad = (this.transform.bearing * Math.PI) / 180;
-        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const scale = (this.transform as any).scale ?? Math.pow(2, this.transform.zoom); // use cached scale
+        // Use cached trig values
+        const cos = (this.transform as any).bearingCos ?? Math.cos((this.transform.bearing * Math.PI) / 180);
+        const sin = (this.transform as any).bearingSin ?? Math.sin((this.transform.bearing * Math.PI) / 180);
         const dWx = (-dx * cos + dy * sin) / scale;
         const dWz = (dx * sin + dy * cos) / scale;
         const alphaG = 0.3;

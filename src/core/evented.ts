@@ -25,9 +25,10 @@ export class Evented<TEvents extends Record<string, any> = any> {
 
   fire<K extends keyof TEvents & string>(type: K, ev: TEvents[K]) {
     const set = this.listeners.get(type);
-    if (!set) return this;
-    // Clone set to avoid mutation-in-iteration
-    [...set].forEach((fn) => {
+    if (!set || set.size === 0) return this;
+    // Iterate directly without array allocation for better performance
+    // Safe mutation: listeners can only remove themselves, which Set.forEach handles
+    set.forEach((fn) => {
       try {
         fn(ev);
       } catch (e) {

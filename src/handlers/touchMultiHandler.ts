@@ -55,8 +55,9 @@ export class TouchMultiHandler {
   private lastPinchPointer: { x: number; y: number } | null = null; // screen coords of last pinch centroid
   private lastSinglePt: { x: number; y: number } | null = null;
   private lastSingleGround: { gx: number; gz: number } | null = null;
-  private lastP0: Pt | null = null;
-  private lastP1: Pt | null = null;
+  // Pre-allocated point objects for reuse to avoid allocations in hot path
+  private lastP0: Pt = { id: -1, x: 0, y: 0 };
+  private lastP1: Pt = { id: -1, x: 0, y: 0 };
 
   // inertias
   private vz = 0; // zoom units/s
@@ -184,8 +185,9 @@ export class TouchMultiHandler {
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     this.lastAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-    this.lastP0 = { ...p0 };
-    this.lastP1 = { ...p1 };
+    // Reuse allocated objects instead of spreading
+    this.lastP0.id = p0.id; this.lastP0.x = p0.x; this.lastP0.y = p0.y;
+    this.lastP1.id = p1.id; this.lastP1.x = p1.x; this.lastP1.y = p1.y;
     this.active = true;
     this.lastTs = performance.now();
     this.mode = 'idle';
@@ -268,7 +270,7 @@ export class TouchMultiHandler {
     // Keep pairing stable by previous identifiers where possible
     let p0: Pt | undefined;
     let p1: Pt | undefined;
-    if (this.lastP0 && this.lastP1) {
+    if (this.lastP0.id !== -1 && this.lastP1.id !== -1) {
       p0 = this.pts.get(this.lastP0.id) ?? undefined;
       p1 = this.pts.get(this.lastP1.id) ?? undefined;
     }
@@ -295,8 +297,8 @@ export class TouchMultiHandler {
     if (dAng > Math.PI) dAng -= Math.PI * 2; else if (dAng < -Math.PI) dAng += Math.PI * 2;
     const dDeg = radToDeg(dAng);
     // Per-finger movement vectors since last frame (MapLibre-style pitch detection)
-    const vA = this.lastP0 ? { x: p0.x - this.lastP0.x, y: p0.y - this.lastP0.y } : { x: 0, y: 0 };
-    const vB = this.lastP1 ? { x: p1.x - this.lastP1.x, y: p1.y - this.lastP1.y } : { x: 0, y: 0 };
+    const vA = this.lastP0.id !== -1 ? { x: p0.x - this.lastP0.x, y: p0.y - this.lastP0.y } : { x: 0, y: 0 };
+    const vB = this.lastP1.id !== -1 ? { x: p1.x - this.lastP1.x, y: p1.y - this.lastP1.y } : { x: 0, y: 0 };
     const movedA = Math.hypot(vA.x, vA.y) >= 2;
     const movedB = Math.hypot(vB.x, vB.y) >= 2;
     const verticalA = Math.abs(vA.y) > Math.abs(vA.x);
@@ -425,8 +427,9 @@ export class TouchMultiHandler {
     this.lastCenterEl = center;
     this.lastDist = dist;
     this.lastAngle = angle;
-    this.lastP0 = { ...p0 };
-    this.lastP1 = { ...p1 };
+    // Reuse allocated objects instead of spreading
+    this.lastP0.id = p0.id; this.lastP0.x = p0.x; this.lastP0.y = p0.y;
+    this.lastP1.id = p1.id; this.lastP1.x = p1.x; this.lastP1.y = p1.y;
     this.opts.onChange({ axes, originalEvent: e });
   };
 
@@ -444,8 +447,9 @@ export class TouchMultiHandler {
         // Clear multi-touch state to prevent jumps
         this.lastGroundCenter = null;
         this.lastPinchPointer = null;
-        this.lastP0 = null;
-        this.lastP1 = null;
+        // Reset point IDs to indicate no valid previous points
+        this.lastP0.id = -1;
+        this.lastP1.id = -1;
 
         // Start inertia BEFORE resetting mode (so inertia sees correct previous mode)
         this.startInertia();

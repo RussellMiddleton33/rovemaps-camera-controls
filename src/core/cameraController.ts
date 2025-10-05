@@ -346,7 +346,8 @@ export class CameraController extends Evented<CameraMoveEvents> {
       const ox = options.offset.x, oy = options.offset.y;
       const rx = ox * cos + oy * sin;
       const ry = -ox * sin + oy * cos;
-      const s = Math.pow(2, target.zoom);
+      // Use cached scale if target zoom matches current zoom
+      const s = target.zoom === this.getZoom() ? (this.transform as any).scale ?? Math.pow(2, target.zoom) : Math.pow(2, target.zoom);
       const dxW = -rx / s;
       const dyW = ry / s;
       target.center = { x: target.center.x + dxW, y: target.center.y + dyW, z: target.center.z };

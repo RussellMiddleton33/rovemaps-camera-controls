@@ -18,7 +18,11 @@ export class ThreePlanarTransform implements ITransform {
   private _padding: Padding = { top: 0, right: 0, bottom: 0, left: 0 };
   private _center: Center = { x: 0, y: 0, z: 0 };
   private _zoom = 0; // semantic zoom
+  private _scale = 1; // cached Math.pow(2, zoom) for performance
   private _bearing = 0; // deg
+  private _bearingRad = 0; // cached bearing in radians
+  private _bearingCos = 1; // cached cos(bearing) for performance
+  private _bearingSin = 0; // cached sin(bearing) for performance
   private _pitch = 0; // deg
   private _roll = 0; // deg
   private _tileSize: number;
@@ -29,6 +33,7 @@ export class ThreePlanarTransform implements ITransform {
   // pooled objects to avoid allocs in hot path
   private _tmpVec3a = new Vector3();
   private _tmpVec3b = new Vector3();
+  private _tmpVec3c = new Vector3(); // additional pool for raycast results
   private _ray = new Ray();
   private _plane = new Plane();
   private _deferDepth = 0;
@@ -66,7 +71,11 @@ export class ThreePlanarTransform implements ITransform {
   get devicePixelRatio() { return this._dpr; }
   get center() { return this._center; }
   get zoom() { return this._zoom; }
+  get scale() { return this._scale; } // cached scale for performance
   get bearing() { return this._bearing; }
+  get bearingRad() { return this._bearingRad; } // cached bearing in radians
+  get bearingCos() { return this._bearingCos; } // cached cos(bearing)
+  get bearingSin() { return this._bearingSin; } // cached sin(bearing)
   get pitch() { return this._pitch; }
   get roll() { return this._roll; }
   get padding() { return this._padding; }
@@ -117,13 +126,20 @@ export class ThreePlanarTransform implements ITransform {
   setZoom(zoom: number): void {
     const z = Math.max(this._constraints.minZoom, Math.min(this._constraints.maxZoom, zoom));
     this._zoom = z;
+    this._scale = Math.pow(2, z); // cache scale for performance
     // Perspective projection matrix does not depend on zoom; orthographic does.
     const cam = this._camera as any;
     if (cam && 'isOrthographicCamera' in cam && cam.isOrthographicCamera) this._projDirty = true;
     this._scheduleApply();
   }
 
-  setBearing(bearing: number): void { this._bearing = normalizeAngleDeg(bearing); this._scheduleApply(); }
+  setBearing(bearing: number): void {
+    this._bearing = normalizeAngleDeg(bearing);
+    this._bearingRad = (this._bearing * Math.PI) / 180;
+    this._bearingCos = Math.cos(this._bearingRad);
+    this._bearingSin = Math.sin(this._bearingRad);
+    this._scheduleApply();
+  }
   setPitch(pitch: number): void { this._pitch = clamp(pitch, this._constraints.minPitch, this._constraints.maxPitch); this._scheduleApply(); }
   setRoll(roll: number): void { this._roll = normalizeAngleDeg(roll); this._scheduleApply(); }
 
@@ -166,8 +182,9 @@ export class ThreePlanarTransform implements ITransform {
     } else {
       this._plane.set(new Vector3(0, 0, 1), 0); // z=0
     }
-    const hit = this._ray.intersectPlane(this._plane, new Vector3());
-    return hit ?? null;
+    // Use pooled vector for raycast result to avoid allocation
+    const hit = this._ray.intersectPlane(this._plane, this._tmpVec3c);
+    return hit ? hit.clone() : null; // Clone only if hit, since caller may mutate
   }
 
   worldToScreen(world: ThreeVector3): Vec2 | null {
@@ -178,10 +195,29 @@ export class ThreePlanarTransform implements ITransform {
   }
 
   groundFromScreen(screen: { x: number; y: number }) {
-    const hit = this.screenToWorld(screen);
+    // Optimized: avoid Vector3 clone by extracting ground coords directly from pooled raycast
+    if (this._getGroundIntersection) {
+      const hit = this._getGroundIntersection(screen);
+      if (!hit) return null;
+      return this._upAxis === 'z' ? { gx: hit.x, gz: hit.y } : { gx: hit.x, gz: hit.z };
+    }
+
+    const ndcX = (screen.x / this._width) * 2 - 1;
+    const ndcY = -(screen.y / this._height) * 2 + 1;
+
+    const pNear = this._tmpVec3a.set(ndcX, ndcY, -1).unproject(this._camera as any);
+    const pFar = this._tmpVec3b.set(ndcX, ndcY, 1).unproject(this._camera as any);
+    this._ray.set(pNear, pFar.sub(pNear).normalize());
+
+    if (this._upAxis === 'y') {
+      this._plane.set(new Vector3(0, 1, 0), 0);
+    } else {
+      this._plane.set(new Vector3(0, 0, 1), 0);
+    }
+
+    const hit = this._ray.intersectPlane(this._plane, this._tmpVec3c);
     if (!hit) return null;
-    // Y-up: ground is XZ plane (y=0), so gx=hit.x, gz=hit.z
-    // Z-up: ground is XY plane (z=0), so gx=hit.x, gz=hit.y
+    // Extract ground coordinates immediately without clone
     return this._upAxis === 'z' ? { gx: hit.x, gz: hit.y } : { gx: hit.x, gz: hit.z };
   }
 
@@ -232,7 +268,7 @@ export class ThreePlanarTransform implements ITransform {
     if ('isPerspectiveCamera' in cam && cam.isPerspectiveCamera) {
       // Perspective: compute distance to achieve desired pixels-per-world at center when pitch=0.
       const fovRad = (cam.fov * Math.PI) / 180;
-      const s = Math.pow(2, this._zoom); // px per world unit
+      const s = this._scale; // use cached scale (px per world unit)
       const visibleWorldHeight = this._height / s; // world units
       const dist = (visibleWorldHeight / 2) / Math.tan(fovRad / 2);
 
@@ -285,7 +321,7 @@ export class ThreePlanarTransform implements ITransform {
       cam.updateMatrixWorld?.();
     } else if ('isOrthographicCamera' in cam && cam.isOrthographicCamera) {
       // Ortho: set frustum to map pixels-per-world
-      const s = Math.pow(2, this._zoom);
+      const s = this._scale; // use cached scale
       const halfW = this._width / (2 * s);
       const halfH = this._height / (2 * s);
       cam.left = -halfW; cam.right = halfW; cam.top = halfH; cam.bottom = -halfH;

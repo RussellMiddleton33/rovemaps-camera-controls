@@ -26,8 +26,8 @@ var Evented = class {
   }
   fire(type, ev) {
     const set = this.listeners.get(type);
-    if (!set) return this;
-    [...set].forEach((fn) => {
+    if (!set || set.size === 0) return this;
+    set.forEach((fn) => {
       try {
         fn(ev);
       } catch (e) {
@@ -68,10 +68,10 @@ function scaleZoom(scale) {
 // src/helpers/planarCameraHelper.ts
 var PlanarCameraHelper = class {
   handleMapControlsPan(transform, dx, dy) {
-    const scale = Math.pow(2, transform.zoom);
-    const rad = transform.bearing * Math.PI / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
+    var _a, _b, _c;
+    const scale = (_a = transform.scale) != null ? _a : Math.pow(2, transform.zoom);
+    const cos = (_b = transform.bearingCos) != null ? _b : Math.cos(transform.bearing * Math.PI / 180);
+    const sin = (_c = transform.bearingSin) != null ? _c : Math.sin(transform.bearing * Math.PI / 180);
     const dWx = (dx * cos - dy * sin) / scale;
     const dWz = (-dx * sin - dy * cos) / scale;
     transform.setCenter({
@@ -140,6 +140,7 @@ var PlanarCameraHelper = class {
       const h = maxY - minY;
       return { w, h };
     };
+    const tolerance = 0.01;
     for (let i = 0; i < 24; i++) {
       const mid = (lo + hi) / 2;
       const { w, h } = fitAtZoom(mid);
@@ -148,6 +149,7 @@ var PlanarCameraHelper = class {
       } else {
         hi = mid;
       }
+      if (Math.abs(hi - lo) < tolerance) break;
     }
     const zoom = lo;
     transform.setCenter(saved.center);
@@ -188,8 +190,16 @@ var ThreePlanarTransform = class {
     this._center = { x: 0, y: 0, z: 0 };
     this._zoom = 0;
     // semantic zoom
+    this._scale = 1;
+    // cached Math.pow(2, zoom) for performance
     this._bearing = 0;
     // deg
+    this._bearingRad = 0;
+    // cached bearing in radians
+    this._bearingCos = 1;
+    // cached cos(bearing) for performance
+    this._bearingSin = 0;
+    // cached sin(bearing) for performance
     this._pitch = 0;
     // deg
     this._roll = 0;
@@ -197,6 +207,8 @@ var ThreePlanarTransform = class {
     // pooled objects to avoid allocs in hot path
     this._tmpVec3a = new three.Vector3();
     this._tmpVec3b = new three.Vector3();
+    this._tmpVec3c = new three.Vector3();
+    // additional pool for raycast results
     this._ray = new three.Ray();
     this._plane = new three.Plane();
     this._deferDepth = 0;
@@ -238,9 +250,25 @@ var ThreePlanarTransform = class {
   get zoom() {
     return this._zoom;
   }
+  get scale() {
+    return this._scale;
+  }
+  // cached scale for performance
   get bearing() {
     return this._bearing;
   }
+  get bearingRad() {
+    return this._bearingRad;
+  }
+  // cached bearing in radians
+  get bearingCos() {
+    return this._bearingCos;
+  }
+  // cached cos(bearing)
+  get bearingSin() {
+    return this._bearingSin;
+  }
+  // cached sin(bearing)
   get pitch() {
     return this._pitch;
   }
@@ -291,12 +319,16 @@ var ThreePlanarTransform = class {
   setZoom(zoom) {
     const z = Math.max(this._constraints.minZoom, Math.min(this._constraints.maxZoom, zoom));
     this._zoom = z;
+    this._scale = Math.pow(2, z);
     const cam = this._camera;
     if (cam && "isOrthographicCamera" in cam && cam.isOrthographicCamera) this._projDirty = true;
     this._scheduleApply();
   }
   setBearing(bearing) {
     this._bearing = normalizeAngleDeg(bearing);
+    this._bearingRad = this._bearing * Math.PI / 180;
+    this._bearingCos = Math.cos(this._bearingRad);
+    this._bearingSin = Math.sin(this._bearingRad);
     this._scheduleApply();
   }
   setPitch(pitch) {
@@ -340,8 +372,8 @@ var ThreePlanarTransform = class {
     } else {
       this._plane.set(new three.Vector3(0, 0, 1), 0);
     }
-    const hit = this._ray.intersectPlane(this._plane, new three.Vector3());
-    return hit != null ? hit : null;
+    const hit = this._ray.intersectPlane(this._plane, this._tmpVec3c);
+    return hit ? hit.clone() : null;
   }
   worldToScreen(world) {
     const v = this._tmpVec3a.copy(world).project(this._camera);
@@ -350,7 +382,22 @@ var ThreePlanarTransform = class {
     return { x, y };
   }
   groundFromScreen(screen) {
-    const hit = this.screenToWorld(screen);
+    if (this._getGroundIntersection) {
+      const hit2 = this._getGroundIntersection(screen);
+      if (!hit2) return null;
+      return this._upAxis === "z" ? { gx: hit2.x, gz: hit2.y } : { gx: hit2.x, gz: hit2.z };
+    }
+    const ndcX = screen.x / this._width * 2 - 1;
+    const ndcY = -(screen.y / this._height) * 2 + 1;
+    const pNear = this._tmpVec3a.set(ndcX, ndcY, -1).unproject(this._camera);
+    const pFar = this._tmpVec3b.set(ndcX, ndcY, 1).unproject(this._camera);
+    this._ray.set(pNear, pFar.sub(pNear).normalize());
+    if (this._upAxis === "y") {
+      this._plane.set(new three.Vector3(0, 1, 0), 0);
+    } else {
+      this._plane.set(new three.Vector3(0, 0, 1), 0);
+    }
+    const hit = this._ray.intersectPlane(this._plane, this._tmpVec3c);
     if (!hit) return null;
     return this._upAxis === "z" ? { gx: hit.x, gz: hit.y } : { gx: hit.x, gz: hit.z };
   }
@@ -394,7 +441,7 @@ var ThreePlanarTransform = class {
     }
     if ("isPerspectiveCamera" in cam && cam.isPerspectiveCamera) {
       const fovRad = cam.fov * Math.PI / 180;
-      const s = Math.pow(2, this._zoom);
+      const s = this._scale;
       const visibleWorldHeight = this._height / s;
       const dist = visibleWorldHeight / 2 / Math.tan(fovRad / 2);
       const bearingRad = (this._upAxis === "z" ? 1 : -1) * (this._bearing * Math.PI) / 180;
@@ -429,7 +476,7 @@ var ThreePlanarTransform = class {
       }
       (_n = cam.updateMatrixWorld) == null ? void 0 : _n.call(cam);
     } else if ("isOrthographicCamera" in cam && cam.isOrthographicCamera) {
-      const s = Math.pow(2, this._zoom);
+      const s = this._scale;
       const halfW = this._width / (2 * s);
       const halfH = this._height / (2 * s);
       cam.left = -halfW;
@@ -737,7 +784,7 @@ var MousePanHandler = class {
       };
     };
     this.onMove = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
       const dx = (e.clientX - this.lastX) * ((_a = this.opts.panXSign) != null ? _a : 1);
       const dy = (e.clientY - this.lastY) * ((_b = this.opts.panYSign) != null ? _b : 1);
       const dt = (performance.now() - this.lastTs) / 1e3;
@@ -783,9 +830,9 @@ var MousePanHandler = class {
         this.helper.handleMapControlsPan(this.transform, dx, dy);
         this.lastGround = currGround;
         if (dt > 0) {
-          const scale = Math.pow(2, this.transform.zoom);
-          const rad = this.transform.bearing * Math.PI / 180;
-          const cos = Math.cos(rad), sin = Math.sin(rad);
+          const scale = (_o = this.transform.scale) != null ? _o : Math.pow(2, this.transform.zoom);
+          const cos = (_p = this.transform.bearingCos) != null ? _p : Math.cos(this.transform.bearing * Math.PI / 180);
+          const sin = (_q = this.transform.bearingSin) != null ? _q : Math.sin(this.transform.bearing * Math.PI / 180);
           const dWx = (-dx * cos + dy * sin) / scale;
           const dWz = (dx * sin + dy * cos) / scale;
           const alphaG = 0.3;
@@ -1020,8 +1067,9 @@ var TouchMultiHandler = class {
     // screen coords of last pinch centroid
     this.lastSinglePt = null;
     this.lastSingleGround = null;
-    this.lastP0 = null;
-    this.lastP1 = null;
+    // Pre-allocated point objects for reuse to avoid allocations in hot path
+    this.lastP0 = { id: -1, x: 0, y: 0 };
+    this.lastP1 = { id: -1, x: 0, y: 0 };
     // inertias
     this.vz = 0;
     // zoom units/s
@@ -1125,7 +1173,7 @@ var TouchMultiHandler = class {
       const rect = this.el.getBoundingClientRect();
       let p0;
       let p1;
-      if (this.lastP0 && this.lastP1) {
+      if (this.lastP0.id !== -1 && this.lastP1.id !== -1) {
         p0 = (_u = this.pts.get(this.lastP0.id)) != null ? _u : void 0;
         p1 = (_v = this.pts.get(this.lastP1.id)) != null ? _v : void 0;
       }
@@ -1151,8 +1199,8 @@ var TouchMultiHandler = class {
       if (dAng > Math.PI) dAng -= Math.PI * 2;
       else if (dAng < -Math.PI) dAng += Math.PI * 2;
       const dDeg = radToDeg(dAng);
-      const vA = this.lastP0 ? { x: p0.x - this.lastP0.x, y: p0.y - this.lastP0.y } : { x: 0, y: 0 };
-      const vB = this.lastP1 ? { x: p1.x - this.lastP1.x, y: p1.y - this.lastP1.y } : { x: 0, y: 0 };
+      const vA = this.lastP0.id !== -1 ? { x: p0.x - this.lastP0.x, y: p0.y - this.lastP0.y } : { x: 0, y: 0 };
+      const vB = this.lastP1.id !== -1 ? { x: p1.x - this.lastP1.x, y: p1.y - this.lastP1.y } : { x: 0, y: 0 };
       const movedA = Math.hypot(vA.x, vA.y) >= 2;
       const movedB = Math.hypot(vB.x, vB.y) >= 2;
       const verticalA = Math.abs(vA.y) > Math.abs(vA.x);
@@ -1275,8 +1323,12 @@ var TouchMultiHandler = class {
       this.lastCenterEl = center;
       this.lastDist = dist;
       this.lastAngle = angle;
-      this.lastP0 = { ...p0 };
-      this.lastP1 = { ...p1 };
+      this.lastP0.id = p0.id;
+      this.lastP0.x = p0.x;
+      this.lastP0.y = p0.y;
+      this.lastP1.id = p1.id;
+      this.lastP1.x = p1.x;
+      this.lastP1.y = p1.y;
       this.opts.onChange({ axes, originalEvent: e });
     };
     this.onUp = (e) => {
@@ -1290,8 +1342,8 @@ var TouchMultiHandler = class {
           this.active = false;
           this.lastGroundCenter = null;
           this.lastPinchPointer = null;
-          this.lastP0 = null;
-          this.lastP1 = null;
+          this.lastP0.id = -1;
+          this.lastP1.id = -1;
           this.startInertia();
           if (this.pts.size === 1) {
             const remaining = [...this.pts.values()][0];
@@ -1408,8 +1460,12 @@ var TouchMultiHandler = class {
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     this.lastAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-    this.lastP0 = { ...p0 };
-    this.lastP1 = { ...p1 };
+    this.lastP0.id = p0.id;
+    this.lastP0.x = p0.x;
+    this.lastP0.y = p0.y;
+    this.lastP1.id = p1.id;
+    this.lastP1.x = p1.x;
+    this.lastP1.y = p1.y;
     this.active = true;
     this.lastTs = performance.now();
     this.mode = "idle";
@@ -2324,7 +2380,7 @@ var CameraController = class extends Evented {
     return this.rollTo(this.getRoll() + delta, opts);
   }
   easeTo(options) {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const essential = (_a = options.essential) != null ? _a : false;
     const animate = (_b = options.animate) != null ? _b : true;
     if (!essential && browser.reducedMotion()) {
@@ -2352,7 +2408,7 @@ var CameraController = class extends Evented {
       const ox = options.offset.x, oy = options.offset.y;
       const rx = ox * cos + oy * sin;
       const ry = -ox * sin + oy * cos;
-      const s = Math.pow(2, target.zoom);
+      const s = target.zoom === this.getZoom() ? (_e = this.transform.scale) != null ? _e : Math.pow(2, target.zoom) : Math.pow(2, target.zoom);
       const dxW = -rx / s;
       const dyW = ry / s;
       target.center = { x: target.center.x + dxW, y: target.center.y + dyW, z: target.center.z };
@@ -2360,8 +2416,8 @@ var CameraController = class extends Evented {
     if (!animate) {
       return this.jumpTo(target);
     }
-    const duration = Math.max(0, (_e = options.duration) != null ? _e : 300);
-    const easing = (_f = options.easing) != null ? _f : defaultEasing;
+    const duration = Math.max(0, (_f = options.duration) != null ? _f : 300);
+    const easing = (_g = options.easing) != null ? _g : defaultEasing;
     const axes = {
       zoom: target.zoom !== start.zoom,
       rotate: target.bearing !== start.bearing,
@@ -2376,7 +2432,7 @@ var CameraController = class extends Evented {
     const t0 = browser.now();
     const anchorPt = options.aroundPoint;
     const useAnchor = options.around === "pointer" && !!anchorPt;
-    const tight = Math.max(0, Math.min(1, (_g = options.anchorTightness) != null ? _g : 1));
+    const tight = Math.max(0, Math.min(1, (_h = options.anchorTightness) != null ? _h : 1));
     this._activeAnimation = {
       type: "ease",
       t0,

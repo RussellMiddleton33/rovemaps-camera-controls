@@ -7,10 +7,10 @@ export class PlanarCameraHelper implements ICameraHelper {
     // Map screen pixel delta to world center delta so that a world point moves by -dx,-dy in screen.
     // See stub mapping in tests: screen x = (dx*cos - dz*sin)*s + w/2; y = -(dx*sin + dz*cos)*s + h/2
     // Solve for center deltas: dWx = (dx*cos - dy*sin)/s; dWz = (-dx*sin - dy*cos)/s
-    const scale = Math.pow(2, transform.zoom);
-    const rad = (transform.bearing * Math.PI) / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
+    const scale = (transform as any).scale ?? Math.pow(2, transform.zoom); // use cached scale if available
+    // Use cached trig values if available
+    const cos = (transform as any).bearingCos ?? Math.cos((transform.bearing * Math.PI) / 180);
+    const sin = (transform as any).bearingSin ?? Math.sin((transform.bearing * Math.PI) / 180);
     const dWx = (dx * cos - dy * sin) / scale;
     const dWz = (-dx * sin - dy * cos) / scale;
     transform.setCenter({
@@ -98,7 +98,8 @@ export class PlanarCameraHelper implements ICameraHelper {
       const h = maxY - minY;
       return { w, h };
     };
-    // Binary search to fit within padded viewport
+    // Binary search to fit within padded viewport with early exit
+    const tolerance = 0.01; // zoom level tolerance for early exit
     for (let i = 0; i < 24; i++) {
       const mid = (lo + hi) / 2;
       const { w, h } = fitAtZoom(mid);
@@ -107,6 +108,8 @@ export class PlanarCameraHelper implements ICameraHelper {
       } else {
         hi = mid; // too big, zoom out
       }
+      // Early exit if converged within tolerance
+      if (Math.abs(hi - lo) < tolerance) break;
     }
     const zoom = lo;
     // Restore
