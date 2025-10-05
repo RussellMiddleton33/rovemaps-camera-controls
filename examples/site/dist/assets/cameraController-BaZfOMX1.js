@@ -1039,9 +1039,9 @@ function createElementNS(name) {
   return document.createElementNS("http://www.w3.org/1999/xhtml", name);
 }
 function createCanvasElement() {
-  const canvas2 = createElementNS("canvas");
-  canvas2.style.display = "block";
-  return canvas2;
+  const canvas = createElementNS("canvas");
+  canvas.style.display = "block";
+  return canvas;
 }
 const _cache = {};
 function warnOnce(message) {
@@ -1155,9 +1155,9 @@ class ImageUtils {
     if (typeof HTMLCanvasElement === "undefined") {
       return image.src;
     }
-    let canvas2;
+    let canvas;
     if (image instanceof HTMLCanvasElement) {
-      canvas2 = image;
+      canvas = image;
     } else {
       if (_canvas === void 0) _canvas = createElementNS("canvas");
       _canvas.width = image.width;
@@ -1168,21 +1168,21 @@ class ImageUtils {
       } else {
         context.drawImage(image, 0, 0, image.width, image.height);
       }
-      canvas2 = _canvas;
+      canvas = _canvas;
     }
-    if (canvas2.width > 2048 || canvas2.height > 2048) {
+    if (canvas.width > 2048 || canvas.height > 2048) {
       console.warn("THREE.ImageUtils.getDataURL: Image converted to jpg for performance reasons", image);
-      return canvas2.toDataURL("image/jpeg", 0.6);
+      return canvas.toDataURL("image/jpeg", 0.6);
     } else {
-      return canvas2.toDataURL("image/png");
+      return canvas.toDataURL("image/png");
     }
   }
   static sRGBToLinear(image) {
     if (typeof HTMLImageElement !== "undefined" && image instanceof HTMLImageElement || typeof HTMLCanvasElement !== "undefined" && image instanceof HTMLCanvasElement || typeof ImageBitmap !== "undefined" && image instanceof ImageBitmap) {
-      const canvas2 = createElementNS("canvas");
-      canvas2.width = image.width;
-      canvas2.height = image.height;
-      const context = canvas2.getContext("2d");
+      const canvas = createElementNS("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext("2d");
       context.drawImage(image, 0, 0, image.width, image.height);
       const imageData = context.getImageData(0, 0, image.width, image.height);
       const data = imageData.data;
@@ -1190,7 +1190,7 @@ class ImageUtils {
         data[i] = SRGBToLinear(data[i] / 255) * 255;
       }
       context.putImageData(imageData, 0, 0);
-      return canvas2;
+      return canvas;
     } else if (image.data) {
       const data = image.data.slice(0);
       for (let i = 0; i < data.length; i++) {
@@ -2557,11 +2557,11 @@ class Vector3 {
     this.z = vz + qw * tz + qx * ty - qy * tx;
     return this;
   }
-  project(camera2) {
-    return this.applyMatrix4(camera2.matrixWorldInverse).applyMatrix4(camera2.projectionMatrix);
+  project(camera) {
+    return this.applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
   }
-  unproject(camera2) {
-    return this.applyMatrix4(camera2.projectionMatrixInverse).applyMatrix4(camera2.matrixWorld);
+  unproject(camera) {
+    return this.applyMatrix4(camera.projectionMatrixInverse).applyMatrix4(camera.matrixWorld);
   }
   transformDirection(m) {
     const x = this.x, y = this.y, z = this.z;
@@ -7325,9 +7325,9 @@ function cloneUniformsGroups(src) {
   }
   return dst;
 }
-function getUnlitUniformColorSpace(renderer2) {
-  if (renderer2.getRenderTarget() === null) {
-    return renderer2.outputColorSpace;
+function getUnlitUniformColorSpace(renderer) {
+  if (renderer.getRenderTarget() === null) {
+    return renderer.outputColorSpace;
   }
   return ColorManagement.workingColorSpace;
 }
@@ -7671,7 +7671,7 @@ class CubeCamera extends Object3D {
     const coordinateSystem = this.coordinateSystem;
     const cameras = this.children.concat();
     const [cameraPX, cameraNX, cameraPY, cameraNY, cameraPZ, cameraNZ] = cameras;
-    for (const camera2 of cameras) this.remove(camera2);
+    for (const camera of cameras) this.remove(camera);
     if (coordinateSystem === WebGLCoordinateSystem) {
       cameraPX.up.set(0, 1, 0);
       cameraPX.lookAt(1, 0, 0);
@@ -7701,41 +7701,41 @@ class CubeCamera extends Object3D {
     } else {
       throw new Error("THREE.CubeCamera.updateCoordinateSystem(): Invalid coordinate system: " + coordinateSystem);
     }
-    for (const camera2 of cameras) {
-      this.add(camera2);
-      camera2.updateMatrixWorld();
+    for (const camera of cameras) {
+      this.add(camera);
+      camera.updateMatrixWorld();
     }
   }
-  update(renderer2, scene2) {
+  update(renderer, scene) {
     if (this.parent === null) this.updateMatrixWorld();
     const { renderTarget, activeMipmapLevel } = this;
-    if (this.coordinateSystem !== renderer2.coordinateSystem) {
-      this.coordinateSystem = renderer2.coordinateSystem;
+    if (this.coordinateSystem !== renderer.coordinateSystem) {
+      this.coordinateSystem = renderer.coordinateSystem;
       this.updateCoordinateSystem();
     }
     const [cameraPX, cameraNX, cameraPY, cameraNY, cameraPZ, cameraNZ] = this.children;
-    const currentRenderTarget = renderer2.getRenderTarget();
-    const currentActiveCubeFace = renderer2.getActiveCubeFace();
-    const currentActiveMipmapLevel = renderer2.getActiveMipmapLevel();
-    const currentXrEnabled = renderer2.xr.enabled;
-    renderer2.xr.enabled = false;
+    const currentRenderTarget = renderer.getRenderTarget();
+    const currentActiveCubeFace = renderer.getActiveCubeFace();
+    const currentActiveMipmapLevel = renderer.getActiveMipmapLevel();
+    const currentXrEnabled = renderer.xr.enabled;
+    renderer.xr.enabled = false;
     const generateMipmaps = renderTarget.texture.generateMipmaps;
     renderTarget.texture.generateMipmaps = false;
-    renderer2.setRenderTarget(renderTarget, 0, activeMipmapLevel);
-    renderer2.render(scene2, cameraPX);
-    renderer2.setRenderTarget(renderTarget, 1, activeMipmapLevel);
-    renderer2.render(scene2, cameraNX);
-    renderer2.setRenderTarget(renderTarget, 2, activeMipmapLevel);
-    renderer2.render(scene2, cameraPY);
-    renderer2.setRenderTarget(renderTarget, 3, activeMipmapLevel);
-    renderer2.render(scene2, cameraNY);
-    renderer2.setRenderTarget(renderTarget, 4, activeMipmapLevel);
-    renderer2.render(scene2, cameraPZ);
+    renderer.setRenderTarget(renderTarget, 0, activeMipmapLevel);
+    renderer.render(scene, cameraPX);
+    renderer.setRenderTarget(renderTarget, 1, activeMipmapLevel);
+    renderer.render(scene, cameraNX);
+    renderer.setRenderTarget(renderTarget, 2, activeMipmapLevel);
+    renderer.render(scene, cameraPY);
+    renderer.setRenderTarget(renderTarget, 3, activeMipmapLevel);
+    renderer.render(scene, cameraNY);
+    renderer.setRenderTarget(renderTarget, 4, activeMipmapLevel);
+    renderer.render(scene, cameraPZ);
     renderTarget.texture.generateMipmaps = generateMipmaps;
-    renderer2.setRenderTarget(renderTarget, 5, activeMipmapLevel);
-    renderer2.render(scene2, cameraNZ);
-    renderer2.setRenderTarget(currentRenderTarget, currentActiveCubeFace, currentActiveMipmapLevel);
-    renderer2.xr.enabled = currentXrEnabled;
+    renderer.setRenderTarget(renderTarget, 5, activeMipmapLevel);
+    renderer.render(scene, cameraNZ);
+    renderer.setRenderTarget(currentRenderTarget, currentActiveCubeFace, currentActiveMipmapLevel);
+    renderer.xr.enabled = currentXrEnabled;
     renderTarget.texture.needsPMREMUpdate = true;
   }
 }
@@ -7769,7 +7769,7 @@ class WebGLCubeRenderTarget extends WebGLRenderTarget {
     this.texture.generateMipmaps = options.generateMipmaps !== void 0 ? options.generateMipmaps : false;
     this.texture.minFilter = options.minFilter !== void 0 ? options.minFilter : LinearFilter;
   }
-  fromEquirectangularTexture(renderer2, texture) {
+  fromEquirectangularTexture(renderer, texture) {
     this.texture.type = texture.type;
     this.texture.colorSpace = texture.colorSpace;
     this.texture.generateMipmaps = texture.generateMipmaps;
@@ -7836,20 +7836,20 @@ class WebGLCubeRenderTarget extends WebGLRenderTarget {
     const mesh = new Mesh(geometry, material);
     const currentMinFilter = texture.minFilter;
     if (texture.minFilter === LinearMipmapLinearFilter) texture.minFilter = LinearFilter;
-    const camera2 = new CubeCamera(1, 10, this);
-    camera2.update(renderer2, mesh);
+    const camera = new CubeCamera(1, 10, this);
+    camera.update(renderer, mesh);
     texture.minFilter = currentMinFilter;
     mesh.geometry.dispose();
     mesh.material.dispose();
     return this;
   }
-  clear(renderer2, color, depth, stencil) {
-    const currentRenderTarget = renderer2.getRenderTarget();
+  clear(renderer, color, depth, stencil) {
+    const currentRenderTarget = renderer.getRenderTarget();
     for (let i = 0; i < 6; i++) {
-      renderer2.setRenderTarget(this, i);
-      renderer2.clear(color, depth, stencil);
+      renderer.setRenderTarget(this, i);
+      renderer.clear(color, depth, stencil);
     }
-    renderer2.setRenderTarget(currentRenderTarget);
+    renderer.setRenderTarget(currentRenderTarget);
   }
 }
 const _vector1 = /* @__PURE__ */ new Vector3();
@@ -8057,8 +8057,8 @@ function WebGLAnimation() {
   let isAnimating = false;
   let animationLoop = null;
   let requestId = null;
-  function onAnimationFrame(time, frame2) {
-    animationLoop(time, frame2);
+  function onAnimationFrame(time, frame) {
+    animationLoop(time, frame);
     requestId = context.requestAnimationFrame(onAnimationFrame);
   }
   return {
@@ -8962,7 +8962,7 @@ ShaderLib.physical = {
   fragmentShader: ShaderChunk.meshphysical_frag
 };
 const _rgb = { r: 0, b: 0, g: 0 };
-function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha, premultipliedAlpha) {
+function WebGLBackground(renderer, cubemaps, cubeuvmaps, state, objects, alpha, premultipliedAlpha) {
   const clearColor = new Color(0);
   let clearAlpha = alpha === true ? 0 : 1;
   let planeMesh;
@@ -8970,11 +8970,11 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
   let currentBackground = null;
   let currentBackgroundVersion = 0;
   let currentTonemapping = null;
-  function render(renderList, scene2) {
+  function render(renderList, scene) {
     let forceClear = false;
-    let background = scene2.isScene === true ? scene2.background : null;
+    let background = scene.isScene === true ? scene.background : null;
     if (background && background.isTexture) {
-      const usePMREM = scene2.backgroundBlurriness > 0;
+      const usePMREM = scene.backgroundBlurriness > 0;
       background = (usePMREM ? cubeuvmaps : cubemaps).get(background);
     }
     if (background === null) {
@@ -8983,14 +8983,14 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
       setClear(background, 1);
       forceClear = true;
     }
-    const environmentBlendMode = renderer2.xr.getEnvironmentBlendMode();
+    const environmentBlendMode = renderer.xr.getEnvironmentBlendMode();
     if (environmentBlendMode === "additive") {
       state.buffers.color.setClear(0, 0, 0, 1, premultipliedAlpha);
     } else if (environmentBlendMode === "alpha-blend") {
       state.buffers.color.setClear(0, 0, 0, 0, premultipliedAlpha);
     }
-    if (renderer2.autoClear || forceClear) {
-      renderer2.clear(renderer2.autoClearColor, renderer2.autoClearDepth, renderer2.autoClearStencil);
+    if (renderer.autoClear || forceClear) {
+      renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
     }
     if (background && (background.isCubeTexture || background.mapping === CubeUVReflectionMapping)) {
       if (boxMesh === void 0) {
@@ -9009,8 +9009,8 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
         );
         boxMesh.geometry.deleteAttribute("normal");
         boxMesh.geometry.deleteAttribute("uv");
-        boxMesh.onBeforeRender = function(renderer3, scene3, camera2) {
-          this.matrixWorld.copyPosition(camera2.matrixWorld);
+        boxMesh.onBeforeRender = function(renderer2, scene2, camera) {
+          this.matrixWorld.copyPosition(camera.matrixWorld);
         };
         Object.defineProperty(boxMesh.material, "envMap", {
           get: function() {
@@ -9021,14 +9021,14 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
       }
       boxMesh.material.uniforms.envMap.value = background;
       boxMesh.material.uniforms.flipEnvMap.value = background.isCubeTexture && background.isRenderTargetTexture === false ? -1 : 1;
-      boxMesh.material.uniforms.backgroundBlurriness.value = scene2.backgroundBlurriness;
-      boxMesh.material.uniforms.backgroundIntensity.value = scene2.backgroundIntensity;
+      boxMesh.material.uniforms.backgroundBlurriness.value = scene.backgroundBlurriness;
+      boxMesh.material.uniforms.backgroundIntensity.value = scene.backgroundIntensity;
       boxMesh.material.toneMapped = ColorManagement.getTransfer(background.colorSpace) !== SRGBTransfer;
-      if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer2.toneMapping) {
+      if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer.toneMapping) {
         boxMesh.material.needsUpdate = true;
         currentBackground = background;
         currentBackgroundVersion = background.version;
-        currentTonemapping = renderer2.toneMapping;
+        currentTonemapping = renderer.toneMapping;
       }
       boxMesh.layers.enableAll();
       renderList.unshift(boxMesh, boxMesh.geometry, boxMesh.material, 0, 0, null);
@@ -9056,24 +9056,24 @@ function WebGLBackground(renderer2, cubemaps, cubeuvmaps, state, objects, alpha,
         objects.update(planeMesh);
       }
       planeMesh.material.uniforms.t2D.value = background;
-      planeMesh.material.uniforms.backgroundIntensity.value = scene2.backgroundIntensity;
+      planeMesh.material.uniforms.backgroundIntensity.value = scene.backgroundIntensity;
       planeMesh.material.toneMapped = ColorManagement.getTransfer(background.colorSpace) !== SRGBTransfer;
       if (background.matrixAutoUpdate === true) {
         background.updateMatrix();
       }
       planeMesh.material.uniforms.uvTransform.value.copy(background.matrix);
-      if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer2.toneMapping) {
+      if (currentBackground !== background || currentBackgroundVersion !== background.version || currentTonemapping !== renderer.toneMapping) {
         planeMesh.material.needsUpdate = true;
         currentBackground = background;
         currentBackgroundVersion = background.version;
-        currentTonemapping = renderer2.toneMapping;
+        currentTonemapping = renderer.toneMapping;
       }
       planeMesh.layers.enableAll();
       renderList.unshift(planeMesh, planeMesh.geometry, planeMesh.material, 0, 0, null);
     }
   }
   function setClear(color, alpha2) {
-    color.getRGB(_rgb, getUnlitUniformColorSpace(renderer2));
+    color.getRGB(_rgb, getUnlitUniformColorSpace(renderer));
     state.buffers.color.setClear(_rgb.r, _rgb.g, _rgb.b, alpha2, premultipliedAlpha);
   }
   return {
@@ -9563,10 +9563,10 @@ function WebGLClipping(properties) {
   this.endShadows = function() {
     renderingShadows = false;
   };
-  this.setGlobalState = function(planes, camera2) {
-    globalState = projectPlanes(planes, camera2, 0);
+  this.setGlobalState = function(planes, camera) {
+    globalState = projectPlanes(planes, camera, 0);
   };
-  this.setState = function(material, camera2, useCache) {
+  this.setState = function(material, camera, useCache) {
     const planes = material.clippingPlanes, clipIntersection = material.clipIntersection, clipShadows = material.clipShadows;
     const materialProperties = properties.get(material);
     if (!localClippingEnabled || planes === null || planes.length === 0 || renderingShadows && !clipShadows) {
@@ -9579,7 +9579,7 @@ function WebGLClipping(properties) {
       const nGlobal = renderingShadows ? 0 : numGlobalPlanes, lGlobal = nGlobal * 4;
       let dstArray = materialProperties.clippingState || null;
       uniform.value = dstArray;
-      dstArray = projectPlanes(planes, camera2, lGlobal, useCache);
+      dstArray = projectPlanes(planes, camera, lGlobal, useCache);
       for (let i = 0; i !== lGlobal; ++i) {
         dstArray[i] = globalState[i];
       }
@@ -9596,13 +9596,13 @@ function WebGLClipping(properties) {
     scope.numPlanes = numGlobalPlanes;
     scope.numIntersection = 0;
   }
-  function projectPlanes(planes, camera2, dstOffset, skipTransform) {
+  function projectPlanes(planes, camera, dstOffset, skipTransform) {
     const nPlanes = planes !== null ? planes.length : 0;
     let dstArray = null;
     if (nPlanes !== 0) {
       dstArray = uniform.value;
       if (skipTransform !== true || dstArray === null) {
-        const flatSize = dstOffset + nPlanes * 4, viewMatrix = camera2.matrixWorldInverse;
+        const flatSize = dstOffset + nPlanes * 4, viewMatrix = camera.matrixWorldInverse;
         viewNormalMatrix.getNormalMatrix(viewMatrix);
         if (dstArray === null || dstArray.length < flatSize) {
           dstArray = new Float32Array(flatSize);
@@ -9621,7 +9621,7 @@ function WebGLClipping(properties) {
     return dstArray;
   }
 }
-function WebGLCubeMaps(renderer2) {
+function WebGLCubeMaps(renderer) {
   let cubemaps = /* @__PURE__ */ new WeakMap();
   function mapTextureMapping(texture, mapping) {
     if (mapping === EquirectangularReflectionMapping) {
@@ -9642,7 +9642,7 @@ function WebGLCubeMaps(renderer2) {
           const image = texture.image;
           if (image && image.height > 0) {
             const renderTarget = new WebGLCubeRenderTarget(image.height / 2);
-            renderTarget.fromEquirectangularTexture(renderer2, texture);
+            renderTarget.fromEquirectangularTexture(renderer, texture);
             cubemaps.set(texture, renderTarget);
             texture.addEventListener("dispose", onTextureDispose);
             return mapTextureMapping(renderTarget.texture, texture.mapping);
@@ -9781,8 +9781,8 @@ const _axisDirections = [
   /* @__PURE__ */ new Vector3(-PHI, INV_PHI, 0)
 ];
 class PMREMGenerator {
-  constructor(renderer2) {
-    this._renderer = renderer2;
+  constructor(renderer) {
+    this._renderer = renderer;
     this._pingPongRenderTarget = null;
     this._lodMax = 0;
     this._cubeSize = 0;
@@ -9801,14 +9801,14 @@ class PMREMGenerator {
    * and far planes ensure the scene is rendered in its entirety (the cubeCamera
    * is placed at the origin).
    */
-  fromScene(scene2, sigma = 0, near = 0.1, far = 100) {
+  fromScene(scene, sigma = 0, near = 0.1, far = 100) {
     _oldTarget = this._renderer.getRenderTarget();
     _oldActiveCubeFace = this._renderer.getActiveCubeFace();
     _oldActiveMipmapLevel = this._renderer.getActiveMipmapLevel();
     this._setSize(256);
     const cubeUVRenderTarget = this._allocateTargets();
     cubeUVRenderTarget.depthBuffer = true;
-    this._sceneToCubeUV(scene2, near, far, cubeUVRenderTarget);
+    this._sceneToCubeUV(scene, near, far, cubeUVRenderTarget);
     if (sigma > 0) {
       this._blur(cubeUVRenderTarget, 0, 0, sigma);
     }
@@ -9922,18 +9922,18 @@ class PMREMGenerator {
     const tmpMesh = new Mesh(this._lodPlanes[0], material);
     this._renderer.compile(tmpMesh, _flatCamera);
   }
-  _sceneToCubeUV(scene2, near, far, cubeUVRenderTarget) {
+  _sceneToCubeUV(scene, near, far, cubeUVRenderTarget) {
     const fov2 = 90;
     const aspect2 = 1;
     const cubeCamera = new PerspectiveCamera(fov2, aspect2, near, far);
     const upSign = [1, -1, 1, 1, 1, 1];
     const forwardSign = [1, 1, 1, -1, -1, -1];
-    const renderer2 = this._renderer;
-    const originalAutoClear = renderer2.autoClear;
-    const toneMapping = renderer2.toneMapping;
-    renderer2.getClearColor(_clearColor);
-    renderer2.toneMapping = NoToneMapping;
-    renderer2.autoClear = false;
+    const renderer = this._renderer;
+    const originalAutoClear = renderer.autoClear;
+    const toneMapping = renderer.toneMapping;
+    renderer.getClearColor(_clearColor);
+    renderer.toneMapping = NoToneMapping;
+    renderer.autoClear = false;
     const backgroundMaterial = new MeshBasicMaterial({
       name: "PMREM.Background",
       side: BackSide,
@@ -9942,11 +9942,11 @@ class PMREMGenerator {
     });
     const backgroundBox = new Mesh(new BoxGeometry(), backgroundMaterial);
     let useSolidColor = false;
-    const background = scene2.background;
+    const background = scene.background;
     if (background) {
       if (background.isColor) {
         backgroundMaterial.color.copy(background);
-        scene2.background = null;
+        scene.background = null;
         useSolidColor = true;
       }
     } else {
@@ -9967,20 +9967,20 @@ class PMREMGenerator {
       }
       const size = this._cubeSize;
       _setViewport(cubeUVRenderTarget, col * size, i > 2 ? size : 0, size, size);
-      renderer2.setRenderTarget(cubeUVRenderTarget);
+      renderer.setRenderTarget(cubeUVRenderTarget);
       if (useSolidColor) {
-        renderer2.render(backgroundBox, cubeCamera);
+        renderer.render(backgroundBox, cubeCamera);
       }
-      renderer2.render(scene2, cubeCamera);
+      renderer.render(scene, cubeCamera);
     }
     backgroundBox.geometry.dispose();
     backgroundBox.material.dispose();
-    renderer2.toneMapping = toneMapping;
-    renderer2.autoClear = originalAutoClear;
-    scene2.background = background;
+    renderer.toneMapping = toneMapping;
+    renderer.autoClear = originalAutoClear;
+    scene.background = background;
   }
   _textureToCubeUV(texture, cubeUVRenderTarget) {
-    const renderer2 = this._renderer;
+    const renderer = this._renderer;
     const isCubeTexture = texture.mapping === CubeReflectionMapping || texture.mapping === CubeRefractionMapping;
     if (isCubeTexture) {
       if (this._cubemapMaterial === null) {
@@ -9998,19 +9998,19 @@ class PMREMGenerator {
     uniforms["envMap"].value = texture;
     const size = this._cubeSize;
     _setViewport(cubeUVRenderTarget, 0, 0, 3 * size, 2 * size);
-    renderer2.setRenderTarget(cubeUVRenderTarget);
-    renderer2.render(mesh, _flatCamera);
+    renderer.setRenderTarget(cubeUVRenderTarget);
+    renderer.render(mesh, _flatCamera);
   }
   _applyPMREM(cubeUVRenderTarget) {
-    const renderer2 = this._renderer;
-    const autoClear = renderer2.autoClear;
-    renderer2.autoClear = false;
+    const renderer = this._renderer;
+    const autoClear = renderer.autoClear;
+    renderer.autoClear = false;
     for (let i = 1; i < this._lodPlanes.length; i++) {
       const sigma = Math.sqrt(this._sigmas[i] * this._sigmas[i] - this._sigmas[i - 1] * this._sigmas[i - 1]);
       const poleAxis = _axisDirections[(i - 1) % _axisDirections.length];
       this._blur(cubeUVRenderTarget, i - 1, i, sigma, poleAxis);
     }
-    renderer2.autoClear = autoClear;
+    renderer.autoClear = autoClear;
   }
   /**
    * This is a two-pass Gaussian blur for a cubemap. Normally this is done
@@ -10041,7 +10041,7 @@ class PMREMGenerator {
     );
   }
   _halfBlur(targetIn, targetOut, lodIn, lodOut, sigmaRadians, direction, poleAxis) {
-    const renderer2 = this._renderer;
+    const renderer = this._renderer;
     const blurMaterial = this._blurMaterial;
     if (direction !== "latitudinal" && direction !== "longitudinal") {
       console.error(
@@ -10087,8 +10087,8 @@ class PMREMGenerator {
     const x = 3 * outputSize * (lodOut > _lodMax - LOD_MIN ? lodOut - _lodMax + LOD_MIN : 0);
     const y = 4 * (this._cubeSize - outputSize);
     _setViewport(targetOut, x, y, 3 * outputSize, 2 * outputSize);
-    renderer2.setRenderTarget(targetOut);
-    renderer2.render(blurMesh, _flatCamera);
+    renderer.setRenderTarget(targetOut);
+    renderer.render(blurMesh, _flatCamera);
   }
 }
 function _createPlanes(lodMax) {
@@ -10389,7 +10389,7 @@ function _getCommonVertexShader() {
 	`
   );
 }
-function WebGLCubeUVMaps(renderer2) {
+function WebGLCubeUVMaps(renderer) {
   let cubeUVmaps = /* @__PURE__ */ new WeakMap();
   let pmremGenerator = null;
   function get(texture) {
@@ -10401,7 +10401,7 @@ function WebGLCubeUVMaps(renderer2) {
         if (texture.isRenderTargetTexture && texture.needsPMREMUpdate === true) {
           texture.needsPMREMUpdate = false;
           let renderTarget = cubeUVmaps.get(texture);
-          if (pmremGenerator === null) pmremGenerator = new PMREMGenerator(renderer2);
+          if (pmremGenerator === null) pmremGenerator = new PMREMGenerator(renderer);
           renderTarget = isEquirectMap ? pmremGenerator.fromEquirectangular(texture, renderTarget) : pmremGenerator.fromCubemap(texture, renderTarget);
           cubeUVmaps.set(texture, renderTarget);
           return renderTarget.texture;
@@ -10411,7 +10411,7 @@ function WebGLCubeUVMaps(renderer2) {
           } else {
             const image = texture.image;
             if (isEquirectMap && image && image.height > 0 || isCubeMap && image && isCubeTextureComplete(image)) {
-              if (pmremGenerator === null) pmremGenerator = new PMREMGenerator(renderer2);
+              if (pmremGenerator === null) pmremGenerator = new PMREMGenerator(renderer);
               const renderTarget = isEquirectMap ? pmremGenerator.fromEquirectangular(texture) : pmremGenerator.fromCubemap(texture);
               cubeUVmaps.set(texture, renderTarget);
               texture.addEventListener("dispose", onTextureDispose);
@@ -10721,12 +10721,11 @@ function WebGLMorphtargets(gl, capabilities, textures) {
       const morphTargetsCount = morphAttribute !== void 0 ? morphAttribute.length : 0;
       let entry = morphTextures.get(geometry);
       if (entry === void 0 || entry.count !== morphTargetsCount) {
-        let disposeTexture2 = function() {
+        let disposeTexture = function() {
           texture.dispose();
           morphTextures.delete(geometry);
-          geometry.removeEventListener("dispose", disposeTexture2);
+          geometry.removeEventListener("dispose", disposeTexture);
         };
-        var disposeTexture = disposeTexture2;
         if (entry !== void 0) entry.texture.dispose();
         const hasMorphPosition = geometry.morphAttributes.position !== void 0;
         const hasMorphNormals = geometry.morphAttributes.normal !== void 0;
@@ -10785,7 +10784,7 @@ function WebGLMorphtargets(gl, capabilities, textures) {
           size: new Vector2(width, height)
         };
         morphTextures.set(geometry, entry);
-        geometry.addEventListener("dispose", disposeTexture2);
+        geometry.addEventListener("dispose", disposeTexture);
       }
       let morphInfluencesSum = 0;
       for (let i = 0; i < objectInfluences.length; i++) {
@@ -10860,30 +10859,30 @@ function WebGLMorphtargets(gl, capabilities, textures) {
 function WebGLObjects(gl, geometries, attributes, info) {
   let updateMap = /* @__PURE__ */ new WeakMap();
   function update(object) {
-    const frame2 = info.render.frame;
+    const frame = info.render.frame;
     const geometry = object.geometry;
     const buffergeometry = geometries.get(object, geometry);
-    if (updateMap.get(buffergeometry) !== frame2) {
+    if (updateMap.get(buffergeometry) !== frame) {
       geometries.update(buffergeometry);
-      updateMap.set(buffergeometry, frame2);
+      updateMap.set(buffergeometry, frame);
     }
     if (object.isInstancedMesh) {
       if (object.hasEventListener("dispose", onInstancedMeshDispose) === false) {
         object.addEventListener("dispose", onInstancedMeshDispose);
       }
-      if (updateMap.get(object) !== frame2) {
+      if (updateMap.get(object) !== frame) {
         attributes.update(object.instanceMatrix, gl.ARRAY_BUFFER);
         if (object.instanceColor !== null) {
           attributes.update(object.instanceColor, gl.ARRAY_BUFFER);
         }
-        updateMap.set(object, frame2);
+        updateMap.set(object, frame);
       }
     }
     if (object.isSkinnedMesh) {
       const skeleton = object.skeleton;
-      if (updateMap.get(skeleton) !== frame2) {
+      if (updateMap.get(skeleton) !== frame) {
         skeleton.update();
-        updateMap.set(skeleton, frame2);
+        updateMap.set(skeleton, frame);
       }
     }
     return buffergeometry;
@@ -11735,8 +11734,8 @@ function generateCubeUVSize(parameters) {
   const texelWidth = 1 / (3 * Math.max(Math.pow(2, maxMip), 7 * 16));
   return { texelWidth, texelHeight, maxMip };
 }
-function WebGLProgram(renderer2, cacheKey, parameters, bindingStates) {
-  const gl = renderer2.getContext();
+function WebGLProgram(renderer, cacheKey, parameters, bindingStates) {
+  const gl = renderer.getContext();
   const defines = parameters.defines;
   let vertexShader = parameters.vertexShader;
   let fragmentShader = parameters.fragmentShader;
@@ -12041,7 +12040,7 @@ function WebGLProgram(renderer2, cacheKey, parameters, bindingStates) {
   }
   gl.linkProgram(program);
   function onFirstUse(self2) {
-    if (renderer2.debug.checkShaderErrors) {
+    if (renderer.debug.checkShaderErrors) {
       const programLog = gl.getProgramInfoLog(program).trim();
       const vertexLog = gl.getShaderInfoLog(glVertexShader).trim();
       const fragmentLog = gl.getShaderInfoLog(glFragmentShader).trim();
@@ -12049,8 +12048,8 @@ function WebGLProgram(renderer2, cacheKey, parameters, bindingStates) {
       let haveDiagnostics = true;
       if (gl.getProgramParameter(program, gl.LINK_STATUS) === false) {
         runnable = false;
-        if (typeof renderer2.debug.onShaderError === "function") {
-          renderer2.debug.onShaderError(gl, program, glVertexShader, glFragmentShader);
+        if (typeof renderer.debug.onShaderError === "function") {
+          renderer.debug.onShaderError(gl, program, glVertexShader, glFragmentShader);
         } else {
           const vertexErrors = getShaderErrors(gl, glVertexShader, "vertex");
           const fragmentErrors = getShaderErrors(gl, glFragmentShader, "fragment");
@@ -12186,7 +12185,7 @@ class WebGLShaderStage {
     this.usedTimes = 0;
   }
 }
-function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities, bindingStates, clipping) {
+function WebGLPrograms(renderer, cubemaps, cubeuvmaps, extensions, capabilities, bindingStates, clipping) {
   const _programLayers = new Layers();
   const _customShaders = new WebGLShaderCache();
   const programs = [];
@@ -12215,10 +12214,10 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
     if (value === 0) return "uv";
     return `uv${value}`;
   }
-  function getParameters(material, lights, shadows, scene2, object) {
-    const fog = scene2.fog;
+  function getParameters(material, lights, shadows, scene, object) {
+    const fog = scene.fog;
     const geometry = object.geometry;
-    const environment = material.isMeshStandardMaterial ? scene2.environment : null;
+    const environment = material.isMeshStandardMaterial ? scene.environment : null;
     const envMap = (material.isMeshStandardMaterial ? cubeuvmaps : cubemaps).get(material.envMap || environment);
     const envMapCubeUVHeight = !!envMap && envMap.mapping === CubeUVReflectionMapping ? envMap.image.height : null;
     const shaderID = shaderIDs[material.type];
@@ -12247,7 +12246,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
       customVertexShaderID = _customShaders.getVertexShaderID(material);
       customFragmentShaderID = _customShaders.getFragmentShaderID(material);
     }
-    const currentRenderTarget = renderer2.getRenderTarget();
+    const currentRenderTarget = renderer.getRenderTarget();
     const IS_INSTANCEDMESH = object.isInstancedMesh === true;
     const HAS_MAP = !!material.map;
     const HAS_MATCAP = !!material.matcap;
@@ -12289,7 +12288,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
     let toneMapping = NoToneMapping;
     if (material.toneMapped) {
       if (currentRenderTarget === null || currentRenderTarget.isXRRenderTarget === true) {
-        toneMapping = renderer2.toneMapping;
+        toneMapping = renderer.toneMapping;
       }
     }
     const parameters = {
@@ -12308,7 +12307,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
       instancing: IS_INSTANCEDMESH,
       instancingColor: IS_INSTANCEDMESH && object.instanceColor !== null,
       supportsVertexTextures: SUPPORTS_VERTEX_TEXTURES,
-      outputColorSpace: currentRenderTarget === null ? renderer2.outputColorSpace : currentRenderTarget.isXRRenderTarget === true ? currentRenderTarget.texture.colorSpace : LinearSRGBColorSpace,
+      outputColorSpace: currentRenderTarget === null ? renderer.outputColorSpace : currentRenderTarget.isXRRenderTarget === true ? currentRenderTarget.texture.colorSpace : LinearSRGBColorSpace,
       map: HAS_MAP,
       matcap: HAS_MATCAP,
       envMap: HAS_ENVMAP,
@@ -12406,10 +12405,10 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
       numClippingPlanes: clipping.numPlanes,
       numClipIntersection: clipping.numIntersection,
       dithering: material.dithering,
-      shadowMapEnabled: renderer2.shadowMap.enabled && shadows.length > 0,
-      shadowMapType: renderer2.shadowMap.type,
+      shadowMapEnabled: renderer.shadowMap.enabled && shadows.length > 0,
+      shadowMapType: renderer.shadowMap.type,
       toneMapping,
-      useLegacyLights: renderer2._useLegacyLights,
+      useLegacyLights: renderer._useLegacyLights,
       decodeVideoTexture: HAS_MAP && material.map.isVideoTexture === true && ColorManagement.getTransfer(material.map.colorSpace) === SRGBTransfer,
       premultipliedAlpha: material.premultipliedAlpha,
       doubleSided: material.side === DoubleSide,
@@ -12446,7 +12445,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
     if (parameters.isRawShaderMaterial === false) {
       getProgramCacheKeyParameters(array, parameters);
       getProgramCacheKeyBooleans(array, parameters);
-      array.push(renderer2.outputColorSpace);
+      array.push(renderer.outputColorSpace);
     }
     array.push(parameters.customProgramCacheKey);
     return array.join();
@@ -12607,7 +12606,7 @@ function WebGLPrograms(renderer2, cubemaps, cubeuvmaps, extensions, capabilities
       }
     }
     if (program === void 0) {
-      program = new WebGLProgram(renderer2, cacheKey, parameters, bindingStates);
+      program = new WebGLProgram(renderer, cacheKey, parameters, bindingStates);
       programs.push(program);
     }
     return program;
@@ -12776,12 +12775,12 @@ function WebGLRenderList() {
 }
 function WebGLRenderLists() {
   let lists = /* @__PURE__ */ new WeakMap();
-  function get(scene2, renderCallDepth) {
-    const listArray = lists.get(scene2);
+  function get(scene, renderCallDepth) {
+    const listArray = lists.get(scene);
     let list;
     if (listArray === void 0) {
       list = new WebGLRenderList();
-      lists.set(scene2, [list]);
+      lists.set(scene, [list]);
     } else {
       if (renderCallDepth >= listArray.length) {
         list = new WebGLRenderList();
@@ -12803,12 +12802,12 @@ function WebGLRenderLists() {
 function UniformsCache() {
   const lights = {};
   return {
-    get: function(light2) {
-      if (lights[light2.id] !== void 0) {
-        return lights[light2.id];
+    get: function(light) {
+      if (lights[light.id] !== void 0) {
+        return lights[light.id];
       }
       let uniforms;
-      switch (light2.type) {
+      switch (light.type) {
         case "DirectionalLight":
           uniforms = {
             direction: new Vector3(),
@@ -12850,7 +12849,7 @@ function UniformsCache() {
           };
           break;
       }
-      lights[light2.id] = uniforms;
+      lights[light.id] = uniforms;
       return uniforms;
     }
   };
@@ -12858,12 +12857,12 @@ function UniformsCache() {
 function ShadowUniformsCache() {
   const lights = {};
   return {
-    get: function(light2) {
-      if (lights[light2.id] !== void 0) {
-        return lights[light2.id];
+    get: function(light) {
+      if (lights[light.id] !== void 0) {
+        return lights[light.id];
       }
       let uniforms;
-      switch (light2.type) {
+      switch (light.type) {
         case "DirectionalLight":
           uniforms = {
             shadowBias: 0,
@@ -12891,7 +12890,7 @@ function ShadowUniformsCache() {
           };
           break;
       }
-      lights[light2.id] = uniforms;
+      lights[light.id] = uniforms;
       return uniforms;
     }
   };
@@ -12960,56 +12959,56 @@ function WebGLLights(extensions, capabilities) {
     lights.sort(shadowCastingAndTexturingLightsFirst);
     const scaleFactor = useLegacyLights === true ? Math.PI : 1;
     for (let i = 0, l = lights.length; i < l; i++) {
-      const light2 = lights[i];
-      const color = light2.color;
-      const intensity = light2.intensity;
-      const distance = light2.distance;
-      const shadowMap = light2.shadow && light2.shadow.map ? light2.shadow.map.texture : null;
-      if (light2.isAmbientLight) {
+      const light = lights[i];
+      const color = light.color;
+      const intensity = light.intensity;
+      const distance = light.distance;
+      const shadowMap = light.shadow && light.shadow.map ? light.shadow.map.texture : null;
+      if (light.isAmbientLight) {
         r += color.r * intensity * scaleFactor;
         g += color.g * intensity * scaleFactor;
         b += color.b * intensity * scaleFactor;
-      } else if (light2.isLightProbe) {
+      } else if (light.isLightProbe) {
         for (let j = 0; j < 9; j++) {
-          state.probe[j].addScaledVector(light2.sh.coefficients[j], intensity);
+          state.probe[j].addScaledVector(light.sh.coefficients[j], intensity);
         }
         numLightProbes++;
-      } else if (light2.isDirectionalLight) {
-        const uniforms = cache.get(light2);
-        uniforms.color.copy(light2.color).multiplyScalar(light2.intensity * scaleFactor);
-        if (light2.castShadow) {
-          const shadow = light2.shadow;
-          const shadowUniforms = shadowCache.get(light2);
+      } else if (light.isDirectionalLight) {
+        const uniforms = cache.get(light);
+        uniforms.color.copy(light.color).multiplyScalar(light.intensity * scaleFactor);
+        if (light.castShadow) {
+          const shadow = light.shadow;
+          const shadowUniforms = shadowCache.get(light);
           shadowUniforms.shadowBias = shadow.bias;
           shadowUniforms.shadowNormalBias = shadow.normalBias;
           shadowUniforms.shadowRadius = shadow.radius;
           shadowUniforms.shadowMapSize = shadow.mapSize;
           state.directionalShadow[directionalLength] = shadowUniforms;
           state.directionalShadowMap[directionalLength] = shadowMap;
-          state.directionalShadowMatrix[directionalLength] = light2.shadow.matrix;
+          state.directionalShadowMatrix[directionalLength] = light.shadow.matrix;
           numDirectionalShadows++;
         }
         state.directional[directionalLength] = uniforms;
         directionalLength++;
-      } else if (light2.isSpotLight) {
-        const uniforms = cache.get(light2);
-        uniforms.position.setFromMatrixPosition(light2.matrixWorld);
+      } else if (light.isSpotLight) {
+        const uniforms = cache.get(light);
+        uniforms.position.setFromMatrixPosition(light.matrixWorld);
         uniforms.color.copy(color).multiplyScalar(intensity * scaleFactor);
         uniforms.distance = distance;
-        uniforms.coneCos = Math.cos(light2.angle);
-        uniforms.penumbraCos = Math.cos(light2.angle * (1 - light2.penumbra));
-        uniforms.decay = light2.decay;
+        uniforms.coneCos = Math.cos(light.angle);
+        uniforms.penumbraCos = Math.cos(light.angle * (1 - light.penumbra));
+        uniforms.decay = light.decay;
         state.spot[spotLength] = uniforms;
-        const shadow = light2.shadow;
-        if (light2.map) {
-          state.spotLightMap[numSpotMaps] = light2.map;
+        const shadow = light.shadow;
+        if (light.map) {
+          state.spotLightMap[numSpotMaps] = light.map;
           numSpotMaps++;
-          shadow.updateMatrices(light2);
-          if (light2.castShadow) numSpotShadowsWithMaps++;
+          shadow.updateMatrices(light);
+          if (light.castShadow) numSpotShadowsWithMaps++;
         }
         state.spotLightMatrix[spotLength] = shadow.matrix;
-        if (light2.castShadow) {
-          const shadowUniforms = shadowCache.get(light2);
+        if (light.castShadow) {
+          const shadowUniforms = shadowCache.get(light);
           shadowUniforms.shadowBias = shadow.bias;
           shadowUniforms.shadowNormalBias = shadow.normalBias;
           shadowUniforms.shadowRadius = shadow.radius;
@@ -13019,21 +13018,21 @@ function WebGLLights(extensions, capabilities) {
           numSpotShadows++;
         }
         spotLength++;
-      } else if (light2.isRectAreaLight) {
-        const uniforms = cache.get(light2);
+      } else if (light.isRectAreaLight) {
+        const uniforms = cache.get(light);
         uniforms.color.copy(color).multiplyScalar(intensity);
-        uniforms.halfWidth.set(light2.width * 0.5, 0, 0);
-        uniforms.halfHeight.set(0, light2.height * 0.5, 0);
+        uniforms.halfWidth.set(light.width * 0.5, 0, 0);
+        uniforms.halfHeight.set(0, light.height * 0.5, 0);
         state.rectArea[rectAreaLength] = uniforms;
         rectAreaLength++;
-      } else if (light2.isPointLight) {
-        const uniforms = cache.get(light2);
-        uniforms.color.copy(light2.color).multiplyScalar(light2.intensity * scaleFactor);
-        uniforms.distance = light2.distance;
-        uniforms.decay = light2.decay;
-        if (light2.castShadow) {
-          const shadow = light2.shadow;
-          const shadowUniforms = shadowCache.get(light2);
+      } else if (light.isPointLight) {
+        const uniforms = cache.get(light);
+        uniforms.color.copy(light.color).multiplyScalar(light.intensity * scaleFactor);
+        uniforms.distance = light.distance;
+        uniforms.decay = light.decay;
+        if (light.castShadow) {
+          const shadow = light.shadow;
+          const shadowUniforms = shadowCache.get(light);
           shadowUniforms.shadowBias = shadow.bias;
           shadowUniforms.shadowNormalBias = shadow.normalBias;
           shadowUniforms.shadowRadius = shadow.radius;
@@ -13042,15 +13041,15 @@ function WebGLLights(extensions, capabilities) {
           shadowUniforms.shadowCameraFar = shadow.camera.far;
           state.pointShadow[pointLength] = shadowUniforms;
           state.pointShadowMap[pointLength] = shadowMap;
-          state.pointShadowMatrix[pointLength] = light2.shadow.matrix;
+          state.pointShadowMatrix[pointLength] = light.shadow.matrix;
           numPointShadows++;
         }
         state.point[pointLength] = uniforms;
         pointLength++;
-      } else if (light2.isHemisphereLight) {
-        const uniforms = cache.get(light2);
-        uniforms.skyColor.copy(light2.color).multiplyScalar(intensity * scaleFactor);
-        uniforms.groundColor.copy(light2.groundColor).multiplyScalar(intensity * scaleFactor);
+      } else if (light.isHemisphereLight) {
+        const uniforms = cache.get(light);
+        uniforms.skyColor.copy(light.color).multiplyScalar(intensity * scaleFactor);
+        uniforms.groundColor.copy(light.groundColor).multiplyScalar(intensity * scaleFactor);
         state.hemi[hemiLength] = uniforms;
         hemiLength++;
       }
@@ -13106,52 +13105,52 @@ function WebGLLights(extensions, capabilities) {
       state.version = nextVersion++;
     }
   }
-  function setupView(lights, camera2) {
+  function setupView(lights, camera) {
     let directionalLength = 0;
     let pointLength = 0;
     let spotLength = 0;
     let rectAreaLength = 0;
     let hemiLength = 0;
-    const viewMatrix = camera2.matrixWorldInverse;
+    const viewMatrix = camera.matrixWorldInverse;
     for (let i = 0, l = lights.length; i < l; i++) {
-      const light2 = lights[i];
-      if (light2.isDirectionalLight) {
+      const light = lights[i];
+      if (light.isDirectionalLight) {
         const uniforms = state.directional[directionalLength];
-        uniforms.direction.setFromMatrixPosition(light2.matrixWorld);
-        vector3.setFromMatrixPosition(light2.target.matrixWorld);
+        uniforms.direction.setFromMatrixPosition(light.matrixWorld);
+        vector3.setFromMatrixPosition(light.target.matrixWorld);
         uniforms.direction.sub(vector3);
         uniforms.direction.transformDirection(viewMatrix);
         directionalLength++;
-      } else if (light2.isSpotLight) {
+      } else if (light.isSpotLight) {
         const uniforms = state.spot[spotLength];
-        uniforms.position.setFromMatrixPosition(light2.matrixWorld);
+        uniforms.position.setFromMatrixPosition(light.matrixWorld);
         uniforms.position.applyMatrix4(viewMatrix);
-        uniforms.direction.setFromMatrixPosition(light2.matrixWorld);
-        vector3.setFromMatrixPosition(light2.target.matrixWorld);
+        uniforms.direction.setFromMatrixPosition(light.matrixWorld);
+        vector3.setFromMatrixPosition(light.target.matrixWorld);
         uniforms.direction.sub(vector3);
         uniforms.direction.transformDirection(viewMatrix);
         spotLength++;
-      } else if (light2.isRectAreaLight) {
+      } else if (light.isRectAreaLight) {
         const uniforms = state.rectArea[rectAreaLength];
-        uniforms.position.setFromMatrixPosition(light2.matrixWorld);
+        uniforms.position.setFromMatrixPosition(light.matrixWorld);
         uniforms.position.applyMatrix4(viewMatrix);
         matrix42.identity();
-        matrix4.copy(light2.matrixWorld);
+        matrix4.copy(light.matrixWorld);
         matrix4.premultiply(viewMatrix);
         matrix42.extractRotation(matrix4);
-        uniforms.halfWidth.set(light2.width * 0.5, 0, 0);
-        uniforms.halfHeight.set(0, light2.height * 0.5, 0);
+        uniforms.halfWidth.set(light.width * 0.5, 0, 0);
+        uniforms.halfHeight.set(0, light.height * 0.5, 0);
         uniforms.halfWidth.applyMatrix4(matrix42);
         uniforms.halfHeight.applyMatrix4(matrix42);
         rectAreaLength++;
-      } else if (light2.isPointLight) {
+      } else if (light.isPointLight) {
         const uniforms = state.point[pointLength];
-        uniforms.position.setFromMatrixPosition(light2.matrixWorld);
+        uniforms.position.setFromMatrixPosition(light.matrixWorld);
         uniforms.position.applyMatrix4(viewMatrix);
         pointLength++;
-      } else if (light2.isHemisphereLight) {
+      } else if (light.isHemisphereLight) {
         const uniforms = state.hemi[hemiLength];
-        uniforms.direction.setFromMatrixPosition(light2.matrixWorld);
+        uniforms.direction.setFromMatrixPosition(light.matrixWorld);
         uniforms.direction.transformDirection(viewMatrix);
         hemiLength++;
       }
@@ -13171,8 +13170,8 @@ function WebGLRenderState(extensions, capabilities) {
     lightsArray.length = 0;
     shadowsArray.length = 0;
   }
-  function pushLight(light2) {
-    lightsArray.push(light2);
+  function pushLight(light) {
+    lightsArray.push(light);
   }
   function pushShadow(shadowLight) {
     shadowsArray.push(shadowLight);
@@ -13180,8 +13179,8 @@ function WebGLRenderState(extensions, capabilities) {
   function setupLights(useLegacyLights) {
     lights.setup(lightsArray, useLegacyLights);
   }
-  function setupLightsView(camera2) {
-    lights.setupView(lightsArray, camera2);
+  function setupLightsView(camera) {
+    lights.setupView(lightsArray, camera);
   }
   const state = {
     lightsArray,
@@ -13199,12 +13198,12 @@ function WebGLRenderState(extensions, capabilities) {
 }
 function WebGLRenderStates(extensions, capabilities) {
   let renderStates = /* @__PURE__ */ new WeakMap();
-  function get(scene2, renderCallDepth = 0) {
-    const renderStateArray = renderStates.get(scene2);
+  function get(scene, renderCallDepth = 0) {
+    const renderStateArray = renderStates.get(scene);
     let renderState;
     if (renderStateArray === void 0) {
       renderState = new WebGLRenderState(extensions, capabilities);
-      renderStates.set(scene2, [renderState]);
+      renderStates.set(scene, [renderState]);
     } else {
       if (renderCallDepth >= renderStateArray.length) {
         renderState = new WebGLRenderState(extensions, capabilities);
@@ -13308,7 +13307,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
   this.needsUpdate = false;
   this.type = PCFShadowMap;
   let _previousType = this.type;
-  this.render = function(lights, scene2, camera2) {
+  this.render = function(lights, scene, camera) {
     if (scope.enabled === false) return;
     if (scope.autoUpdate === false && scope.needsUpdate === false) return;
     if (lights.length === 0) return;
@@ -13323,10 +13322,10 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
     const toVSM = _previousType !== VSMShadowMap && this.type === VSMShadowMap;
     const fromVSM = _previousType === VSMShadowMap && this.type !== VSMShadowMap;
     for (let i = 0, il = lights.length; i < il; i++) {
-      const light2 = lights[i];
-      const shadow = light2.shadow;
+      const light = lights[i];
+      const shadow = light.shadow;
       if (shadow === void 0) {
-        console.warn("THREE.WebGLShadowMap:", light2, "has no shadow.");
+        console.warn("THREE.WebGLShadowMap:", light, "has no shadow.");
         continue;
       }
       if (shadow.autoUpdate === false && shadow.needsUpdate === false) continue;
@@ -13352,7 +13351,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
           shadow.map.dispose();
         }
         shadow.map = new WebGLRenderTarget(_shadowMapSize.x, _shadowMapSize.y, pars);
-        shadow.map.texture.name = light2.name + ".shadowMap";
+        shadow.map.texture.name = light.name + ".shadowMap";
         shadow.camera.updateProjectionMatrix();
       }
       _renderer.setRenderTarget(shadow.map);
@@ -13367,12 +13366,12 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
           _viewportSize.y * viewport.w
         );
         _state.viewport(_viewport);
-        shadow.updateMatrices(light2, vp);
+        shadow.updateMatrices(light, vp);
         _frustum = shadow.getFrustum();
-        renderObject(scene2, camera2, shadow.camera, light2, this.type);
+        renderObject(scene, camera, shadow.camera, light, this.type);
       }
       if (shadow.isPointLightShadow !== true && this.type === VSMShadowMap) {
-        VSMPass(shadow, camera2);
+        VSMPass(shadow, camera);
       }
       shadow.needsUpdate = false;
     }
@@ -13380,7 +13379,7 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
     scope.needsUpdate = false;
     _renderer.setRenderTarget(currentRenderTarget, activeCubeFace, activeMipmapLevel);
   };
-  function VSMPass(shadow, camera2) {
+  function VSMPass(shadow, camera) {
     const geometry = _objects.update(fullScreenMesh);
     if (shadowMaterialVertical.defines.VSM_SAMPLES !== shadow.blurSamples) {
       shadowMaterialVertical.defines.VSM_SAMPLES = shadow.blurSamples;
@@ -13396,21 +13395,21 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
     shadowMaterialVertical.uniforms.radius.value = shadow.radius;
     _renderer.setRenderTarget(shadow.mapPass);
     _renderer.clear();
-    _renderer.renderBufferDirect(camera2, null, geometry, shadowMaterialVertical, fullScreenMesh, null);
+    _renderer.renderBufferDirect(camera, null, geometry, shadowMaterialVertical, fullScreenMesh, null);
     shadowMaterialHorizontal.uniforms.shadow_pass.value = shadow.mapPass.texture;
     shadowMaterialHorizontal.uniforms.resolution.value = shadow.mapSize;
     shadowMaterialHorizontal.uniforms.radius.value = shadow.radius;
     _renderer.setRenderTarget(shadow.map);
     _renderer.clear();
-    _renderer.renderBufferDirect(camera2, null, geometry, shadowMaterialHorizontal, fullScreenMesh, null);
+    _renderer.renderBufferDirect(camera, null, geometry, shadowMaterialHorizontal, fullScreenMesh, null);
   }
-  function getDepthMaterial(object, material, light2, type) {
+  function getDepthMaterial(object, material, light, type) {
     let result = null;
-    const customMaterial = light2.isPointLight === true ? object.customDistanceMaterial : object.customDepthMaterial;
+    const customMaterial = light.isPointLight === true ? object.customDistanceMaterial : object.customDepthMaterial;
     if (customMaterial !== void 0) {
       result = customMaterial;
     } else {
-      result = light2.isPointLight === true ? _distanceMaterial : _depthMaterial;
+      result = light.isPointLight === true ? _distanceMaterial : _depthMaterial;
       if (_renderer.localClippingEnabled && material.clipShadows === true && Array.isArray(material.clippingPlanes) && material.clippingPlanes.length !== 0 || material.displacementMap && material.displacementScale !== 0 || material.alphaMap && material.alphaTest > 0 || material.map && material.alphaTest > 0) {
         const keyA = result.uuid, keyB = material.uuid;
         let materialsForVariant = _materialCache[keyA];
@@ -13444,15 +13443,15 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
     result.displacementBias = material.displacementBias;
     result.wireframeLinewidth = material.wireframeLinewidth;
     result.linewidth = material.linewidth;
-    if (light2.isPointLight === true && result.isMeshDistanceMaterial === true) {
+    if (light.isPointLight === true && result.isMeshDistanceMaterial === true) {
       const materialProperties = _renderer.properties.get(result);
-      materialProperties.light = light2;
+      materialProperties.light = light;
     }
     return result;
   }
-  function renderObject(object, camera2, shadowCamera, light2, type) {
+  function renderObject(object, camera, shadowCamera, light, type) {
     if (object.visible === false) return;
-    const visible = object.layers.test(camera2.layers);
+    const visible = object.layers.test(camera.layers);
     if (visible && (object.isMesh || object.isLine || object.isPoints)) {
       if ((object.castShadow || object.receiveShadow && type === VSMShadowMap) && (!object.frustumCulled || _frustum.intersectsObject(object))) {
         object.modelViewMatrix.multiplyMatrices(shadowCamera.matrixWorldInverse, object.matrixWorld);
@@ -13464,19 +13463,19 @@ function WebGLShadowMap(_renderer, _objects, _capabilities) {
             const group = groups[k];
             const groupMaterial = material[group.materialIndex];
             if (groupMaterial && groupMaterial.visible) {
-              const depthMaterial = getDepthMaterial(object, groupMaterial, light2, type);
+              const depthMaterial = getDepthMaterial(object, groupMaterial, light, type);
               _renderer.renderBufferDirect(shadowCamera, null, geometry, depthMaterial, object, group);
             }
           }
         } else if (material.visible) {
-          const depthMaterial = getDepthMaterial(object, material, light2, type);
+          const depthMaterial = getDepthMaterial(object, material, light, type);
           _renderer.renderBufferDirect(shadowCamera, null, geometry, depthMaterial, object, null);
         }
       }
     }
     const children = object.children;
     for (let i = 0, l = children.length; i < l; i++) {
-      renderObject(children[i], camera2, shadowCamera, light2, type);
+      renderObject(children[i], camera, shadowCamera, light, type);
     }
   }
 }
@@ -14265,13 +14264,13 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, 
         const width = floor(scale * image.width);
         const height = floor(scale * image.height);
         if (_canvas2 === void 0) _canvas2 = createCanvas(width, height);
-        const canvas2 = needsNewCanvas ? createCanvas(width, height) : _canvas2;
-        canvas2.width = width;
-        canvas2.height = height;
-        const context = canvas2.getContext("2d");
+        const canvas = needsNewCanvas ? createCanvas(width, height) : _canvas2;
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
         context.drawImage(image, 0, 0, width, height);
         console.warn("THREE.WebGLRenderer: Texture has been resized from (" + image.width + "x" + image.height + ") to (" + width + "x" + height + ").");
-        return canvas2;
+        return canvas;
       } else {
         if ("data" in image) {
           console.warn("THREE.WebGLRenderer: Image in DataTexture is too big (" + image.width + "x" + image.height + ").");
@@ -15262,9 +15261,9 @@ function WebGLTextures(_gl, extensions, state, properties, capabilities, utils, 
     return isWebGL2 && renderTarget.samples > 0 && extensions.has("WEBGL_multisampled_render_to_texture") === true && renderTargetProperties.__useRenderToTexture !== false;
   }
   function updateVideoTexture(texture) {
-    const frame2 = info.render.frame;
-    if (_videoTextures.get(texture) !== frame2) {
-      _videoTextures.set(texture, frame2);
+    const frame = info.render.frame;
+    if (_videoTextures.get(texture) !== frame) {
+      _videoTextures.set(texture, frame);
       texture.update();
     }
   }
@@ -15548,18 +15547,18 @@ class WebXRController {
     }
     return this;
   }
-  update(inputSource, frame2, referenceSpace) {
+  update(inputSource, frame, referenceSpace) {
     let inputPose = null;
     let gripPose = null;
     let handPose = null;
     const targetRay = this._targetRay;
     const grip = this._grip;
     const hand = this._hand;
-    if (inputSource && frame2.session.visibilityState !== "visible-blurred") {
+    if (inputSource && frame.session.visibilityState !== "visible-blurred") {
       if (hand && inputSource.hand) {
         handPose = true;
         for (const inputjoint of inputSource.hand.values()) {
-          const jointPose = frame2.getJointPose(inputjoint, referenceSpace);
+          const jointPose = frame.getJointPose(inputjoint, referenceSpace);
           const joint = this._getHandJoint(hand, inputjoint);
           if (jointPose !== null) {
             joint.matrix.fromArray(jointPose.transform.matrix);
@@ -15591,7 +15590,7 @@ class WebXRController {
         }
       } else {
         if (grip !== null && inputSource.gripSpace) {
-          gripPose = frame2.getPose(inputSource.gripSpace, referenceSpace);
+          gripPose = frame.getPose(inputSource.gripSpace, referenceSpace);
           if (gripPose !== null) {
             grip.matrix.fromArray(gripPose.transform.matrix);
             grip.matrix.decompose(grip.position, grip.rotation, grip.scale);
@@ -15612,7 +15611,7 @@ class WebXRController {
         }
       }
       if (targetRay !== null) {
-        inputPose = frame2.getPose(inputSource.targetRaySpace, referenceSpace);
+        inputPose = frame.getPose(inputSource.targetRaySpace, referenceSpace);
         if (inputPose === null && gripPose !== null) {
           inputPose = gripPose;
         }
@@ -15688,7 +15687,7 @@ class DepthTexture extends Texture {
   }
 }
 class WebXRManager extends EventDispatcher {
-  constructor(renderer2, gl) {
+  constructor(renderer, gl) {
     super();
     const scope = this;
     let session = null;
@@ -15723,38 +15722,38 @@ class WebXRManager extends EventDispatcher {
     this.enabled = false;
     this.isPresenting = false;
     this.getController = function(index) {
-      let controller2 = controllers[index];
-      if (controller2 === void 0) {
-        controller2 = new WebXRController();
-        controllers[index] = controller2;
+      let controller = controllers[index];
+      if (controller === void 0) {
+        controller = new WebXRController();
+        controllers[index] = controller;
       }
-      return controller2.getTargetRaySpace();
+      return controller.getTargetRaySpace();
     };
     this.getControllerGrip = function(index) {
-      let controller2 = controllers[index];
-      if (controller2 === void 0) {
-        controller2 = new WebXRController();
-        controllers[index] = controller2;
+      let controller = controllers[index];
+      if (controller === void 0) {
+        controller = new WebXRController();
+        controllers[index] = controller;
       }
-      return controller2.getGripSpace();
+      return controller.getGripSpace();
     };
     this.getHand = function(index) {
-      let controller2 = controllers[index];
-      if (controller2 === void 0) {
-        controller2 = new WebXRController();
-        controllers[index] = controller2;
+      let controller = controllers[index];
+      if (controller === void 0) {
+        controller = new WebXRController();
+        controllers[index] = controller;
       }
-      return controller2.getHandSpace();
+      return controller.getHandSpace();
     };
     function onSessionEvent(event) {
       const controllerIndex = controllerInputSources.indexOf(event.inputSource);
       if (controllerIndex === -1) {
         return;
       }
-      const controller2 = controllers[controllerIndex];
-      if (controller2 !== void 0) {
-        controller2.update(event.inputSource, event.frame, customReferenceSpace || referenceSpace);
-        controller2.dispatchEvent({ type: event.type, data: event.inputSource });
+      const controller = controllers[controllerIndex];
+      if (controller !== void 0) {
+        controller.update(event.inputSource, event.frame, customReferenceSpace || referenceSpace);
+        controller.dispatchEvent({ type: event.type, data: event.inputSource });
       }
     }
     function onSessionEnd() {
@@ -15774,7 +15773,7 @@ class WebXRManager extends EventDispatcher {
       }
       _currentDepthNear = null;
       _currentDepthFar = null;
-      renderer2.setRenderTarget(initialRenderTarget);
+      renderer.setRenderTarget(initialRenderTarget);
       glBaseLayer = null;
       glProjLayer = null;
       glBinding = null;
@@ -15817,7 +15816,7 @@ class WebXRManager extends EventDispatcher {
     this.setSession = async function(value) {
       session = value;
       if (session !== null) {
-        initialRenderTarget = renderer2.getRenderTarget();
+        initialRenderTarget = renderer.getRenderTarget();
         session.addEventListener("select", onSessionEvent);
         session.addEventListener("selectstart", onSessionEvent);
         session.addEventListener("selectend", onSessionEvent);
@@ -15829,7 +15828,7 @@ class WebXRManager extends EventDispatcher {
         if (attributes.xrCompatible !== true) {
           await gl.makeXRCompatible();
         }
-        if (session.renderState.layers === void 0 || renderer2.capabilities.isWebGL2 === false) {
+        if (session.renderState.layers === void 0 || renderer.capabilities.isWebGL2 === false) {
           const layerInit = {
             antialias: session.renderState.layers === void 0 ? attributes.antialias : true,
             alpha: true,
@@ -15845,7 +15844,7 @@ class WebXRManager extends EventDispatcher {
             {
               format: RGBAFormat,
               type: UnsignedByteType,
-              colorSpace: renderer2.outputColorSpace,
+              colorSpace: renderer.outputColorSpace,
               stencilBuffer: attributes.stencil
             }
           );
@@ -15874,11 +15873,11 @@ class WebXRManager extends EventDispatcher {
               type: UnsignedByteType,
               depthTexture: new DepthTexture(glProjLayer.textureWidth, glProjLayer.textureHeight, depthType, void 0, void 0, void 0, void 0, void 0, void 0, depthFormat),
               stencilBuffer: attributes.stencil,
-              colorSpace: renderer2.outputColorSpace,
+              colorSpace: renderer.outputColorSpace,
               samples: attributes.antialias ? 4 : 0
             }
           );
-          const renderTargetProperties = renderer2.properties.get(newRenderTarget);
+          const renderTargetProperties = renderer.properties.get(newRenderTarget);
           renderTargetProperties.__ignoreDepthValues = glProjLayer.ignoreDepthValues;
         }
         newRenderTarget.isXRRenderTarget = true;
@@ -15922,15 +15921,15 @@ class WebXRManager extends EventDispatcher {
           }
           if (controllerIndex === -1) break;
         }
-        const controller2 = controllers[controllerIndex];
-        if (controller2) {
-          controller2.connect(inputSource);
+        const controller = controllers[controllerIndex];
+        if (controller) {
+          controller.connect(inputSource);
         }
       }
     }
     const cameraLPos = new Vector3();
     const cameraRPos = new Vector3();
-    function setProjectionFromUnion(camera2, cameraL2, cameraR2) {
+    function setProjectionFromUnion(camera, cameraL2, cameraR2) {
       cameraLPos.setFromMatrixPosition(cameraL2.matrixWorld);
       cameraRPos.setFromMatrixPosition(cameraR2.matrixWorld);
       const ipd = cameraLPos.distanceTo(cameraRPos);
@@ -15946,32 +15945,32 @@ class WebXRManager extends EventDispatcher {
       const right = near * rightFov;
       const zOffset = ipd / (-leftFov + rightFov);
       const xOffset = zOffset * -leftFov;
-      cameraL2.matrixWorld.decompose(camera2.position, camera2.quaternion, camera2.scale);
-      camera2.translateX(xOffset);
-      camera2.translateZ(zOffset);
-      camera2.matrixWorld.compose(camera2.position, camera2.quaternion, camera2.scale);
-      camera2.matrixWorldInverse.copy(camera2.matrixWorld).invert();
+      cameraL2.matrixWorld.decompose(camera.position, camera.quaternion, camera.scale);
+      camera.translateX(xOffset);
+      camera.translateZ(zOffset);
+      camera.matrixWorld.compose(camera.position, camera.quaternion, camera.scale);
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
       const near2 = near + zOffset;
       const far2 = far + zOffset;
       const left2 = left - xOffset;
       const right2 = right + (ipd - xOffset);
       const top2 = topFov * far / far2 * near2;
       const bottom2 = bottomFov * far / far2 * near2;
-      camera2.projectionMatrix.makePerspective(left2, right2, top2, bottom2, near2, far2);
-      camera2.projectionMatrixInverse.copy(camera2.projectionMatrix).invert();
+      camera.projectionMatrix.makePerspective(left2, right2, top2, bottom2, near2, far2);
+      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
     }
-    function updateCamera(camera2, parent) {
+    function updateCamera(camera, parent) {
       if (parent === null) {
-        camera2.matrixWorld.copy(camera2.matrix);
+        camera.matrixWorld.copy(camera.matrix);
       } else {
-        camera2.matrixWorld.multiplyMatrices(parent.matrixWorld, camera2.matrix);
+        camera.matrixWorld.multiplyMatrices(parent.matrixWorld, camera.matrix);
       }
-      camera2.matrixWorldInverse.copy(camera2.matrixWorld).invert();
+      camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
     }
-    this.updateCamera = function(camera2) {
+    this.updateCamera = function(camera) {
       if (session === null) return;
-      cameraXR.near = cameraR.near = cameraL.near = camera2.near;
-      cameraXR.far = cameraR.far = cameraL.far = camera2.far;
+      cameraXR.near = cameraR.near = cameraL.near = camera.near;
+      cameraXR.far = cameraR.far = cameraL.far = camera.far;
       if (_currentDepthNear !== cameraXR.near || _currentDepthFar !== cameraXR.far) {
         session.updateRenderState({
           depthNear: cameraXR.near,
@@ -15980,7 +15979,7 @@ class WebXRManager extends EventDispatcher {
         _currentDepthNear = cameraXR.near;
         _currentDepthFar = cameraXR.far;
       }
-      const parent = camera2.parent;
+      const parent = camera.parent;
       const cameras2 = cameraXR.cameras;
       updateCamera(cameraXR, parent);
       for (let i = 0; i < cameras2.length; i++) {
@@ -15991,23 +15990,23 @@ class WebXRManager extends EventDispatcher {
       } else {
         cameraXR.projectionMatrix.copy(cameraL.projectionMatrix);
       }
-      updateUserCamera(camera2, cameraXR, parent);
+      updateUserCamera(camera, cameraXR, parent);
     };
-    function updateUserCamera(camera2, cameraXR2, parent) {
+    function updateUserCamera(camera, cameraXR2, parent) {
       if (parent === null) {
-        camera2.matrix.copy(cameraXR2.matrixWorld);
+        camera.matrix.copy(cameraXR2.matrixWorld);
       } else {
-        camera2.matrix.copy(parent.matrixWorld);
-        camera2.matrix.invert();
-        camera2.matrix.multiply(cameraXR2.matrixWorld);
+        camera.matrix.copy(parent.matrixWorld);
+        camera.matrix.invert();
+        camera.matrix.multiply(cameraXR2.matrixWorld);
       }
-      camera2.matrix.decompose(camera2.position, camera2.quaternion, camera2.scale);
-      camera2.updateMatrixWorld(true);
-      camera2.projectionMatrix.copy(cameraXR2.projectionMatrix);
-      camera2.projectionMatrixInverse.copy(cameraXR2.projectionMatrixInverse);
-      if (camera2.isPerspectiveCamera) {
-        camera2.fov = RAD2DEG * 2 * Math.atan(1 / camera2.projectionMatrix.elements[5]);
-        camera2.zoom = 1;
+      camera.matrix.decompose(camera.position, camera.quaternion, camera.scale);
+      camera.updateMatrixWorld(true);
+      camera.projectionMatrix.copy(cameraXR2.projectionMatrix);
+      camera.projectionMatrixInverse.copy(cameraXR2.projectionMatrixInverse);
+      if (camera.isPerspectiveCamera) {
+        camera.fov = RAD2DEG * 2 * Math.atan(1 / camera.projectionMatrix.elements[5]);
+        camera.zoom = 1;
       }
     }
     this.getCamera = function() {
@@ -16029,14 +16028,14 @@ class WebXRManager extends EventDispatcher {
       }
     };
     let onAnimationFrameCallback = null;
-    function onAnimationFrame(time, frame2) {
-      pose = frame2.getViewerPose(customReferenceSpace || referenceSpace);
-      xrFrame = frame2;
+    function onAnimationFrame(time, frame) {
+      pose = frame.getViewerPose(customReferenceSpace || referenceSpace);
+      xrFrame = frame;
       if (pose !== null) {
         const views = pose.views;
         if (glBaseLayer !== null) {
-          renderer2.setRenderTargetFramebuffer(newRenderTarget, glBaseLayer.framebuffer);
-          renderer2.setRenderTarget(newRenderTarget);
+          renderer.setRenderTargetFramebuffer(newRenderTarget, glBaseLayer.framebuffer);
+          renderer.setRenderTarget(newRenderTarget);
         }
         let cameraXRNeedsUpdate = false;
         if (views.length !== cameraXR.cameras.length) {
@@ -16052,45 +16051,45 @@ class WebXRManager extends EventDispatcher {
             const glSubImage = glBinding.getViewSubImage(glProjLayer, view);
             viewport = glSubImage.viewport;
             if (i === 0) {
-              renderer2.setRenderTargetTextures(
+              renderer.setRenderTargetTextures(
                 newRenderTarget,
                 glSubImage.colorTexture,
                 glProjLayer.ignoreDepthValues ? void 0 : glSubImage.depthStencilTexture
               );
-              renderer2.setRenderTarget(newRenderTarget);
+              renderer.setRenderTarget(newRenderTarget);
             }
           }
-          let camera2 = cameras[i];
-          if (camera2 === void 0) {
-            camera2 = new PerspectiveCamera();
-            camera2.layers.enable(i);
-            camera2.viewport = new Vector4();
-            cameras[i] = camera2;
+          let camera = cameras[i];
+          if (camera === void 0) {
+            camera = new PerspectiveCamera();
+            camera.layers.enable(i);
+            camera.viewport = new Vector4();
+            cameras[i] = camera;
           }
-          camera2.matrix.fromArray(view.transform.matrix);
-          camera2.matrix.decompose(camera2.position, camera2.quaternion, camera2.scale);
-          camera2.projectionMatrix.fromArray(view.projectionMatrix);
-          camera2.projectionMatrixInverse.copy(camera2.projectionMatrix).invert();
-          camera2.viewport.set(viewport.x, viewport.y, viewport.width, viewport.height);
+          camera.matrix.fromArray(view.transform.matrix);
+          camera.matrix.decompose(camera.position, camera.quaternion, camera.scale);
+          camera.projectionMatrix.fromArray(view.projectionMatrix);
+          camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+          camera.viewport.set(viewport.x, viewport.y, viewport.width, viewport.height);
           if (i === 0) {
-            cameraXR.matrix.copy(camera2.matrix);
+            cameraXR.matrix.copy(camera.matrix);
             cameraXR.matrix.decompose(cameraXR.position, cameraXR.quaternion, cameraXR.scale);
           }
           if (cameraXRNeedsUpdate === true) {
-            cameraXR.cameras.push(camera2);
+            cameraXR.cameras.push(camera);
           }
         }
       }
       for (let i = 0; i < controllers.length; i++) {
         const inputSource = controllerInputSources[i];
-        const controller2 = controllers[i];
-        if (inputSource !== null && controller2 !== void 0) {
-          controller2.update(inputSource, frame2, customReferenceSpace || referenceSpace);
+        const controller = controllers[i];
+        if (inputSource !== null && controller !== void 0) {
+          controller.update(inputSource, frame, customReferenceSpace || referenceSpace);
         }
       }
-      if (onAnimationFrameCallback) onAnimationFrameCallback(time, frame2);
-      if (frame2.detectedPlanes) {
-        scope.dispatchEvent({ type: "planesdetected", data: frame2 });
+      if (onAnimationFrameCallback) onAnimationFrameCallback(time, frame);
+      if (frame.detectedPlanes) {
+        scope.dispatchEvent({ type: "planesdetected", data: frame });
       }
       xrFrame = null;
     }
@@ -16103,7 +16102,7 @@ class WebXRManager extends EventDispatcher {
     };
   }
 }
-function WebGLMaterials(renderer2, properties) {
+function WebGLMaterials(renderer, properties) {
   function refreshTransformUniform(map, uniform) {
     if (map.matrixAutoUpdate === true) {
       map.updateMatrix();
@@ -16111,7 +16110,7 @@ function WebGLMaterials(renderer2, properties) {
     uniform.value.copy(map.matrix);
   }
   function refreshFogUniforms(uniforms, fog) {
-    fog.color.getRGB(uniforms.fogColor.value, getUnlitUniformColorSpace(renderer2));
+    fog.color.getRGB(uniforms.fogColor.value, getUnlitUniformColorSpace(renderer));
     if (fog.isFog) {
       uniforms.fogNear.value = fog.near;
       uniforms.fogFar.value = fog.far;
@@ -16221,7 +16220,7 @@ function WebGLMaterials(renderer2, properties) {
     }
     if (material.lightMap) {
       uniforms.lightMap.value = material.lightMap;
-      const scaleFactor = renderer2._useLegacyLights === true ? Math.PI : 1;
+      const scaleFactor = renderer._useLegacyLights === true ? Math.PI : 1;
       uniforms.lightMapIntensity.value = material.lightMapIntensity * scaleFactor;
       refreshTransformUniform(material.lightMap, uniforms.lightMapTransform);
     }
@@ -16390,10 +16389,10 @@ function WebGLMaterials(renderer2, properties) {
     }
   }
   function refreshUniformsDistance(uniforms, material) {
-    const light2 = properties.get(material).light;
-    uniforms.referencePosition.value.setFromMatrixPosition(light2.matrixWorld);
-    uniforms.nearDistance.value = light2.shadow.camera.near;
-    uniforms.farDistance.value = light2.shadow.camera.far;
+    const light = properties.get(material).light;
+    uniforms.referencePosition.value.setFromMatrixPosition(light.matrixWorld);
+    uniforms.nearDistance.value = light.shadow.camera.near;
+    uniforms.farDistance.value = light.shadow.camera.far;
   }
   return {
     refreshFogUniforms,
@@ -16419,10 +16418,10 @@ function WebGLUniformsGroups(gl, info, capabilities, state) {
     }
     const webglProgram = program.program;
     state.updateUBOMapping(uniformsGroup, webglProgram);
-    const frame2 = info.render.frame;
-    if (updateList[uniformsGroup.id] !== frame2) {
+    const frame = info.render.frame;
+    if (updateList[uniformsGroup.id] !== frame) {
       updateBufferData(uniformsGroup);
-      updateList[uniformsGroup.id] = frame2;
+      updateList[uniformsGroup.id] = frame;
     }
   }
   function createBuffer(uniformsGroup) {
@@ -16617,7 +16616,7 @@ function WebGLUniformsGroups(gl, info, capabilities, state) {
 class WebGLRenderer {
   constructor(parameters = {}) {
     const {
-      canvas: canvas2 = createCanvasElement(),
+      canvas = createCanvasElement(),
       context = null,
       depth = true,
       stencil = true,
@@ -16641,7 +16640,7 @@ class WebGLRenderer {
     let currentRenderState = null;
     const renderListStack = [];
     const renderStateStack = [];
-    this.domElement = canvas2;
+    this.domElement = canvas;
     this.debug = {
       /**
        * Enables error checking and reporting when shader programs are being compiled
@@ -16677,8 +16676,8 @@ class WebGLRenderer {
     let _currentScissorTest = null;
     const _currentClearColor = new Color(0);
     let _currentClearAlpha = 0;
-    let _width = canvas2.width;
-    let _height = canvas2.height;
+    let _width = canvas.width;
+    let _height = canvas.height;
     let _pixelRatio = 1;
     let _opaqueSort = null;
     let _transparentSort = null;
@@ -16700,7 +16699,7 @@ class WebGLRenderer {
     function getContext(contextNames, contextAttributes) {
       for (let i = 0; i < contextNames.length; i++) {
         const contextName = contextNames[i];
-        const context2 = canvas2.getContext(contextName, contextAttributes);
+        const context2 = canvas.getContext(contextName, contextAttributes);
         if (context2 !== null) return context2;
       }
       return null;
@@ -16716,10 +16715,10 @@ class WebGLRenderer {
         powerPreference,
         failIfMajorPerformanceCaveat
       };
-      if ("setAttribute" in canvas2) canvas2.setAttribute("data-engine", `three.js r${REVISION}`);
-      canvas2.addEventListener("webglcontextlost", onContextLost, false);
-      canvas2.addEventListener("webglcontextrestored", onContextRestore, false);
-      canvas2.addEventListener("webglcontextcreationerror", onContextCreationError, false);
+      if ("setAttribute" in canvas) canvas.setAttribute("data-engine", `three.js r${REVISION}`);
+      canvas.addEventListener("webglcontextlost", onContextLost, false);
+      canvas.addEventListener("webglcontextrestored", onContextRestore, false);
+      canvas.addEventListener("webglcontextcreationerror", onContextCreationError, false);
       if (_gl === null) {
         const contextNames = ["webgl2", "webgl", "experimental-webgl"];
         if (_this.isWebGL1Renderer === true) {
@@ -16821,11 +16820,11 @@ class WebGLRenderer {
       }
       _width = width;
       _height = height;
-      canvas2.width = Math.floor(width * _pixelRatio);
-      canvas2.height = Math.floor(height * _pixelRatio);
+      canvas.width = Math.floor(width * _pixelRatio);
+      canvas.height = Math.floor(height * _pixelRatio);
       if (updateStyle === true) {
-        canvas2.style.width = width + "px";
-        canvas2.style.height = height + "px";
+        canvas.style.width = width + "px";
+        canvas.style.height = height + "px";
       }
       this.setViewport(0, 0, width, height);
     };
@@ -16836,8 +16835,8 @@ class WebGLRenderer {
       _width = width;
       _height = height;
       _pixelRatio = pixelRatio;
-      canvas2.width = Math.floor(width * pixelRatio);
-      canvas2.height = Math.floor(height * pixelRatio);
+      canvas.width = Math.floor(width * pixelRatio);
+      canvas.height = Math.floor(height * pixelRatio);
       this.setViewport(0, 0, width, height);
     };
     this.getCurrentViewport = function(target) {
@@ -16939,9 +16938,9 @@ class WebGLRenderer {
       this.clear(false, false, true);
     };
     this.dispose = function() {
-      canvas2.removeEventListener("webglcontextlost", onContextLost, false);
-      canvas2.removeEventListener("webglcontextrestored", onContextRestore, false);
-      canvas2.removeEventListener("webglcontextcreationerror", onContextCreationError, false);
+      canvas.removeEventListener("webglcontextlost", onContextLost, false);
+      canvas.removeEventListener("webglcontextrestored", onContextRestore, false);
+      canvas.removeEventListener("webglcontextcreationerror", onContextCreationError, false);
       renderLists.dispose();
       renderStates.dispose();
       properties.dispose();
@@ -17003,10 +17002,10 @@ class WebGLRenderer {
         }
       }
     }
-    this.renderBufferDirect = function(camera2, scene2, geometry, material, object, group) {
-      if (scene2 === null) scene2 = _emptyScene;
+    this.renderBufferDirect = function(camera, scene, geometry, material, object, group) {
+      if (scene === null) scene = _emptyScene;
       const frontFaceCW = object.isMesh && object.matrixWorld.determinant() < 0;
-      const program = setProgram(camera2, scene2, geometry, material, object);
+      const program = setProgram(camera, scene, geometry, material, object);
       state.setMaterial(material, frontFaceCW);
       let index = geometry.index;
       let rangeFactor = 1;
@@ -17034,74 +17033,74 @@ class WebGLRenderer {
       if (drawCount < 0 || drawCount === Infinity) return;
       bindingStates.setup(object, material, program, geometry, index);
       let attribute;
-      let renderer2 = bufferRenderer;
+      let renderer = bufferRenderer;
       if (index !== null) {
         attribute = attributes.get(index);
-        renderer2 = indexedBufferRenderer;
-        renderer2.setIndex(attribute);
+        renderer = indexedBufferRenderer;
+        renderer.setIndex(attribute);
       }
       if (object.isMesh) {
         if (material.wireframe === true) {
           state.setLineWidth(material.wireframeLinewidth * getTargetPixelRatio());
-          renderer2.setMode(_gl.LINES);
+          renderer.setMode(_gl.LINES);
         } else {
-          renderer2.setMode(_gl.TRIANGLES);
+          renderer.setMode(_gl.TRIANGLES);
         }
       } else if (object.isLine) {
         let lineWidth = material.linewidth;
         if (lineWidth === void 0) lineWidth = 1;
         state.setLineWidth(lineWidth * getTargetPixelRatio());
         if (object.isLineSegments) {
-          renderer2.setMode(_gl.LINES);
+          renderer.setMode(_gl.LINES);
         } else if (object.isLineLoop) {
-          renderer2.setMode(_gl.LINE_LOOP);
+          renderer.setMode(_gl.LINE_LOOP);
         } else {
-          renderer2.setMode(_gl.LINE_STRIP);
+          renderer.setMode(_gl.LINE_STRIP);
         }
       } else if (object.isPoints) {
-        renderer2.setMode(_gl.POINTS);
+        renderer.setMode(_gl.POINTS);
       } else if (object.isSprite) {
-        renderer2.setMode(_gl.TRIANGLES);
+        renderer.setMode(_gl.TRIANGLES);
       }
       if (object.isInstancedMesh) {
-        renderer2.renderInstances(drawStart, drawCount, object.count);
+        renderer.renderInstances(drawStart, drawCount, object.count);
       } else if (geometry.isInstancedBufferGeometry) {
         const maxInstanceCount = geometry._maxInstanceCount !== void 0 ? geometry._maxInstanceCount : Infinity;
         const instanceCount = Math.min(geometry.instanceCount, maxInstanceCount);
-        renderer2.renderInstances(drawStart, drawCount, instanceCount);
+        renderer.renderInstances(drawStart, drawCount, instanceCount);
       } else {
-        renderer2.render(drawStart, drawCount);
+        renderer.render(drawStart, drawCount);
       }
     };
-    function prepareMaterial(material, scene2, object) {
+    function prepareMaterial(material, scene, object) {
       if (material.transparent === true && material.side === DoubleSide && material.forceSinglePass === false) {
         material.side = BackSide;
         material.needsUpdate = true;
-        getProgram(material, scene2, object);
+        getProgram(material, scene, object);
         material.side = FrontSide;
         material.needsUpdate = true;
-        getProgram(material, scene2, object);
+        getProgram(material, scene, object);
         material.side = DoubleSide;
       } else {
-        getProgram(material, scene2, object);
+        getProgram(material, scene, object);
       }
     }
-    this.compile = function(scene2, camera2, targetScene = null) {
-      if (targetScene === null) targetScene = scene2;
+    this.compile = function(scene, camera, targetScene = null) {
+      if (targetScene === null) targetScene = scene;
       currentRenderState = renderStates.get(targetScene);
       currentRenderState.init();
       renderStateStack.push(currentRenderState);
       targetScene.traverseVisible(function(object) {
-        if (object.isLight && object.layers.test(camera2.layers)) {
+        if (object.isLight && object.layers.test(camera.layers)) {
           currentRenderState.pushLight(object);
           if (object.castShadow) {
             currentRenderState.pushShadow(object);
           }
         }
       });
-      if (scene2 !== targetScene) {
-        scene2.traverseVisible(function(object) {
-          if (object.isLight && object.layers.test(camera2.layers)) {
+      if (scene !== targetScene) {
+        scene.traverseVisible(function(object) {
+          if (object.isLight && object.layers.test(camera.layers)) {
             currentRenderState.pushLight(object);
             if (object.castShadow) {
               currentRenderState.pushShadow(object);
@@ -17111,7 +17110,7 @@ class WebGLRenderer {
       }
       currentRenderState.setupLights(_this._useLegacyLights);
       const materials2 = /* @__PURE__ */ new Set();
-      scene2.traverse(function(object) {
+      scene.traverse(function(object) {
         const material = object.material;
         if (material) {
           if (Array.isArray(material)) {
@@ -17130,8 +17129,8 @@ class WebGLRenderer {
       currentRenderState = null;
       return materials2;
     };
-    this.compileAsync = function(scene2, camera2, targetScene = null) {
-      const materials2 = this.compile(scene2, camera2, targetScene);
+    this.compileAsync = function(scene, camera, targetScene = null) {
+      const materials2 = this.compile(scene, camera, targetScene);
       return new Promise((resolve) => {
         function checkMaterialsReady() {
           materials2.forEach(function(material) {
@@ -17142,7 +17141,7 @@ class WebGLRenderer {
             }
           });
           if (materials2.size === 0) {
-            resolve(scene2);
+            resolve(scene);
             return;
           }
           setTimeout(checkMaterialsReady, 10);
@@ -17174,30 +17173,30 @@ class WebGLRenderer {
     };
     xr.addEventListener("sessionstart", onXRSessionStart);
     xr.addEventListener("sessionend", onXRSessionEnd);
-    this.render = function(scene2, camera2) {
-      if (camera2 !== void 0 && camera2.isCamera !== true) {
+    this.render = function(scene, camera) {
+      if (camera !== void 0 && camera.isCamera !== true) {
         console.error("THREE.WebGLRenderer.render: camera is not an instance of THREE.Camera.");
         return;
       }
       if (_isContextLost === true) return;
-      if (scene2.matrixWorldAutoUpdate === true) scene2.updateMatrixWorld();
-      if (camera2.parent === null && camera2.matrixWorldAutoUpdate === true) camera2.updateMatrixWorld();
+      if (scene.matrixWorldAutoUpdate === true) scene.updateMatrixWorld();
+      if (camera.parent === null && camera.matrixWorldAutoUpdate === true) camera.updateMatrixWorld();
       if (xr.enabled === true && xr.isPresenting === true) {
-        if (xr.cameraAutoUpdate === true) xr.updateCamera(camera2);
-        camera2 = xr.getCamera();
+        if (xr.cameraAutoUpdate === true) xr.updateCamera(camera);
+        camera = xr.getCamera();
       }
-      if (scene2.isScene === true) scene2.onBeforeRender(_this, scene2, camera2, _currentRenderTarget);
-      currentRenderState = renderStates.get(scene2, renderStateStack.length);
+      if (scene.isScene === true) scene.onBeforeRender(_this, scene, camera, _currentRenderTarget);
+      currentRenderState = renderStates.get(scene, renderStateStack.length);
       currentRenderState.init();
       renderStateStack.push(currentRenderState);
-      _projScreenMatrix2.multiplyMatrices(camera2.projectionMatrix, camera2.matrixWorldInverse);
+      _projScreenMatrix2.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
       _frustum.setFromProjectionMatrix(_projScreenMatrix2);
       _localClippingEnabled = this.localClippingEnabled;
       _clippingEnabled = clipping.init(this.clippingPlanes, _localClippingEnabled);
-      currentRenderList = renderLists.get(scene2, renderListStack.length);
+      currentRenderList = renderLists.get(scene, renderListStack.length);
       currentRenderList.init();
       renderListStack.push(currentRenderList);
-      projectObject(scene2, camera2, 0, _this.sortObjects);
+      projectObject(scene, camera, 0, _this.sortObjects);
       currentRenderList.finish();
       if (_this.sortObjects === true) {
         currentRenderList.sort(_opaqueSort, _transparentSort);
@@ -17205,25 +17204,25 @@ class WebGLRenderer {
       this.info.render.frame++;
       if (_clippingEnabled === true) clipping.beginShadows();
       const shadowsArray = currentRenderState.state.shadowsArray;
-      shadowMap.render(shadowsArray, scene2, camera2);
+      shadowMap.render(shadowsArray, scene, camera);
       if (_clippingEnabled === true) clipping.endShadows();
       if (this.info.autoReset === true) this.info.reset();
-      background.render(currentRenderList, scene2);
+      background.render(currentRenderList, scene);
       currentRenderState.setupLights(_this._useLegacyLights);
-      if (camera2.isArrayCamera) {
-        const cameras = camera2.cameras;
+      if (camera.isArrayCamera) {
+        const cameras = camera.cameras;
         for (let i = 0, l = cameras.length; i < l; i++) {
-          const camera22 = cameras[i];
-          renderScene(currentRenderList, scene2, camera22, camera22.viewport);
+          const camera2 = cameras[i];
+          renderScene(currentRenderList, scene, camera2, camera2.viewport);
         }
       } else {
-        renderScene(currentRenderList, scene2, camera2);
+        renderScene(currentRenderList, scene, camera);
       }
       if (_currentRenderTarget !== null) {
         textures.updateMultisampleRenderTarget(_currentRenderTarget);
         textures.updateRenderTargetMipmap(_currentRenderTarget);
       }
-      if (scene2.isScene === true) scene2.onAfterRender(_this, scene2, camera2);
+      if (scene.isScene === true) scene.onAfterRender(_this, scene, camera);
       bindingStates.resetDefaultState();
       _currentMaterialId = -1;
       _currentCamera = null;
@@ -17240,14 +17239,14 @@ class WebGLRenderer {
         currentRenderList = null;
       }
     };
-    function projectObject(object, camera2, groupOrder, sortObjects) {
+    function projectObject(object, camera, groupOrder, sortObjects) {
       if (object.visible === false) return;
-      const visible = object.layers.test(camera2.layers);
+      const visible = object.layers.test(camera.layers);
       if (visible) {
         if (object.isGroup) {
           groupOrder = object.renderOrder;
         } else if (object.isLOD) {
-          if (object.autoUpdate === true) object.update(camera2);
+          if (object.autoUpdate === true) object.update(camera);
         } else if (object.isLight) {
           currentRenderState.pushLight(object);
           if (object.castShadow) {
@@ -17295,27 +17294,27 @@ class WebGLRenderer {
       }
       const children = object.children;
       for (let i = 0, l = children.length; i < l; i++) {
-        projectObject(children[i], camera2, groupOrder, sortObjects);
+        projectObject(children[i], camera, groupOrder, sortObjects);
       }
     }
-    function renderScene(currentRenderList2, scene2, camera2, viewport) {
+    function renderScene(currentRenderList2, scene, camera, viewport) {
       const opaqueObjects = currentRenderList2.opaque;
       const transmissiveObjects = currentRenderList2.transmissive;
       const transparentObjects = currentRenderList2.transparent;
-      currentRenderState.setupLightsView(camera2);
-      if (_clippingEnabled === true) clipping.setGlobalState(_this.clippingPlanes, camera2);
-      if (transmissiveObjects.length > 0) renderTransmissionPass(opaqueObjects, transmissiveObjects, scene2, camera2);
+      currentRenderState.setupLightsView(camera);
+      if (_clippingEnabled === true) clipping.setGlobalState(_this.clippingPlanes, camera);
+      if (transmissiveObjects.length > 0) renderTransmissionPass(opaqueObjects, transmissiveObjects, scene, camera);
       if (viewport) state.viewport(_currentViewport.copy(viewport));
-      if (opaqueObjects.length > 0) renderObjects(opaqueObjects, scene2, camera2);
-      if (transmissiveObjects.length > 0) renderObjects(transmissiveObjects, scene2, camera2);
-      if (transparentObjects.length > 0) renderObjects(transparentObjects, scene2, camera2);
+      if (opaqueObjects.length > 0) renderObjects(opaqueObjects, scene, camera);
+      if (transmissiveObjects.length > 0) renderObjects(transmissiveObjects, scene, camera);
+      if (transparentObjects.length > 0) renderObjects(transparentObjects, scene, camera);
       state.buffers.depth.setTest(true);
       state.buffers.depth.setMask(true);
       state.buffers.color.setMask(true);
       state.setPolygonOffset(false);
     }
-    function renderTransmissionPass(opaqueObjects, transmissiveObjects, scene2, camera2) {
-      const overrideMaterial = scene2.isScene === true ? scene2.overrideMaterial : null;
+    function renderTransmissionPass(opaqueObjects, transmissiveObjects, scene, camera) {
+      const overrideMaterial = scene.isScene === true ? scene.overrideMaterial : null;
       if (overrideMaterial !== null) {
         return;
       }
@@ -17342,7 +17341,7 @@ class WebGLRenderer {
       _this.clear();
       const currentToneMapping = _this.toneMapping;
       _this.toneMapping = NoToneMapping;
-      renderObjects(opaqueObjects, scene2, camera2);
+      renderObjects(opaqueObjects, scene, camera);
       textures.updateMultisampleRenderTarget(_transmissionRenderTarget);
       textures.updateRenderTargetMipmap(_transmissionRenderTarget);
       let renderTargetNeedsUpdate = false;
@@ -17352,11 +17351,11 @@ class WebGLRenderer {
         const geometry = renderItem.geometry;
         const material = renderItem.material;
         const group = renderItem.group;
-        if (material.side === DoubleSide && object.layers.test(camera2.layers)) {
+        if (material.side === DoubleSide && object.layers.test(camera.layers)) {
           const currentSide = material.side;
           material.side = BackSide;
           material.needsUpdate = true;
-          renderObject(object, scene2, camera2, geometry, material, group);
+          renderObject(object, scene, camera, geometry, material, group);
           material.side = currentSide;
           material.needsUpdate = true;
           renderTargetNeedsUpdate = true;
@@ -17370,48 +17369,48 @@ class WebGLRenderer {
       _this.setClearColor(_currentClearColor, _currentClearAlpha);
       _this.toneMapping = currentToneMapping;
     }
-    function renderObjects(renderList, scene2, camera2) {
-      const overrideMaterial = scene2.isScene === true ? scene2.overrideMaterial : null;
+    function renderObjects(renderList, scene, camera) {
+      const overrideMaterial = scene.isScene === true ? scene.overrideMaterial : null;
       for (let i = 0, l = renderList.length; i < l; i++) {
         const renderItem = renderList[i];
         const object = renderItem.object;
         const geometry = renderItem.geometry;
         const material = overrideMaterial === null ? renderItem.material : overrideMaterial;
         const group = renderItem.group;
-        if (object.layers.test(camera2.layers)) {
-          renderObject(object, scene2, camera2, geometry, material, group);
+        if (object.layers.test(camera.layers)) {
+          renderObject(object, scene, camera, geometry, material, group);
         }
       }
     }
-    function renderObject(object, scene2, camera2, geometry, material, group) {
-      object.onBeforeRender(_this, scene2, camera2, geometry, material, group);
-      object.modelViewMatrix.multiplyMatrices(camera2.matrixWorldInverse, object.matrixWorld);
+    function renderObject(object, scene, camera, geometry, material, group) {
+      object.onBeforeRender(_this, scene, camera, geometry, material, group);
+      object.modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, object.matrixWorld);
       object.normalMatrix.getNormalMatrix(object.modelViewMatrix);
-      material.onBeforeRender(_this, scene2, camera2, geometry, object, group);
+      material.onBeforeRender(_this, scene, camera, geometry, object, group);
       if (material.transparent === true && material.side === DoubleSide && material.forceSinglePass === false) {
         material.side = BackSide;
         material.needsUpdate = true;
-        _this.renderBufferDirect(camera2, scene2, geometry, material, object, group);
+        _this.renderBufferDirect(camera, scene, geometry, material, object, group);
         material.side = FrontSide;
         material.needsUpdate = true;
-        _this.renderBufferDirect(camera2, scene2, geometry, material, object, group);
+        _this.renderBufferDirect(camera, scene, geometry, material, object, group);
         material.side = DoubleSide;
       } else {
-        _this.renderBufferDirect(camera2, scene2, geometry, material, object, group);
+        _this.renderBufferDirect(camera, scene, geometry, material, object, group);
       }
-      object.onAfterRender(_this, scene2, camera2, geometry, material, group);
+      object.onAfterRender(_this, scene, camera, geometry, material, group);
     }
-    function getProgram(material, scene2, object) {
-      if (scene2.isScene !== true) scene2 = _emptyScene;
+    function getProgram(material, scene, object) {
+      if (scene.isScene !== true) scene = _emptyScene;
       const materialProperties = properties.get(material);
       const lights = currentRenderState.state.lights;
       const shadowsArray = currentRenderState.state.shadowsArray;
       const lightsStateVersion = lights.state.version;
-      const parameters2 = programCache.getParameters(material, lights.state, shadowsArray, scene2, object);
+      const parameters2 = programCache.getParameters(material, lights.state, shadowsArray, scene, object);
       const programCacheKey = programCache.getProgramCacheKey(parameters2);
       let programs = materialProperties.programs;
-      materialProperties.environment = material.isMeshStandardMaterial ? scene2.environment : null;
-      materialProperties.fog = scene2.fog;
+      materialProperties.environment = material.isMeshStandardMaterial ? scene.environment : null;
+      materialProperties.fog = scene.fog;
       materialProperties.envMap = (material.isMeshStandardMaterial ? cubeuvmaps : cubemaps).get(material.envMap || materialProperties.environment);
       if (programs === void 0) {
         material.addEventListener("dispose", onMaterialDispose);
@@ -17487,11 +17486,11 @@ class WebGLRenderer {
       materialProperties.vertexTangents = parameters2.vertexTangents;
       materialProperties.toneMapping = parameters2.toneMapping;
     }
-    function setProgram(camera2, scene2, geometry, material, object) {
-      if (scene2.isScene !== true) scene2 = _emptyScene;
+    function setProgram(camera, scene, geometry, material, object) {
+      if (scene.isScene !== true) scene = _emptyScene;
       textures.resetTextureUnits();
-      const fog = scene2.fog;
-      const environment = material.isMeshStandardMaterial ? scene2.environment : null;
+      const fog = scene.fog;
+      const environment = material.isMeshStandardMaterial ? scene.environment : null;
       const colorSpace = _currentRenderTarget === null ? _this.outputColorSpace : _currentRenderTarget.isXRRenderTarget === true ? _currentRenderTarget.texture.colorSpace : LinearSRGBColorSpace;
       const envMap = (material.isMeshStandardMaterial ? cubeuvmaps : cubemaps).get(material.envMap || environment);
       const vertexAlphas = material.vertexColors === true && !!geometry.attributes.color && geometry.attributes.color.itemSize === 4;
@@ -17510,9 +17509,9 @@ class WebGLRenderer {
       const materialProperties = properties.get(material);
       const lights = currentRenderState.state.lights;
       if (_clippingEnabled === true) {
-        if (_localClippingEnabled === true || camera2 !== _currentCamera) {
-          const useCache = camera2 === _currentCamera && material.id === _currentMaterialId;
-          clipping.setState(material, camera2, useCache);
+        if (_localClippingEnabled === true || camera !== _currentCamera) {
+          const useCache = camera === _currentCamera && material.id === _currentMaterialId;
+          clipping.setState(material, camera, useCache);
         }
       }
       let needsProgramChange = false;
@@ -17560,7 +17559,7 @@ class WebGLRenderer {
       }
       let program = materialProperties.currentProgram;
       if (needsProgramChange === true) {
-        program = getProgram(material, scene2, object);
+        program = getProgram(material, scene, object);
       }
       let refreshProgram = false;
       let refreshMaterial = false;
@@ -17575,25 +17574,25 @@ class WebGLRenderer {
         _currentMaterialId = material.id;
         refreshMaterial = true;
       }
-      if (refreshProgram || _currentCamera !== camera2) {
-        p_uniforms.setValue(_gl, "projectionMatrix", camera2.projectionMatrix);
-        p_uniforms.setValue(_gl, "viewMatrix", camera2.matrixWorldInverse);
+      if (refreshProgram || _currentCamera !== camera) {
+        p_uniforms.setValue(_gl, "projectionMatrix", camera.projectionMatrix);
+        p_uniforms.setValue(_gl, "viewMatrix", camera.matrixWorldInverse);
         const uCamPos = p_uniforms.map.cameraPosition;
         if (uCamPos !== void 0) {
-          uCamPos.setValue(_gl, _vector32.setFromMatrixPosition(camera2.matrixWorld));
+          uCamPos.setValue(_gl, _vector32.setFromMatrixPosition(camera.matrixWorld));
         }
         if (capabilities.logarithmicDepthBuffer) {
           p_uniforms.setValue(
             _gl,
             "logDepthBufFC",
-            2 / (Math.log(camera2.far + 1) / Math.LN2)
+            2 / (Math.log(camera.far + 1) / Math.LN2)
           );
         }
         if (material.isMeshPhongMaterial || material.isMeshToonMaterial || material.isMeshLambertMaterial || material.isMeshBasicMaterial || material.isMeshStandardMaterial || material.isShaderMaterial) {
-          p_uniforms.setValue(_gl, "isOrthographic", camera2.isOrthographicCamera === true);
+          p_uniforms.setValue(_gl, "isOrthographic", camera.isOrthographicCamera === true);
         }
-        if (_currentCamera !== camera2) {
-          _currentCamera = camera2;
+        if (_currentCamera !== camera) {
+          _currentCamera = camera;
           refreshMaterial = true;
           refreshLights = true;
         }
@@ -18478,12 +18477,12 @@ class LOD extends Object3D {
       this.getObjectForDistance(distance).raycast(raycaster, intersects2);
     }
   }
-  update(camera2) {
+  update(camera) {
     const levels = this.levels;
     if (levels.length > 1) {
-      _v1$2.setFromMatrixPosition(camera2.matrixWorld);
+      _v1$2.setFromMatrixPosition(camera.matrixWorld);
       _v2$1.setFromMatrixPosition(this.matrixWorld);
-      const distance = _v1$2.distanceTo(_v2$1) / camera2.zoom;
+      const distance = _v1$2.distanceTo(_v2$1) / camera.zoom;
       levels[0].object.visible = true;
       let i, l;
       for (i = 1, l = levels.length; i < l; i++) {
@@ -19293,8 +19292,8 @@ class CompressedCubeTexture extends CompressedTexture {
   }
 }
 class CanvasTexture extends Texture {
-  constructor(canvas2, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy) {
-    super(canvas2, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy);
+  constructor(canvas, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy) {
+    super(canvas, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy);
     this.isCanvasTexture = true;
     this.needsUpdate = true;
   }
@@ -22279,7 +22278,7 @@ class SphereGeometry extends BufferGeometry {
     heightSegments = Math.max(2, Math.floor(heightSegments));
     const thetaEnd = Math.min(thetaStart + thetaLength, Math.PI);
     let index = 0;
-    const grid2 = [];
+    const grid = [];
     const vertex2 = new Vector3();
     const normal = new Vector3();
     const indices = [];
@@ -22306,14 +22305,14 @@ class SphereGeometry extends BufferGeometry {
         uvs.push(u + uOffset, 1 - v);
         verticesRow.push(index++);
       }
-      grid2.push(verticesRow);
+      grid.push(verticesRow);
     }
     for (let iy = 0; iy < heightSegments; iy++) {
       for (let ix = 0; ix < widthSegments; ix++) {
-        const a = grid2[iy][ix + 1];
-        const b = grid2[iy][ix];
-        const c = grid2[iy + 1][ix];
-        const d = grid2[iy + 1][ix + 1];
+        const a = grid[iy][ix + 1];
+        const b = grid[iy][ix];
+        const c = grid[iy + 1][ix];
+        const d = grid[iy + 1][ix + 1];
         if (iy !== 0 || thetaStart > 0) indices.push(a, b, d);
         if (iy !== heightSegments - 1 || thetaEnd < Math.PI) indices.push(b, c, d);
       }
@@ -23316,8 +23315,8 @@ function subclip(sourceClip, name, startFrame, endFrame, fps = 30) {
     const times = [];
     const values = [];
     for (let j = 0; j < track.times.length; ++j) {
-      const frame2 = track.times[j] * fps;
-      if (frame2 < startFrame || frame2 >= endFrame) continue;
+      const frame = track.times[j] * fps;
+      if (frame < startFrame || frame >= endFrame) continue;
       times.push(track.times[j]);
       for (let k = 0; k < valueSize; ++k) {
         values.push(track.values[j * valueSize + k]);
@@ -24319,12 +24318,12 @@ class FileLoader extends Loader {
         const lengthComputable = total !== 0;
         let loaded = 0;
         const stream = new ReadableStream({
-          start(controller2) {
+          start(controller) {
             readData();
             function readData() {
               reader.read().then(({ done, value }) => {
                 if (done) {
-                  controller2.close();
+                  controller.close();
                 } else {
                   loaded += value.byteLength;
                   const event = new ProgressEvent("progress", { lengthComputable, loaded, total });
@@ -24332,7 +24331,7 @@ class FileLoader extends Loader {
                     const callback = callbacks[i];
                     if (callback.onProgress) callback.onProgress(event);
                   }
-                  controller2.enqueue(value);
+                  controller.enqueue(value);
                   readData();
                 }
               });
@@ -24705,8 +24704,8 @@ const _projScreenMatrix$1 = /* @__PURE__ */ new Matrix4();
 const _lightPositionWorld$1 = /* @__PURE__ */ new Vector3();
 const _lookTarget$1 = /* @__PURE__ */ new Vector3();
 class LightShadow {
-  constructor(camera2) {
-    this.camera = camera2;
+  constructor(camera) {
+    this.camera = camera;
     this.bias = 0;
     this.normalBias = 0;
     this.radius = 1;
@@ -24730,12 +24729,12 @@ class LightShadow {
   getFrustum() {
     return this._frustum;
   }
-  updateMatrices(light2) {
+  updateMatrices(light) {
     const shadowCamera = this.camera;
     const shadowMatrix = this.matrix;
-    _lightPositionWorld$1.setFromMatrixPosition(light2.matrixWorld);
+    _lightPositionWorld$1.setFromMatrixPosition(light.matrixWorld);
     shadowCamera.position.copy(_lightPositionWorld$1);
-    _lookTarget$1.setFromMatrixPosition(light2.target.matrixWorld);
+    _lookTarget$1.setFromMatrixPosition(light.target.matrixWorld);
     shadowCamera.lookAt(_lookTarget$1);
     shadowCamera.updateMatrixWorld();
     _projScreenMatrix$1.multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse);
@@ -24801,18 +24800,18 @@ class SpotLightShadow extends LightShadow {
     this.isSpotLightShadow = true;
     this.focus = 1;
   }
-  updateMatrices(light2) {
-    const camera2 = this.camera;
-    const fov2 = RAD2DEG * 2 * light2.angle * this.focus;
+  updateMatrices(light) {
+    const camera = this.camera;
+    const fov2 = RAD2DEG * 2 * light.angle * this.focus;
     const aspect2 = this.mapSize.width / this.mapSize.height;
-    const far = light2.distance || camera2.far;
-    if (fov2 !== camera2.fov || aspect2 !== camera2.aspect || far !== camera2.far) {
-      camera2.fov = fov2;
-      camera2.aspect = aspect2;
-      camera2.far = far;
-      camera2.updateProjectionMatrix();
+    const far = light.distance || camera.far;
+    if (fov2 !== camera.fov || aspect2 !== camera.aspect || far !== camera.far) {
+      camera.fov = fov2;
+      camera.aspect = aspect2;
+      camera.far = far;
+      camera.updateProjectionMatrix();
     }
-    super.updateMatrices(light2);
+    super.updateMatrices(light);
   }
   copy(source) {
     super.copy(source);
@@ -24907,23 +24906,23 @@ class PointLightShadow extends LightShadow {
       new Vector3(0, 0, -1)
     ];
   }
-  updateMatrices(light2, viewportIndex = 0) {
-    const camera2 = this.camera;
+  updateMatrices(light, viewportIndex = 0) {
+    const camera = this.camera;
     const shadowMatrix = this.matrix;
-    const far = light2.distance || camera2.far;
-    if (far !== camera2.far) {
-      camera2.far = far;
-      camera2.updateProjectionMatrix();
+    const far = light.distance || camera.far;
+    if (far !== camera.far) {
+      camera.far = far;
+      camera.updateProjectionMatrix();
     }
-    _lightPositionWorld.setFromMatrixPosition(light2.matrixWorld);
-    camera2.position.copy(_lightPositionWorld);
-    _lookTarget.copy(camera2.position);
+    _lightPositionWorld.setFromMatrixPosition(light.matrixWorld);
+    camera.position.copy(_lightPositionWorld);
+    _lookTarget.copy(camera.position);
     _lookTarget.add(this._cubeDirections[viewportIndex]);
-    camera2.up.copy(this._cubeUps[viewportIndex]);
-    camera2.lookAt(_lookTarget);
-    camera2.updateMatrixWorld();
+    camera.up.copy(this._cubeUps[viewportIndex]);
+    camera.lookAt(_lookTarget);
+    camera.updateMatrixWorld();
     shadowMatrix.makeTranslation(-_lightPositionWorld.x, -_lightPositionWorld.y, -_lightPositionWorld.z);
-    _projScreenMatrix.multiplyMatrices(camera2.projectionMatrix, camera2.matrixWorldInverse);
+    _projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     this._frustum.setFromProjectionMatrix(_projScreenMatrix);
   }
 }
@@ -26231,18 +26230,18 @@ class StereoCamera {
       eyeSep: null
     };
   }
-  update(camera2) {
+  update(camera) {
     const cache = this._cache;
-    const needsUpdate = cache.focus !== camera2.focus || cache.fov !== camera2.fov || cache.aspect !== camera2.aspect * this.aspect || cache.near !== camera2.near || cache.far !== camera2.far || cache.zoom !== camera2.zoom || cache.eyeSep !== this.eyeSep;
+    const needsUpdate = cache.focus !== camera.focus || cache.fov !== camera.fov || cache.aspect !== camera.aspect * this.aspect || cache.near !== camera.near || cache.far !== camera.far || cache.zoom !== camera.zoom || cache.eyeSep !== this.eyeSep;
     if (needsUpdate) {
-      cache.focus = camera2.focus;
-      cache.fov = camera2.fov;
-      cache.aspect = camera2.aspect * this.aspect;
-      cache.near = camera2.near;
-      cache.far = camera2.far;
-      cache.zoom = camera2.zoom;
+      cache.focus = camera.focus;
+      cache.fov = camera.fov;
+      cache.aspect = camera.aspect * this.aspect;
+      cache.near = camera.near;
+      cache.far = camera.far;
+      cache.zoom = camera.zoom;
       cache.eyeSep = this.eyeSep;
-      _projectionMatrix.copy(camera2.projectionMatrix);
+      _projectionMatrix.copy(camera.projectionMatrix);
       const eyeSepHalf = cache.eyeSep / 2;
       const eyeSepOnProjection = eyeSepHalf * cache.near / cache.focus;
       const ymax = cache.near * Math.tan(DEG2RAD * cache.fov * 0.5) / cache.zoom;
@@ -26260,8 +26259,8 @@ class StereoCamera {
       _projectionMatrix.elements[8] = (xmax + xmin) / (xmax - xmin);
       this.cameraR.projectionMatrix.copy(_projectionMatrix);
     }
-    this.cameraL.matrixWorld.copy(camera2.matrixWorld).multiply(_eyeLeft);
-    this.cameraR.matrixWorld.copy(camera2.matrixWorld).multiply(_eyeRight);
+    this.cameraL.matrixWorld.copy(camera.matrixWorld).multiply(_eyeLeft);
+    this.cameraR.matrixWorld.copy(camera.matrixWorld).multiply(_eyeRight);
   }
 }
 class Clock {
@@ -28223,17 +28222,17 @@ class Raycaster {
   set(origin, direction) {
     this.ray.set(origin, direction);
   }
-  setFromCamera(coords, camera2) {
-    if (camera2.isPerspectiveCamera) {
-      this.ray.origin.setFromMatrixPosition(camera2.matrixWorld);
-      this.ray.direction.set(coords.x, coords.y, 0.5).unproject(camera2).sub(this.ray.origin).normalize();
-      this.camera = camera2;
-    } else if (camera2.isOrthographicCamera) {
-      this.ray.origin.set(coords.x, coords.y, (camera2.near + camera2.far) / (camera2.near - camera2.far)).unproject(camera2);
-      this.ray.direction.set(0, 0, -1).transformDirection(camera2.matrixWorld);
-      this.camera = camera2;
+  setFromCamera(coords, camera) {
+    if (camera.isPerspectiveCamera) {
+      this.ray.origin.setFromMatrixPosition(camera.matrixWorld);
+      this.ray.direction.set(coords.x, coords.y, 0.5).unproject(camera).sub(this.ray.origin).normalize();
+      this.camera = camera;
+    } else if (camera.isOrthographicCamera) {
+      this.ray.origin.set(coords.x, coords.y, (camera.near + camera.far) / (camera.near - camera.far)).unproject(camera);
+      this.ray.direction.set(0, 0, -1).transformDirection(camera.matrixWorld);
+      this.camera = camera;
     } else {
-      console.error("THREE.Raycaster: Unsupported camera type: " + camera2.type);
+      console.error("THREE.Raycaster: Unsupported camera type: " + camera.type);
     }
   }
   intersectObject(object, recursive = true, intersects2 = []) {
@@ -28502,10 +28501,10 @@ class Line3 {
 }
 const _vector$3 = /* @__PURE__ */ new Vector3();
 class SpotLightHelper extends Object3D {
-  constructor(light2, color) {
+  constructor(light, color) {
     super();
-    this.light = light2;
-    this.matrix = light2.matrixWorld;
+    this.light = light;
+    this.matrix = light.matrixWorld;
     this.matrixAutoUpdate = false;
     this.color = color;
     this.type = "SpotLightHelper";
@@ -28646,11 +28645,11 @@ function getBoneList(object) {
   return boneList;
 }
 class PointLightHelper extends Mesh {
-  constructor(light2, sphereSize, color) {
+  constructor(light, sphereSize, color) {
     const geometry = new SphereGeometry(sphereSize, 4, 2);
     const material = new MeshBasicMaterial({ wireframe: true, fog: false, toneMapped: false });
     super(geometry, material);
-    this.light = light2;
+    this.light = light;
     this.color = color;
     this.type = "PointLightHelper";
     this.matrix = this.light.matrixWorld;
@@ -28674,10 +28673,10 @@ const _vector$1 = /* @__PURE__ */ new Vector3();
 const _color1 = /* @__PURE__ */ new Color();
 const _color2 = /* @__PURE__ */ new Color();
 class HemisphereLightHelper extends Object3D {
-  constructor(light2, size, color) {
+  constructor(light, size, color) {
     super();
-    this.light = light2;
-    this.matrix = light2.matrixWorld;
+    this.light = light;
+    this.matrix = light.matrixWorld;
     this.matrixAutoUpdate = false;
     this.color = color;
     this.type = "HemisphereLightHelper";
@@ -28796,10 +28795,10 @@ const _v1 = /* @__PURE__ */ new Vector3();
 const _v2 = /* @__PURE__ */ new Vector3();
 const _v3 = /* @__PURE__ */ new Vector3();
 class DirectionalLightHelper extends Object3D {
-  constructor(light2, size, color) {
+  constructor(light, size, color) {
     super();
-    this.light = light2;
-    this.matrix = light2.matrixWorld;
+    this.light = light;
+    this.matrix = light.matrixWorld;
     this.matrixAutoUpdate = false;
     this.color = color;
     this.type = "DirectionalLightHelper";
@@ -28858,7 +28857,7 @@ class DirectionalLightHelper extends Object3D {
 const _vector = /* @__PURE__ */ new Vector3();
 const _camera = /* @__PURE__ */ new Camera();
 class CameraHelper extends LineSegments {
-  constructor(camera2) {
+  constructor(camera) {
     const geometry = new BufferGeometry();
     const material = new LineBasicMaterial({ color: 16777215, vertexColors: true, toneMapped: false });
     const vertices = [];
@@ -28905,9 +28904,9 @@ class CameraHelper extends LineSegments {
     geometry.setAttribute("color", new Float32BufferAttribute(colors, 3));
     super(geometry, material);
     this.type = "CameraHelper";
-    this.camera = camera2;
+    this.camera = camera;
     if (this.camera.updateProjectionMatrix) this.camera.updateProjectionMatrix();
-    this.matrix = camera2.matrixWorld;
+    this.matrix = camera.matrixWorld;
     this.matrixAutoUpdate = false;
     this.pointMap = pointMap;
     this.update();
@@ -29006,8 +29005,8 @@ class CameraHelper extends LineSegments {
     this.material.dispose();
   }
 }
-function setPoint(point, pointMap, geometry, camera2, x, y, z) {
-  _vector.set(x, y, z).unproject(camera2);
+function setPoint(point, pointMap, geometry, camera, x, y, z) {
+  _vector.set(x, y, z).unproject(camera);
   const points = pointMap[point];
   if (points !== void 0) {
     const position = geometry.getAttribute("position");
@@ -29903,19 +29902,21 @@ class PlanarCameraHelper {
     const rad = transform.bearing * Math.PI / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
-    const dWx = (-dx * cos + dy * sin) / scale;
-    const dWy = (dx * sin + dy * cos) / scale;
+    const dWx = (dx * cos - dy * sin) / scale;
+    const dWz = (-dx * sin - dy * cos) / scale;
     transform.setCenter({
       x: transform.center.x + dWx,
-      y: transform.center.y + dWy,
+      y: transform.center.y + dWz,
       z: transform.center.z
     });
   }
   handleMapControlsRollPitchBearingZoom(transform, dRoll, dPitch, dBearing, dZoom) {
-    transform.setRoll(normalizeAngleDeg(transform.roll + dRoll));
-    transform.setPitch(clamp(transform.pitch + dPitch, 0, 85));
-    transform.setBearing(normalizeAngleDeg(transform.bearing + dBearing));
-    transform.setZoom(transform.zoom + dZoom);
+    transform.deferApply(() => {
+      transform.setRoll(normalizeAngleDeg(transform.roll + dRoll));
+      transform.setPitch(clamp(transform.pitch + dPitch, 0, 85));
+      transform.setBearing(normalizeAngleDeg(transform.bearing + dBearing));
+      transform.setZoom(transform.zoom + dZoom);
+    });
   }
   handleJumpToCenterZoom(transform, center, zoom) {
     if (center) transform.setCenter(center);
@@ -30009,7 +30010,7 @@ function worldSizeForZoom(zoom, tileSize = TILE_SIZE) {
 }
 class ThreePlanarTransform {
   constructor(opts) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
     this._padding = { top: 0, right: 0, bottom: 0, left: 0 };
     this._center = { x: 0, y: 0, z: 0 };
     this._zoom = 0;
@@ -30021,6 +30022,9 @@ class ThreePlanarTransform {
     this._tmpVec3b = new Vector3();
     this._ray = new Ray();
     this._plane = new Plane();
+    this._deferDepth = 0;
+    this._needsApply = false;
+    this._projDirty = true;
     this._camera = opts.camera;
     this._width = opts.width;
     this._height = opts.height;
@@ -30029,6 +30033,13 @@ class ThreePlanarTransform {
     this._zoomMode = (_c = opts.zoomMode) != null ? _c : "fov";
     this._upAxis = (_d = opts.upAxis) != null ? _d : "y";
     this._getGroundIntersection = opts.getGroundIntersection;
+    this._projection = opts.projection;
+    this._baseScale = (_e = opts.baseScale) != null ? _e : 1;
+    if (this._upAxis === "z") {
+      (_g = (_f = this._camera.up) == null ? void 0 : _f.set) == null ? void 0 : _g.call(_f, 0, 0, 1);
+    } else {
+      (_i = (_h = this._camera.up) == null ? void 0 : _h.set) == null ? void 0 : _i.call(_h, 0, 1, 0);
+    }
     this._applyToCamera();
   }
   get camera() {
@@ -30064,10 +30075,31 @@ class ThreePlanarTransform {
   get worldSize() {
     return worldSizeForZoom(this._zoom, this._tileSize);
   }
+  // Projection adapter helpers
+  projectLngLat(lngLat) {
+    if (this._projection) {
+      if (this._projection.lngLatToScene) {
+        const [x, y] = this._projection.lngLatToScene(lngLat[0], lngLat[1]);
+        return { x, y };
+      }
+      return this._projection.project(lngLat);
+    }
+    return { x: lngLat[0] * this._baseScale, y: lngLat[1] * this._baseScale };
+  }
+  unprojectPoint(point) {
+    if (this._projection) {
+      if (this._projection.sceneToLngLat) {
+        return this._projection.sceneToLngLat(point.x, point.y);
+      }
+      return this._projection.unproject(point);
+    }
+    return [point.x / this._baseScale, point.y / this._baseScale];
+  }
   setViewport(view) {
     this._width = view.width;
     this._height = view.height;
     if (view.devicePixelRatio) this._dpr = view.devicePixelRatio;
+    this._projDirty = true;
     this._applyToCamera();
   }
   setPadding(padding) {
@@ -30076,24 +30108,26 @@ class ThreePlanarTransform {
   setCenter(center) {
     var _a;
     this._center = { x: center.x, y: center.y, z: (_a = center.z) != null ? _a : 0 };
-    this._applyToCamera();
+    this._scheduleApply();
   }
   setZoom(zoom) {
     const z = Math.max(this._constraints.minZoom, Math.min(this._constraints.maxZoom, zoom));
     this._zoom = z;
-    this._applyToCamera();
+    const cam = this._camera;
+    if (cam && "isOrthographicCamera" in cam && cam.isOrthographicCamera) this._projDirty = true;
+    this._scheduleApply();
   }
   setBearing(bearing) {
     this._bearing = normalizeAngleDeg(bearing);
-    this._applyToCamera();
+    this._scheduleApply();
   }
   setPitch(pitch) {
     this._pitch = clamp(pitch, this._constraints.minPitch, this._constraints.maxPitch);
-    this._applyToCamera();
+    this._scheduleApply();
   }
   setRoll(roll) {
     this._roll = normalizeAngleDeg(roll);
-    this._applyToCamera();
+    this._scheduleApply();
   }
   setConstraints(constraints) {
     this._constraints = { ...this._constraints, ...constraints };
@@ -30101,6 +30135,18 @@ class ThreePlanarTransform {
   }
   getPanBounds() {
     return this._constraints.panBounds;
+  }
+  deferApply(fn) {
+    this._deferDepth++;
+    try {
+      return fn();
+    } finally {
+      this._deferDepth--;
+      if (this._deferDepth === 0 && this._needsApply) {
+        this._applyToCamera();
+        this._needsApply = false;
+      }
+    }
   }
   screenToWorld(screen) {
     if (this._getGroundIntersection) return this._getGroundIntersection(screen);
@@ -30128,11 +30174,11 @@ class ThreePlanarTransform {
   groundFromScreen(screen) {
     const hit = this.screenToWorld(screen);
     if (!hit) return null;
-    return { gx: hit.x, gz: hit.z };
+    return this._upAxis === "z" ? { gx: hit.x, gz: hit.y } : { gx: hit.x, gz: hit.z };
   }
   adjustCenterByGroundDelta(dgx, dgz) {
     this._center = { x: this._center.x + dgx, y: this._center.y + dgz, z: this._center.z };
-    this._applyToCamera();
+    this._scheduleApply();
   }
   getGroundCenter() {
     return { gx: this._center.x, gz: this._center.y };
@@ -30152,35 +30198,65 @@ class ThreePlanarTransform {
         z: this._center.z
       };
     }
-    this._applyToCamera();
+    this._scheduleApply();
   }
   _applyToCamera() {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x2, _y2, _z2, _A, _B, _C, _D, _E, _F, _G, _H;
     const cam = this._camera;
     if (!cam) return;
-    if (this._upAxis !== "y") ;
-    const targetX = this._center.x;
-    const targetZ = this._center.y;
-    const targetY = 0;
+    let targetX, targetY, targetZ;
+    if (this._upAxis === "z") {
+      targetX = this._center.x;
+      targetY = this._center.y;
+      targetZ = 0;
+    } else {
+      targetX = this._center.x;
+      targetZ = this._center.y;
+      targetY = 0;
+    }
     if ("isPerspectiveCamera" in cam && cam.isPerspectiveCamera) {
       const fovRad = cam.fov * Math.PI / 180;
       const s = Math.pow(2, this._zoom);
       const visibleWorldHeight = this._height / s;
       const dist = visibleWorldHeight / 2 / Math.tan(fovRad / 2);
-      const bearingRad = this._bearing * Math.PI / 180;
+      const bearingRad = (this._upAxis === "z" ? 1 : -1) * (this._bearing * Math.PI) / 180;
       const pitchRad = this._pitch * Math.PI / 180;
-      const horiz = dist * Math.sin(pitchRad);
-      const y = dist * Math.cos(pitchRad);
-      const ox = horiz * Math.sin(bearingRad);
-      const oz = horiz * Math.cos(bearingRad);
-      cam.position.set(targetX + ox, targetY + y, targetZ + oz);
-      cam.lookAt(targetX, targetY, targetZ);
+      if (this._upAxis === "z") {
+        const horiz = dist * Math.sin(pitchRad);
+        const z = dist * Math.cos(pitchRad);
+        const ox = -horiz * Math.sin(bearingRad);
+        const oy = horiz * Math.cos(bearingRad);
+        (_b = (_a = cam.position) == null ? void 0 : _a.set) == null ? void 0 : _b.call(_a, targetX + ox, targetY + oy, targetZ + z);
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          (_d = (_c = cam.up) == null ? void 0 : _c.set) == null ? void 0 : _d.call(_c, -Math.sin(bearingRad), Math.cos(bearingRad), 0);
+        } else {
+          (_f = (_e = cam.up) == null ? void 0 : _e.set) == null ? void 0 : _f.call(_e, 0, 0, 1);
+        }
+      } else {
+        const horiz = dist * Math.sin(pitchRad);
+        const y = dist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oz = horiz * Math.cos(bearingRad);
+        (_h = (_g = cam.position) == null ? void 0 : _g.set) == null ? void 0 : _h.call(_g, targetX + ox, targetY + y, targetZ + oz);
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          (_j = (_i = cam.up) == null ? void 0 : _i.set) == null ? void 0 : _j.call(_i, Math.sin(bearingRad), 0, Math.cos(bearingRad));
+        } else {
+          (_l = (_k = cam.up) == null ? void 0 : _k.set) == null ? void 0 : _l.call(_k, 0, 1, 0);
+        }
+      }
+      (_m = cam.lookAt) == null ? void 0 : _m.call(cam, targetX, targetY, targetZ);
       if (this._roll) {
         const rollRad = this._roll * Math.PI / 180;
-        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion(cam.quaternion);
-        cam.rotateOnWorldAxis(dir, rollRad);
+        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_n = cam.quaternion) != null ? _n : this._tmpVec3b.set(0, 0, -1));
+        (_o = cam.rotateOnWorldAxis) == null ? void 0 : _o.call(cam, dir, rollRad);
       }
-      cam.updateProjectionMatrix();
-      cam.updateMatrixWorld();
+      if (this._projDirty) {
+        (_p = cam.updateProjectionMatrix) == null ? void 0 : _p.call(cam);
+        this._projDirty = false;
+      }
+      (_q = cam.updateMatrixWorld) == null ? void 0 : _q.call(cam);
     } else if ("isOrthographicCamera" in cam && cam.isOrthographicCamera) {
       const s = Math.pow(2, this._zoom);
       const halfW = this._width / (2 * s);
@@ -30190,21 +30266,48 @@ class ThreePlanarTransform {
       cam.top = halfH;
       cam.bottom = -halfH;
       const baseDist = 1e3;
-      const bearingRad = this._bearing * Math.PI / 180;
+      const bearingRad = -this._bearing * Math.PI / 180;
       const pitchRad = this._pitch * Math.PI / 180;
-      const horiz = baseDist * Math.sin(pitchRad);
-      const y = baseDist * Math.cos(pitchRad);
-      const ox = horiz * Math.sin(bearingRad);
-      const oz = horiz * Math.cos(bearingRad);
-      cam.position.set(targetX + ox, targetY + y, targetZ + oz);
-      cam.lookAt(targetX, targetY, targetZ);
+      if (this._upAxis === "z") {
+        const horiz = baseDist * Math.sin(pitchRad);
+        const z = baseDist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oy = horiz * Math.cos(bearingRad);
+        (_s = (_r = cam.position) == null ? void 0 : _r.set) == null ? void 0 : _s.call(_r, targetX + ox, targetY + oy, targetZ + z);
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          (_u = (_t = cam.up) == null ? void 0 : _t.set) == null ? void 0 : _u.call(_t, Math.sin(bearingRad), Math.cos(bearingRad), 0);
+        } else {
+          (_w = (_v = cam.up) == null ? void 0 : _v.set) == null ? void 0 : _w.call(_v, 0, 0, 1);
+        }
+      } else {
+        const horiz = baseDist * Math.sin(pitchRad);
+        const y = baseDist * Math.cos(pitchRad);
+        const ox = horiz * Math.sin(bearingRad);
+        const oz = horiz * Math.cos(bearingRad);
+        (_y2 = (_x2 = cam.position) == null ? void 0 : _x2.set) == null ? void 0 : _y2.call(_x2, targetX + ox, targetY + y, targetZ + oz);
+        const eps = 1e-6;
+        if (Math.abs(pitchRad) <= eps) {
+          (_A = (_z2 = cam.up) == null ? void 0 : _z2.set) == null ? void 0 : _A.call(_z2, Math.sin(bearingRad), 0, Math.cos(bearingRad));
+        } else {
+          (_C = (_B = cam.up) == null ? void 0 : _B.set) == null ? void 0 : _C.call(_B, 0, 1, 0);
+        }
+      }
+      (_D = cam.lookAt) == null ? void 0 : _D.call(cam, targetX, targetY, targetZ);
       if (this._roll) {
         const rollRad = this._roll * Math.PI / 180;
-        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion(cam.quaternion);
-        cam.rotateOnWorldAxis(dir, rollRad);
+        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_E = cam.quaternion) != null ? _E : this._tmpVec3b.set(0, 0, -1));
+        (_F = cam.rotateOnWorldAxis) == null ? void 0 : _F.call(cam, dir, rollRad);
       }
-      cam.updateProjectionMatrix();
-      cam.updateMatrixWorld();
+      (_G = cam.updateProjectionMatrix) == null ? void 0 : _G.call(cam);
+      (_H = cam.updateMatrixWorld) == null ? void 0 : _H.call(cam);
+    }
+  }
+  _scheduleApply() {
+    if (this._deferDepth > 0) {
+      this._needsApply = true;
+    } else {
+      this._applyToCamera();
     }
   }
 }
@@ -30291,8 +30394,10 @@ class ScrollZoomHandler {
       this.lastWheelTs = now2;
       const targetV = dz / (dt || 1 / 60);
       this.velocity = this.velocity * 0.7 + targetV * 0.3;
-      if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
-      this.inertiaHandle = requestAnimationFrame(() => this.runInertia());
+      if (this.opts.zoomInertia) {
+        if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
+        this.inertiaHandle = requestAnimationFrame(() => this.runInertia());
+      }
     };
     this.el = el;
     this.transform = transform;
@@ -30310,6 +30415,7 @@ class ScrollZoomHandler {
       },
       zoomSign: 1,
       anchorTightness: 1,
+      zoomInertia: false,
       ...opts
     };
   }
@@ -30351,12 +30457,12 @@ class ScrollZoomHandler {
     this.transform.adjustCenterByGroundDelta(dgx, dgz);
   }
   runInertia() {
-    let lastTime2 = performance.now();
+    let lastTime = performance.now();
     const step = () => {
       var _a;
       const now2 = performance.now();
-      const dt = (now2 - lastTime2) / 1e3;
-      lastTime2 = now2;
+      const dt = (now2 - lastTime) / 1e3;
+      lastTime = now2;
       const decay = Math.exp(-8 * dt);
       this.velocity *= decay;
       if (Math.abs(this.velocity) < 1e-3) {
@@ -30383,22 +30489,31 @@ class MousePanHandler {
     this.lastTs = 0;
     this.vx = 0;
     this.vy = 0;
+    this.instVx = 0;
+    this.instVy = 0;
+    this.gvx = 0;
+    this.gvz = 0;
+    this.igvx = 0;
+    this.igvz = 0;
     this.inertiaHandle = null;
     this.lastGround = null;
+    this.rectCache = null;
     this.onDown = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g;
+      var _a, _b, _c, _d, _e, _f, _g, _h;
+      if (e.pointerType !== "mouse") return;
       if (e.button !== this.opts.button) return;
       (_b = (_a = this.el).setPointerCapture) == null ? void 0 : _b.call(_a, e.pointerId);
       this.dragging = false;
       this.startX = this.lastX = e.clientX;
       this.startY = this.lastY = e.clientY;
       this.lastTs = performance.now();
-      const rect = this.el.getBoundingClientRect();
+      this.rectCache = this.el.getBoundingClientRect();
+      const rect = (_c = this.rectCache) != null ? _c : this.el.getBoundingClientRect();
       const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      const gp = (_e = (_d = (_c = this.transform).groundFromScreen) == null ? void 0 : _d.call(_c, pointer)) != null ? _e : null;
+      const gp = (_f = (_e = (_d = this.transform).groundFromScreen) == null ? void 0 : _e.call(_d, pointer)) != null ? _f : null;
       this.lastGround = gp;
       if (this.opts.recenterOnPointerDown && gp) {
-        (_g = (_f = this.transform).setGroundCenter) == null ? void 0 : _g.call(_f, gp);
+        (_h = (_g = this.transform).setGroundCenter) == null ? void 0 : _h.call(_g, gp);
         this.opts.onChange({ axes: { pan: true }, originalEvent: e });
       }
       const offMove = on(window, "pointermove", this.onMove, { passive: false });
@@ -30409,7 +30524,7 @@ class MousePanHandler {
       };
     };
     this.onMove = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
       const dx = (e.clientX - this.lastX) * ((_a = this.opts.panXSign) != null ? _a : 1);
       const dy = (e.clientY - this.lastY) * ((_b = this.opts.panYSign) != null ? _b : 1);
       const dt = (performance.now() - this.lastTs) / 1e3;
@@ -30440,17 +30555,46 @@ class MousePanHandler {
           dgz *= damp2(overY);
         }
         (_k = (_j = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _k.call(_j, dgx, dgz);
+        const after = (_n = (_m = (_l = this.transform).groundFromScreen) == null ? void 0 : _m.call(_l, pointer)) != null ? _n : null;
+        this.lastGround = after != null ? after : currGround;
+        if (dt > 0) {
+          const alphaG = 0.3;
+          const igx = dgx / dt;
+          const igz = dgz / dt;
+          this.igvx = igx;
+          this.igvz = igz;
+          this.gvx = this.gvx * (1 - alphaG) + igx * alphaG;
+          this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
+        }
       } else {
         this.helper.handleMapControlsPan(this.transform, dx, dy);
+        this.lastGround = currGround;
+        if (dt > 0) {
+          const scale = Math.pow(2, this.transform.zoom);
+          const rad = this.transform.bearing * Math.PI / 180;
+          const cos = Math.cos(rad), sin = Math.sin(rad);
+          const dWx = (-dx * cos + dy * sin) / scale;
+          const dWz = (dx * sin + dy * cos) / scale;
+          const alphaG = 0.3;
+          const igx = dWx / dt;
+          const igz = dWz / dt;
+          this.igvx = igx;
+          this.igvz = igz;
+          this.gvx = this.gvx * (1 - alphaG) + igx * alphaG;
+          this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
+        }
       }
-      this.lastGround = currGround;
       this.opts.onChange({ axes: { pan: true }, originalEvent: e });
       if (dt > 0) {
         const alpha = 0.3;
         const sdx = dx;
         const sdy = dy;
-        this.vx = this.vx * (1 - alpha) + sdx / dt * alpha;
-        this.vy = this.vy * (1 - alpha) + sdy / dt * alpha;
+        const ivx = sdx / dt;
+        const ivy = sdy / dt;
+        this.instVx = ivx;
+        this.instVy = ivy;
+        this.vx = this.vx * (1 - alpha) + ivx * alpha;
+        this.vy = this.vy * (1 - alpha) + ivy * alpha;
       }
     };
     this.onUp = (_e) => {
@@ -30459,13 +30603,21 @@ class MousePanHandler {
       this.unbindMoveUp = null;
       if (!this.dragging) return;
       this.dragging = false;
+      const dot = this.gvx * this.igvx + this.gvz * this.igvz;
+      if (dot <= 0) {
+        this.gvx = 0;
+        this.gvz = 0;
+        this.vx = 0;
+        this.vy = 0;
+      }
+      this.rectCache = null;
       if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
       this.inertiaHandle = requestAnimationFrame(() => this.runInertia());
     };
     this.el = el;
     this.transform = transform;
     this.helper = helper;
-    this.opts = {
+    const merged = {
       button: 0,
       dragThresholdPx: 3,
       onChange: () => {
@@ -30477,8 +30629,12 @@ class MousePanHandler {
       recenterOnPointerDown: false,
       inertiaPanYSign: 1,
       inertiaPanXSign: 1,
-      ...opts
+      anchorTightness: 1,
+      ...opts || {}
     };
+    if (opts && "inertiaPanFriction" in opts && opts.inertiaPanFriction == null) delete merged.inertiaPanFriction;
+    if (opts && "rubberbandStrength" in opts && opts.rubberbandStrength == null) delete merged.rubberbandStrength;
+    this.opts = merged;
   }
   enable() {
     if (typeof window === "undefined" || this.unbindDown) return;
@@ -30496,27 +30652,22 @@ class MousePanHandler {
   }
   runInertia() {
     let last = performance.now();
-    const friction = this.opts.inertiaPanFriction;
+    const friction = Number.isFinite(this.opts.inertiaPanFriction) ? this.opts.inertiaPanFriction : 6;
     const step = () => {
-      var _a, _b, _c, _d, _e, _f;
+      var _a, _b, _c, _d;
       const now2 = performance.now();
       const dt = (now2 - last) / 1e3;
       last = now2;
       const decay = Math.exp(-friction * dt);
-      this.vx *= decay;
-      this.vy *= decay;
-      if (Math.hypot(this.vx, this.vy) < 5) {
+      this.gvx *= decay;
+      this.gvz *= decay;
+      if (Math.hypot(this.gvx, this.gvz) < 1e-3) {
         this.inertiaHandle = null;
         return;
       }
-      const svx = this.vx * ((_a = this.opts.inertiaPanXSign) != null ? _a : 1);
-      const svy = this.vy * ((_b = this.opts.inertiaPanYSign) != null ? _b : 1);
-      const scale = Math.pow(2, this.transform.zoom);
-      const rad = this.transform.bearing * Math.PI / 180;
-      const cos = Math.cos(rad), sin = Math.sin(rad);
-      let dgx = (-svx * cos + svy * sin) / scale * dt;
-      let dgz = (svx * sin + svy * cos) / scale * dt;
-      const bounds = (_d = (_c = this.transform).getPanBounds) == null ? void 0 : _d.call(_c);
+      let dgx = this.gvx * dt;
+      let dgz = this.gvz * dt;
+      const bounds = (_b = (_a = this.transform).getPanBounds) == null ? void 0 : _b.call(_a);
       if (bounds) {
         const nx = this.transform.center.x + dgx;
         const ny = this.transform.center.y + dgz;
@@ -30527,7 +30678,7 @@ class MousePanHandler {
         dgx *= damp2(overX);
         dgz *= damp2(overY);
       }
-      (_f = (_e = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _f.call(_e, dgx, dgz);
+      (_d = (_c = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _d.call(_c, dgx, dgz);
       this.opts.onChange({ axes: { pan: true } });
       this.inertiaHandle = requestAnimationFrame(step);
     };
@@ -30541,8 +30692,10 @@ class MouseRotatePitchHandler {
     this.dragging = false;
     this.lastX = 0;
     this.lastY = 0;
+    this.rectCache = null;
     this.onDown = (e) => {
       var _a, _b, _c, _d, _e, _f, _g;
+      if (e.pointerType !== "mouse") return;
       const isRotateBtn = e.button === this.opts.rotateButton;
       const wantsPitch = this.opts.pitchModifier === "shift" && e.shiftKey || this.opts.pitchModifier === "alt" && (e.altKey || e.metaKey);
       if (!isRotateBtn && !wantsPitch) return;
@@ -30550,6 +30703,7 @@ class MouseRotatePitchHandler {
       this.dragging = true;
       this.lastX = e.clientX;
       this.lastY = e.clientY;
+      this.rectCache = this.el.getBoundingClientRect();
       if (this.opts.recenterOnPointerDown && this.opts.around === "pointer") {
         const rect = this.el.getBoundingClientRect();
         const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -30564,7 +30718,7 @@ class MouseRotatePitchHandler {
       };
     };
     this.onMove = (e) => {
-      var _a, _b, _c;
+      var _a, _b, _c, _d, _e, _f;
       if (!this.dragging) return;
       const dx = e.clientX - this.lastX;
       const dy = e.clientY - this.lastY;
@@ -30572,17 +30726,19 @@ class MouseRotatePitchHandler {
       this.lastY = e.clientY;
       e.preventDefault();
       const aroundPointer = this.opts.around === "pointer";
-      const rect = this.el.getBoundingClientRect();
+      const rect = (_a = this.rectCache) != null ? _a : this.el.getBoundingClientRect();
       const pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       const wantsPitchOnly = this.opts.pitchModifier === "shift" && e.shiftKey || this.opts.pitchModifier === "alt" && (e.altKey || e.metaKey);
-      const db = (wantsPitchOnly ? 0 : dx * (this.opts.sensitivity.rotatePerPx / 1)) * ((_a = this.opts.rotateSign) != null ? _a : 1);
-      const dp = -dy * (this.opts.sensitivity.pitchPerPx / 1) * ((_b = this.opts.pitchSign) != null ? _b : 1);
+      const rotPerPx = (_b = this.opts.sensitivity.rotatePerPx) != null ? _b : 0.3;
+      const pitPerPx = (_c = this.opts.sensitivity.pitchPerPx) != null ? _c : 0.25;
+      const db = (wantsPitchOnly ? 0 : dx * rotPerPx) * ((_d = this.opts.rotateSign) != null ? _d : 1);
+      const dp = -dy * pitPerPx * ((_e = this.opts.pitchSign) != null ? _e : 1);
       const groundBefore = aroundPointer ? this.transform.groundFromScreen(pointer) : null;
       this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, db, 0, "center");
       if (aroundPointer && groundBefore) {
         const groundAfter = this.transform.groundFromScreen(pointer);
         if (groundAfter) {
-          const tight = Math.max(0, Math.min(1, (_c = this.opts.anchorTightness) != null ? _c : 1));
+          const tight = Math.max(0, Math.min(1, (_f = this.opts.anchorTightness) != null ? _f : 1));
           const dgx = (groundBefore.gx - groundAfter.gx) * tight;
           const dgz = (groundBefore.gz - groundAfter.gz) * tight;
           this.transform.adjustCenterByGroundDelta(dgx, dgz);
@@ -30596,6 +30752,7 @@ class MouseRotatePitchHandler {
       this.dragging = false;
       (_a = this.unbindMoveUp) == null ? void 0 : _a.call(this);
       this.unbindMoveUp = null;
+      this.rectCache = null;
     };
     this.el = el;
     this.transform = transform;
@@ -30635,72 +30792,173 @@ class TouchMultiHandler {
     this.pts = /* @__PURE__ */ new Map();
     this.active = false;
     this.lastCenter = { x: 0, y: 0 };
+    this.lastCenterEl = { x: 0, y: 0 };
     this.lastDist = 0;
     this.lastAngle = 0;
     this.mode = "idle";
     this.lastGroundCenter = null;
+    this.lastPinchPointer = null;
+    this.lastSinglePt = null;
+    this.lastSingleGround = null;
+    this.lastP0 = null;
+    this.lastP1 = null;
     this.vz = 0;
     this.vb = 0;
     this.vp = 0;
     this.vpx = 0;
     this.vpy = 0;
+    this.instVpx = 0;
+    this.instVpy = 0;
+    this.gvx = 0;
+    this.gvz = 0;
     this.inertiaHandle = null;
     this.lastTs = 0;
+    this.firstTouchDownTs = 0;
+    this.allowPitchThisGesture = true;
+    this.debugOverlay = null;
     this.onDown = (e) => {
-      var _a, _b;
-      if (e.pointerType !== "touch") return;
-      (_b = (_a = this.el).setPointerCapture) == null ? void 0 : _b.call(_a, e.pointerId);
-      this.pts.set(e.pointerId, { id: e.pointerId, x: e.clientX, y: e.clientY });
-      if (this.pts.size === 1) {
-        this.bindMoveUp();
-      } else if (this.pts.size === 2) {
-        this.startGesture(e);
+      var _a, _b, _c, _d, _e, _f, _g;
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches.item(i);
+        this.pts.set(t.identifier, { id: t.identifier, x: t.clientX, y: t.clientY });
+      }
+      this.bindMoveUp();
+      if (e.touches.length === 1) {
+        this.firstTouchDownTs = performance.now();
+        const t = e.touches.item(0);
+        const rect = this.el.getBoundingClientRect();
+        const vv = window.visualViewport;
+        const pointer = { x: t.clientX + ((_a = vv == null ? void 0 : vv.offsetLeft) != null ? _a : 0) - (rect.left + ((_b = vv == null ? void 0 : vv.offsetLeft) != null ? _b : 0)), y: t.clientY + ((_c = vv == null ? void 0 : vv.offsetTop) != null ? _c : 0) - (rect.top + ((_d = vv == null ? void 0 : vv.offsetTop) != null ? _d : 0)) };
+        const gp = (_g = (_f = (_e = this.transform).groundFromScreen) == null ? void 0 : _f.call(_e, pointer)) != null ? _g : null;
+        this.lastSinglePt = pointer;
+        this.lastSingleGround = gp;
+        this.active = true;
+        this.mode = "pan";
+        this.lastTs = performance.now();
+      } else if (e.touches.length === 2) {
+        this.startGesture();
       }
     };
     this.onMove = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
-      if (e.pointerType !== "touch") return;
-      const pt = this.pts.get(e.pointerId);
-      if (!pt) return;
-      pt.x = e.clientX;
-      pt.y = e.clientY;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x2, _y2, _z2, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S;
+      this.pts.clear();
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches.item(i);
+        this.pts.set(t.identifier, { id: t.identifier, x: t.clientX, y: t.clientY });
+      }
       if (this.opts.preventDefault) e.preventDefault();
-      if (!this.active && this.pts.size === 2) this.startGesture(e);
+      if (!this.active && this.pts.size === 2) this.startGesture();
+      if (this.pts.size === 1 && e.touches.length === 1) {
+        const now22 = performance.now();
+        const dt2 = Math.max(1 / 120, (now22 - this.lastTs) / 1e3);
+        this.lastTs = now22;
+        const rect2 = this.el.getBoundingClientRect();
+        const vv2 = window.visualViewport;
+        const t = e.touches.item(0);
+        const pointer = { x: t.clientX + ((_a = vv2 == null ? void 0 : vv2.offsetLeft) != null ? _a : 0) - (rect2.left + ((_b = vv2 == null ? void 0 : vv2.offsetLeft) != null ? _b : 0)), y: t.clientY + ((_c = vv2 == null ? void 0 : vv2.offsetTop) != null ? _c : 0) - (rect2.top + ((_d = vv2 == null ? void 0 : vv2.offsetTop) != null ? _d : 0)) };
+        const gpNow = (_g = (_f = (_e = this.transform).groundFromScreen) == null ? void 0 : _f.call(_e, pointer)) != null ? _g : null;
+        if (this.lastSingleGround && gpNow) {
+          let dgx = (this.lastSingleGround.gx - gpNow.gx) * ((_h = this.opts.panXSign) != null ? _h : 1);
+          let dgz = (this.lastSingleGround.gz - gpNow.gz) * ((_i = this.opts.panYSign) != null ? _i : 1);
+          const bounds = (_k = (_j = this.transform).getPanBounds) == null ? void 0 : _k.call(_j);
+          if (bounds) {
+            const nx = this.transform.center.x + dgx;
+            const ny = this.transform.center.y + dgz;
+            const overX = nx < bounds.min.x ? bounds.min.x - nx : nx > bounds.max.x ? nx - bounds.max.x : 0;
+            const overY = ny < bounds.min.y ? bounds.min.y - ny : ny > bounds.max.y ? ny - bounds.max.y : 0;
+            const s2 = this.opts.rubberbandStrength;
+            const damp2 = (o) => o > 0 ? 1 / (1 + o * s2) : 1;
+            dgx *= damp2(overX);
+            dgz *= damp2(overY);
+          }
+          (_m = (_l = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _m.call(_l, dgx, dgz);
+          const after = (_p = (_o = (_n = this.transform).groundFromScreen) == null ? void 0 : _o.call(_n, pointer)) != null ? _p : null;
+          this.lastSingleGround = after != null ? after : gpNow;
+          const alpha = 0.3;
+          const igx = dgx / dt2;
+          const igz = dgz / dt2;
+          this.gvx = this.gvx * (1 - alpha) + igx * alpha;
+          this.gvz = this.gvz * (1 - alpha) + igz * alpha;
+          const sdx = pointer.x - ((_r = (_q = this.lastSinglePt) == null ? void 0 : _q.x) != null ? _r : pointer.x);
+          const sdy = pointer.y - ((_t = (_s = this.lastSinglePt) == null ? void 0 : _s.y) != null ? _t : pointer.y);
+          const ivx = sdx / dt2;
+          const ivy = sdy / dt2;
+          this.instVpx = ivx;
+          this.instVpy = ivy;
+          this.vpx = this.vpx * (1 - alpha) + ivx * alpha;
+          this.vpy = this.vpy * (1 - alpha) + ivy * alpha;
+        } else {
+          this.lastSingleGround = gpNow;
+        }
+        this.lastSinglePt = pointer;
+        this.opts.onChange({ axes: { pan: true }, originalEvent: e });
+        return;
+      }
       if (!this.active || this.pts.size < 2) return;
       const rect = this.el.getBoundingClientRect();
-      const [p0, p1] = [...this.pts.values()];
-      const center = { x: (p0.x + p1.x) / 2 - rect.left, y: (p0.y + p1.y) / 2 - rect.top };
+      let p0;
+      let p1;
+      if (this.lastP0 && this.lastP1) {
+        p0 = (_u = this.pts.get(this.lastP0.id)) != null ? _u : void 0;
+        p1 = (_v = this.pts.get(this.lastP1.id)) != null ? _v : void 0;
+      }
+      if (!p0 || !p1) {
+        const arr = [...this.pts.values()].sort((a, b) => a.id - b.id);
+        p0 = arr[0];
+        p1 = arr[1];
+      }
+      if (!p0 || !p1) return;
+      const vv = window.visualViewport;
+      const center = { x: (p0.x + p1.x) / 2 + ((_w = vv == null ? void 0 : vv.offsetLeft) != null ? _w : 0) - (rect.left + ((_x2 = vv == null ? void 0 : vv.offsetLeft) != null ? _x2 : 0)), y: (p0.y + p1.y) / 2 + ((_y2 = vv == null ? void 0 : vv.offsetTop) != null ? _y2 : 0) - (rect.top + ((_z2 = vv == null ? void 0 : vv.offsetTop) != null ? _z2 : 0)) };
+      this.lastPinchPointer = center;
       const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
       const angle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
       const now2 = performance.now();
       const dt = Math.max(1 / 120, (now2 - this.lastTs) / 1e3);
       this.lastTs = now2;
-      const dxPan = (center.x - (this.lastCenter.x - rect.left)) * ((_a = this.opts.panXSign) != null ? _a : 1);
-      const dyPan = (center.y - (this.lastCenter.y - rect.top)) * ((_b = this.opts.panYSign) != null ? _b : 1);
+      const dxPan = (center.x - this.lastCenterEl.x) * ((_A = this.opts.panXSign) != null ? _A : 1);
+      const dyPan = (center.y - this.lastCenterEl.y) * ((_B = this.opts.panYSign) != null ? _B : 1);
       const s = this.lastDist > 0 && dist > 0 ? dist / this.lastDist : 1;
       const dzCand = scaleZoom(s);
       let dAng = angle - this.lastAngle;
       if (dAng > Math.PI) dAng -= Math.PI * 2;
       else if (dAng < -Math.PI) dAng += Math.PI * 2;
       const dDeg = radToDeg(dAng);
-      const avgDy = (p0.y - this.lastCenter.y + (p1.y - this.lastCenter.y)) / 2;
-      const dpCand = -avgDy * this.opts.pitchPerPx;
+      const vA = this.lastP0 ? { x: p0.x - this.lastP0.x, y: p0.y - this.lastP0.y } : { x: 0, y: 0 };
+      const vB = this.lastP1 ? { x: p1.x - this.lastP1.x, y: p1.y - this.lastP1.y } : { x: 0, y: 0 };
+      const movedA = Math.hypot(vA.x, vA.y) >= 2;
+      const movedB = Math.hypot(vB.x, vB.y) >= 2;
+      const verticalA = Math.abs(vA.y) > Math.abs(vA.x);
+      const verticalB = Math.abs(vB.y) > Math.abs(vB.x);
+      const sameDir = vA.y > 0 === vB.y > 0;
+      const avgDy = (vA.y + vB.y) / 2;
+      const dpCand = -avgDy * ((_C = this.opts.pitchPerPx) != null ? _C : 0.5);
+      let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir;
+      if (this.opts.allowedSingleTouchTimeMs < 999 && !this.allowPitchThisGesture) pitchStrong = false;
+      const zoomStrong = this.opts.enableZoom && Math.abs(dzCand) >= ((_D = this.opts.zoomThreshold) != null ? _D : 0.04);
+      const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= ((_E = this.opts.rotateThresholdDeg) != null ? _E : 0.5);
       if (this.mode === "idle") {
-        const pitchScore = Math.abs(avgDy);
-        const zoomScore = Math.abs(dzCand);
-        const rotateScore = Math.abs(dDeg);
-        if (this.opts.enablePitch && pitchScore >= this.opts.pitchThresholdPx) this.mode = "pitch";
-        else if (this.opts.enableZoom && (Math.abs(zoomScore) >= this.opts.zoomThreshold || this.opts.enableRotate && rotateScore >= this.opts.rotateThresholdDeg)) this.mode = "zoomRotate";
-        else if (this.opts.enablePan && Math.hypot(dxPan, dyPan) > 0) this.mode = "pan";
+        if (zoomStrong || rotateStrong || pitchStrong) {
+          this.mode = "zoomRotate";
+        }
       }
       const axes = {};
+      if (pitchStrong && dpCand && this.opts.enablePitch) {
+        this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, "center");
+        this.vp = dpCand / dt;
+        axes.pitch = true;
+      } else {
+        this.vp = 0;
+      }
+      const ptr = this.opts.around === "pinch" ? center : null;
+      const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (this.mode === "pan" && this.opts.enablePan) {
-        const gp = (_e = (_d = (_c = this.transform).groundFromScreen) == null ? void 0 : _d.call(_c, center)) != null ? _e : null;
+        const gp = (_H = (_G = (_F = this.transform).groundFromScreen) == null ? void 0 : _G.call(_F, center)) != null ? _H : null;
         if (gp) {
           if (this.lastGroundCenter) {
-            let dgx = (this.lastGroundCenter.gx - gp.gx) * ((_f = this.opts.panXSign) != null ? _f : 1);
-            let dgz = (this.lastGroundCenter.gz - gp.gz) * ((_g = this.opts.panYSign) != null ? _g : 1);
-            const bounds = (_i = (_h = this.transform).getPanBounds) == null ? void 0 : _i.call(_h);
+            let dgx = (this.lastGroundCenter.gx - gp.gx) * ((_I = this.opts.panXSign) != null ? _I : 1);
+            let dgz = (this.lastGroundCenter.gz - gp.gz) * ((_J = this.opts.panYSign) != null ? _J : 1);
+            const bounds = (_L = (_K = this.transform).getPanBounds) == null ? void 0 : _L.call(_K);
             if (bounds) {
               const nx = this.transform.center.x + dgx;
               const ny = this.transform.center.y + dgz;
@@ -30711,69 +30969,122 @@ class TouchMultiHandler {
               dgx *= damp2(overX);
               dgz *= damp2(overY);
             }
-            (_k = (_j = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _k.call(_j, dgx, dgz);
+            (_N = (_M = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _N.call(_M, dgx, dgz);
+            if (dt > 0) {
+              const alphaG = 0.3;
+              const igx = dgx / dt;
+              const igz = dgz / dt;
+              this.gvx = this.gvx * (1 - alphaG) + igx * alphaG;
+              this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
+            }
           }
-          this.lastGroundCenter = gp;
+          const after = (_Q = (_P = (_O = this.transform).groundFromScreen) == null ? void 0 : _P.call(_O, center)) != null ? _Q : null;
+          this.lastGroundCenter = after != null ? after : gp;
         } else {
           this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
         }
-        const vdx = dxPan * ((_l = this.opts.panXSign) != null ? _l : 1) / dt;
-        const vdy = dyPan * ((_m = this.opts.panYSign) != null ? _m : 1) / dt;
-        this.vpx = vdx;
-        this.vpy = vdy;
+        const vdx = dxPan / dt;
+        const vdy = dyPan / dt;
+        this.instVpx = vdx;
+        this.instVpy = vdy;
+        const alpha = 0.3;
+        this.vpx = this.vpx * (1 - alpha) + vdx * alpha;
+        this.vpy = this.vpy * (1 - alpha) + vdy * alpha;
         axes.pan = true;
       } else if (this.mode === "zoomRotate") {
-        const ptr = this.opts.around === "pinch" ? center : null;
-        const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
-        if (this.opts.enableZoom && dzCand) {
-          this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dzCand, "center");
-          this.vz = dzCand / dt;
+        const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? -dDeg * ((_R = this.opts.rotateSign) != null ? _R : 1) : 0;
+        const dZoom = this.opts.enableZoom ? dzCand : 0;
+        if (dZoom) {
+          this.vz = dZoom / dt;
           axes.zoom = true;
         }
-        if (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) {
-          this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dDeg, 0, "center");
-          this.vb = dDeg / dt;
+        if (dRot) {
+          this.vb = dRot / dt;
           axes.rotate = true;
+        } else {
+          this.vb = 0;
         }
-        if (ptr && groundBefore) {
-          const groundAfter = this.transform.groundFromScreen(ptr);
-          if (groundAfter) {
-            const tight = Math.max(0, Math.min(1, (_n = this.opts.anchorTightness) != null ? _n : 1));
-            const dgx = (groundBefore.gx - groundAfter.gx) * tight;
-            const dgz = (groundBefore.gz - groundAfter.gz) * tight;
-            this.transform.adjustCenterByGroundDelta(dgx, dgz);
-          }
+        if (dZoom || dRot) {
+          this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, dRot, dZoom, "center");
         }
-      } else if (this.mode === "pitch" && this.opts.enablePitch) {
-        const ptr = this.opts.around === "pinch" ? center : null;
-        const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
-        if (dpCand) {
-          this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dpCand, 0, 0, "center");
-          this.vp = dpCand / dt;
-          axes.pitch = true;
-        }
-        if (ptr && groundBefore) {
-          const groundAfter = this.transform.groundFromScreen(ptr);
-          if (groundAfter) {
-            const tight = Math.max(0, Math.min(1, (_o = this.opts.anchorTightness) != null ? _o : 1));
-            const dgx = (groundBefore.gx - groundAfter.gx) * tight;
-            const dgz = (groundBefore.gz - groundAfter.gz) * tight;
-            this.transform.adjustCenterByGroundDelta(dgx, dgz);
-          }
+        this.vpx = 0;
+        this.vpy = 0;
+        this.gvx = 0;
+        this.gvz = 0;
+      }
+      if (ptr && groundBefore) {
+        const groundAfter = this.transform.groundFromScreen(ptr);
+        if (groundAfter) {
+          const tight = Math.max(0, Math.min(1, (_S = this.opts.anchorTightness) != null ? _S : 1));
+          let dgx = (groundBefore.gx - groundAfter.gx) * tight;
+          let dgz = (groundBefore.gz - groundAfter.gz) * tight;
+          const maxShift = 500;
+          if (dgx > maxShift) dgx = maxShift;
+          else if (dgx < -maxShift) dgx = -maxShift;
+          if (dgz > maxShift) dgz = maxShift;
+          else if (dgz < -maxShift) dgz = -maxShift;
+          this.transform.adjustCenterByGroundDelta(dgx, dgz);
+          this.lastGroundCenter = groundAfter;
         }
       }
+      if (this.opts.showDebugOverlay) {
+        this.updateDebugOverlay({
+          mode: this.mode,
+          fingers: this.pts.size,
+          pitchStrong,
+          zoomStrong,
+          rotateStrong,
+          vA: { x: vA.x, y: vA.y, mag: Math.hypot(vA.x, vA.y), vertical: verticalA },
+          vB: { x: vB.x, y: vB.y, mag: Math.hypot(vB.x, vB.y), vertical: verticalB },
+          sameDir,
+          dpCand,
+          dzCand,
+          dDeg,
+          pitchApplied: axes.pitch || false,
+          currentPitch: this.transform.pitch || 0
+        });
+      }
       this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+      this.lastCenterEl = center;
       this.lastDist = dist;
       this.lastAngle = angle;
+      this.lastP0 = { ...p0 };
+      this.lastP1 = { ...p1 };
       this.opts.onChange({ axes, originalEvent: e });
     };
     this.onUp = (e) => {
-      if (e.pointerType !== "touch") return;
-      this.pts.delete(e.pointerId);
+      var _a, _b, _c, _d, _e, _f, _g;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches.item(i);
+        this.pts.delete(t.identifier);
+      }
       if (this.pts.size < 2) {
         if (this.active) {
           this.active = false;
+          this.lastGroundCenter = null;
+          this.lastPinchPointer = null;
+          this.lastP0 = null;
+          this.lastP1 = null;
           this.startInertia();
+          if (this.pts.size === 1) {
+            const remaining = [...this.pts.values()][0];
+            if (remaining) {
+              const rect = this.el.getBoundingClientRect();
+              const vv = window.visualViewport;
+              const pointer = {
+                x: remaining.x + ((_a = vv == null ? void 0 : vv.offsetLeft) != null ? _a : 0) - (rect.left + ((_b = vv == null ? void 0 : vv.offsetLeft) != null ? _b : 0)),
+                y: remaining.y + ((_c = vv == null ? void 0 : vv.offsetTop) != null ? _c : 0) - (rect.top + ((_d = vv == null ? void 0 : vv.offsetTop) != null ? _d : 0))
+              };
+              const gp = (_g = (_f = (_e = this.transform).groundFromScreen) == null ? void 0 : _f.call(_e, pointer)) != null ? _g : null;
+              this.lastSinglePt = pointer;
+              this.lastSingleGround = gp;
+            }
+            this.mode = "pan";
+          } else {
+            this.lastSinglePt = null;
+            this.lastSingleGround = null;
+            this.mode = "idle";
+          }
         }
       }
       if (this.pts.size === 0 && this.unbindMoveUp) {
@@ -30789,10 +31100,13 @@ class TouchMultiHandler {
       enableZoom: true,
       enableRotate: true,
       enablePitch: true,
-      pitchPerPx: 0.25,
-      rotateThresholdDeg: 0.2,
-      pitchThresholdPx: 8,
-      zoomThreshold: 0.02,
+      pitchPerPx: 0.5,
+      // match MapLibre sensitivity
+      // MapLibre-like, reduce accidental mode switching on touch
+      rotateThresholdDeg: 0.5,
+      // Lower pitch threshold for MapLibre-like responsiveness
+      pitchThresholdPx: 5,
+      zoomThreshold: 0.04,
       onChange: () => {
       },
       preventDefault: true,
@@ -30801,13 +31115,37 @@ class TouchMultiHandler {
       panXSign: 1,
       panYSign: 1,
       recenterOnGestureStart: false,
-      anchorTightness: 1,
+      // Touch-specific: slightly loosen anchor to reduce counter-drift
+      anchorTightness: 0.95,
+      inertiaPanXSign: 1,
+      inertiaPanYSign: 1,
+      rotateSign: 1,
+      allowedSingleTouchTimeMs: 999,
+      // effectively disabled - allow pitch anytime (better UX than MapLibre's strict 100ms)
+      pitchFirstMoveWindowMs: 120,
+      inertiaPanFriction: 6,
+      inertiaZoomFriction: 20,
+      inertiaRotateFriction: 12,
+      showDebugOverlay: false,
       ...opts
     };
   }
+  // Enable/disable on-screen debug overlay at runtime
+  setShowDebugOverlay(enabled) {
+    this.opts.showDebugOverlay = !!enabled;
+    if (enabled) {
+      if (!this.debugOverlay) this.createDebugOverlay();
+    } else if (this.debugOverlay) {
+      this.debugOverlay.remove();
+      this.debugOverlay = null;
+    }
+  }
   enable() {
     if (typeof window === "undefined" || this.unbindDown) return;
-    this.unbindDown = on(this.el, "pointerdown", this.onDown, { passive: true });
+    this.unbindDown = on(this.el, "touchstart", this.onDown, { passive: true });
+    if (this.opts.showDebugOverlay) {
+      this.createDebugOverlay();
+    }
   }
   destroy() {
     var _a;
@@ -30819,12 +31157,16 @@ class TouchMultiHandler {
     }
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
     this.pts.clear();
+    if (this.debugOverlay) {
+      this.debugOverlay.remove();
+      this.debugOverlay = null;
+    }
   }
   bindMoveUp() {
     if (this.unbindMoveUp) return;
-    const offMove = on(window, "pointermove", this.onMove, { passive: !this.opts.preventDefault });
-    const offUp = on(window, "pointerup", this.onUp, { passive: true });
-    const offCancel = on(window, "pointercancel", this.onUp, { passive: true });
+    const offMove = on(window, "touchmove", this.onMove, { passive: !this.opts.preventDefault });
+    const offUp = on(window, "touchend", this.onUp, { passive: true });
+    const offCancel = on(window, "touchcancel", this.onUp, { passive: true });
     this.unbindMoveUp = () => {
       offMove();
       offUp();
@@ -30832,20 +31174,28 @@ class TouchMultiHandler {
     };
   }
   startGesture(_e) {
-    var _a, _b, _c, _d, _e2;
+    var _a, _b, _c, _d, _e2, _f, _g, _h, _i, _j, _k, _l;
     const pts = [...this.pts.values()];
-    const [p0, p1] = pts;
+    const [p0, p1] = pts.sort((a, b) => a.id - b.id);
+    if (!p0 || !p1) return;
     this.lastCenter = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
     this.lastDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     this.lastAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    this.lastP0 = { ...p0 };
+    this.lastP1 = { ...p1 };
     this.active = true;
     this.lastTs = performance.now();
     this.mode = "idle";
-    this.lastGroundCenter = null;
+    this.allowPitchThisGesture = performance.now() - this.firstTouchDownTs <= this.opts.allowedSingleTouchTimeMs;
+    const rect = this.el.getBoundingClientRect();
+    const vv = window.visualViewport;
+    const centerEl = { x: this.lastCenter.x + ((_a = vv == null ? void 0 : vv.offsetLeft) != null ? _a : 0) - (rect.left + ((_b = vv == null ? void 0 : vv.offsetLeft) != null ? _b : 0)), y: this.lastCenter.y + ((_c = vv == null ? void 0 : vv.offsetTop) != null ? _c : 0) - (rect.top + ((_d = vv == null ? void 0 : vv.offsetTop) != null ? _d : 0)) };
+    this.lastCenterEl = centerEl;
+    const gp = (_g = (_f = (_e2 = this.transform).groundFromScreen) == null ? void 0 : _f.call(_e2, centerEl)) != null ? _g : null;
+    this.lastGroundCenter = gp;
     if (this.opts.recenterOnGestureStart && this.opts.around === "pinch") {
-      const rect = this.el.getBoundingClientRect();
-      const gp = (_c = (_b = (_a = this.transform).groundFromScreen) == null ? void 0 : _b.call(_a, { x: this.lastCenter.x - rect.left, y: this.lastCenter.y - rect.top })) != null ? _c : null;
-      if (gp) (_e2 = (_d = this.transform).setGroundCenter) == null ? void 0 : _e2.call(_d, gp);
+      const gp2 = (_j = (_i = (_h = this.transform).groundFromScreen) == null ? void 0 : _i.call(_h, centerEl)) != null ? _j : null;
+      if (gp2) (_l = (_k = this.transform).setGroundCenter) == null ? void 0 : _l.call(_k, gp2);
     }
     if (this.inertiaHandle != null) {
       cancelAnimationFrame(this.inertiaHandle);
@@ -30853,75 +31203,117 @@ class TouchMultiHandler {
     }
   }
   applyZoomAround(dz, pointer) {
+    var _a;
     if (!pointer) {
       this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, "center");
       return;
     }
-    const world = this.transform.screenToWorld(pointer);
+    const before = this.transform.groundFromScreen(pointer);
     this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, "center");
-    if (!world) return;
-    const sp = this.transform.worldToScreen(world);
-    if (!sp) return;
-    const dx = sp.x - pointer.x;
-    const dy = sp.y - pointer.y;
-    this.helper.handleMapControlsPan(this.transform, dx, dy);
+    if (!before) return;
+    const after = this.transform.groundFromScreen(pointer);
+    if (!after) return;
+    const tight = Math.max(0, Math.min(1, (_a = this.opts.anchorTightness) != null ? _a : 1));
+    let dgx = (before.gx - after.gx) * tight;
+    let dgz = (before.gz - after.gz) * tight;
+    const maxShift = 500;
+    if (dgx > maxShift) dgx = maxShift;
+    else if (dgx < -maxShift) dgx = -maxShift;
+    if (dgz > maxShift) dgz = maxShift;
+    else if (dgz < -maxShift) dgz = -maxShift;
+    this.transform.adjustCenterByGroundDelta(dgx, dgz);
   }
   startInertia() {
+    var _a, _b, _c;
     if (this.inertiaHandle != null) cancelAnimationFrame(this.inertiaHandle);
+    const modeAtRelease = this.mode;
+    if (modeAtRelease !== "pan") {
+      this.vpx = 0;
+      this.vpy = 0;
+      this.gvx = 0;
+      this.gvz = 0;
+    }
+    const d = this.vpx * this.instVpx + this.vpy * this.instVpy;
+    if (d <= 0) {
+      this.vpx = 0;
+      this.vpy = 0;
+    }
+    const panSpeed = Math.hypot(this.vpx, this.vpy);
+    const minPanSpeed = 80;
+    if (panSpeed < minPanSpeed) {
+      this.vpx = 0;
+      this.vpy = 0;
+      this.gvx = 0;
+      this.gvz = 0;
+    }
+    const maxPanSpeed = 1400;
+    if (panSpeed > maxPanSpeed) {
+      const k = maxPanSpeed / panSpeed;
+      this.vpx *= k;
+      this.vpy *= k;
+      this.gvx *= k;
+      this.gvz *= k;
+    }
+    this.vz = 0;
+    if (Math.abs(this.vb) < 8) this.vb = 0;
+    if (Math.abs(this.vp) < 8) this.vp = 0;
     let last = performance.now();
+    const frPan = (_a = this.opts.inertiaPanFriction) != null ? _a : 6;
+    const frZoom = (_b = this.opts.inertiaZoomFriction) != null ? _b : 20;
+    const frAng = (_c = this.opts.inertiaRotateFriction) != null ? _c : 12;
     const step = () => {
-      var _a, _b;
+      var _a2, _b2, _c2, _d, _e;
       const now2 = performance.now();
       const dt = (now2 - last) / 1e3;
       last = now2;
-      const decay = Math.exp(-7 * dt);
-      this.vz *= decay;
-      this.vb *= decay;
-      this.vp *= decay;
-      this.vpx *= decay;
-      this.vpy *= decay;
-      const zAbs = Math.abs(this.vz), bAbs = Math.abs(this.vb), pAbs = Math.abs(this.vp), panAbs = Math.hypot(this.vpx, this.vpy);
-      if (zAbs < 1e-3 && bAbs < 0.01 && pAbs < 0.01 && panAbs < 2) {
+      const decayPan = Math.exp(-frPan * dt);
+      const decayZoom = Math.exp(-frZoom * dt);
+      const decayAng = Math.exp(-frAng * dt);
+      this.vpx *= decayPan;
+      this.vpy *= decayPan;
+      this.gvx *= decayPan;
+      this.gvz *= decayPan;
+      this.vz *= decayZoom;
+      this.vb *= decayAng;
+      this.vp *= decayAng;
+      const zAbs = Math.abs(this.vz), bAbs = Math.abs(this.vb), pAbs = Math.abs(this.vp), gvAbs = Math.hypot(this.gvx, this.gvz);
+      if (zAbs < 1e-3 && bAbs < 0.01 && pAbs < 0.01 && gvAbs < 1e-3) {
         this.inertiaHandle = null;
         return;
       }
       const dz = this.vz * dt;
       const db = this.vb * dt;
       const dp = this.vp * dt;
-      let dx = this.vpx * dt;
-      let dy = this.vpy * dt;
       const axes = {};
-      if (this.mode === "zoomRotate") {
+      if (modeAtRelease === "zoomRotate") {
         if (this.opts.enableZoom && dz) {
-          this.applyZoomAround(dz, null);
+          this.applyZoomAround(dz, (_a2 = this.lastPinchPointer) != null ? _a2 : null);
           axes.zoom = true;
         }
         if (this.opts.enableRotate && db) {
           this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, db, 0, "center");
           axes.rotate = true;
         }
-      } else if (this.mode === "pitch") {
         if (this.opts.enablePitch && dp) {
           this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, dp, 0, 0, "center");
           axes.pitch = true;
         }
-      } else if (this.mode === "pan") {
-        if (this.opts.enablePan && (dx || dy)) {
-          const bounds = (_b = (_a = this.transform).getPanBounds) == null ? void 0 : _b.call(_a);
+      } else if (modeAtRelease === "pan") {
+        if (this.opts.enablePan && (this.gvx || this.gvz)) {
+          let dgx = this.gvx * dt;
+          let dgz = this.gvz * dt;
+          const bounds = (_c2 = (_b2 = this.transform).getPanBounds) == null ? void 0 : _c2.call(_b2);
           if (bounds) {
-            const scale = Math.pow(2, this.transform.zoom);
-            const dxW = -dx / scale;
-            const dyW = dy / scale;
-            const nx = this.transform.center.x + dxW;
-            const ny = this.transform.center.y + dyW;
+            const nx = this.transform.center.x + dgx;
+            const ny = this.transform.center.y + dgz;
             const overX = nx < bounds.min.x ? bounds.min.x - nx : nx > bounds.max.x ? nx - bounds.max.x : 0;
             const overY = ny < bounds.min.y ? bounds.min.y - ny : ny > bounds.max.y ? ny - bounds.max.y : 0;
             const s = this.opts.rubberbandStrength;
             const damp2 = (o) => o > 0 ? 1 / (1 + o * s) : 1;
-            dx *= damp2(overX);
-            dy *= damp2(overY);
+            dgx *= damp2(overX);
+            dgz *= damp2(overY);
           }
-          this.helper.handleMapControlsPan(this.transform, dx, dy);
+          (_e = (_d = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _e.call(_d, dgx, dgz);
           axes.pan = true;
         }
       }
@@ -30929,6 +31321,58 @@ class TouchMultiHandler {
       this.inertiaHandle = requestAnimationFrame(step);
     };
     this.inertiaHandle = requestAnimationFrame(step);
+  }
+  createDebugOverlay() {
+    if (typeof document === "undefined") return;
+    this.debugOverlay = document.createElement("div");
+    this.debugOverlay.style.cssText = `
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.85);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      padding: 8px;
+      border-radius: 4px;
+      z-index: 99999;
+      max-width: 90vw;
+      pointer-events: none;
+      white-space: pre;
+    `;
+    document.body.appendChild(this.debugOverlay);
+  }
+  updateDebugOverlay(data) {
+    if (!this.debugOverlay) return;
+    this.debugOverlay.textContent = `
+TOUCH DEBUG
+───────────
+Mode: ${data.mode}
+Fingers: ${data.fingers}
+
+DETECTION
+PitchStrong: ${data.pitchStrong ? "YES ✓" : "NO ✗"}
+ZoomStrong:  ${data.zoomStrong ? "YES" : "NO"}
+RotateStrong: ${data.rotateStrong ? "YES" : "NO"}
+
+FINGER A
+  dx: ${data.vA.x.toFixed(1)}  dy: ${data.vA.y.toFixed(1)}
+  mag: ${data.vA.mag.toFixed(1)}  vert: ${data.vA.vertical ? "YES" : "NO"}
+
+FINGER B
+  dx: ${data.vB.x.toFixed(1)}  dy: ${data.vB.y.toFixed(1)}
+  mag: ${data.vB.mag.toFixed(1)}  vert: ${data.vB.vertical ? "YES" : "NO"}
+
+SAME DIR: ${data.sameDir ? "YES ✓" : "NO ✗"}
+
+DELTAS
+Pitch: ${data.dpCand.toFixed(2)}° ${data.pitchApplied ? "✓ APPLIED" : "✗ NOT APPLIED"}
+Zoom:  ${data.dzCand.toFixed(3)}
+Rotate: ${data.dDeg.toFixed(1)}°
+
+CURRENT PITCH: ${data.currentPitch.toFixed(1)}°
+`.trim();
   }
 }
 function isEditableTarget(target) {
@@ -31206,31 +31650,45 @@ class SafariGestureHandler {
     this.bound = false;
     this.startScale = 1;
     this.startRotation = 0;
+    this.lastGround = null;
     this.onStart = (e) => {
+      var _a, _b;
       this.startScale = e.scale || 1;
       this.startRotation = e.rotation || 0;
+      const rect = this.el.getBoundingClientRect();
+      const pointer = this.opts.around === "pointer" ? { x: ((_a = e.clientX) != null ? _a : rect.width / 2) - rect.left, y: ((_b = e.clientY) != null ? _b : rect.height / 2) - rect.top } : null;
+      this.lastGround = pointer ? this.transform.groundFromScreen(pointer) : null;
     };
     this.onChange = (e) => {
-      var _a, _b, _c, _d, _e, _f;
+      var _a, _b, _c, _d, _e, _f, _g;
       (_a = e.preventDefault) == null ? void 0 : _a.call(e);
       const rect = this.el.getBoundingClientRect();
       const pointer = this.opts.around === "pointer" ? { x: ((_b = e.clientX) != null ? _b : rect.width / 2) - rect.left, y: ((_c = e.clientY) != null ? _c : rect.height / 2) - rect.top } : null;
       const scale = (e.scale || 1) / (this.startScale || 1);
       const dz = scaleZoom(scale) * ((_d = this.opts.zoomSign) != null ? _d : 1);
       const drot = ((e.rotation || 0) - (this.startRotation || 0)) * ((_e = this.opts.rotateSign) != null ? _e : 1);
+      const gpNow = pointer ? this.transform.groundFromScreen(pointer) : null;
+      if (gpNow && this.lastGround) {
+        const tight = Math.max(0, Math.min(1, (_f = this.opts.anchorTightness) != null ? _f : 1));
+        const dgxMov = (this.lastGround.gx - gpNow.gx) * tight;
+        const dgzMov = (this.lastGround.gz - gpNow.gz) * tight;
+        this.transform.adjustCenterByGroundDelta(dgxMov, dgzMov);
+      }
       const gpBefore = pointer ? this.transform.groundFromScreen(pointer) : null;
       if (dz) this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, 0, dz, "center");
       if (drot) this.helper.handleMapControlsRollPitchBearingZoom(this.transform, 0, 0, drot, 0, "center");
       if (pointer && gpBefore) {
         const gpAfter = this.transform.groundFromScreen(pointer);
         if (gpAfter) {
-          const tight = Math.max(0, Math.min(1, (_f = this.opts.anchorTightness) != null ? _f : 1));
+          const tight = Math.max(0, Math.min(1, (_g = this.opts.anchorTightness) != null ? _g : 1));
           this.transform.adjustCenterByGroundDelta((gpBefore.gx - gpAfter.gx) * tight, (gpBefore.gz - gpAfter.gz) * tight);
         }
       }
+      this.lastGround = gpNow;
       this.opts.onChange({ axes: { zoom: !!dz, rotate: !!drot } });
     };
     this.onEnd = (_e) => {
+      this.lastGround = null;
     };
     this.el = el;
     this.transform = transform;
@@ -31259,11 +31717,10 @@ class HandlerManager {
     this.el = el;
     this.transform = transform;
     this.helper = helper;
-    const onCtx = (e) => e.preventDefault();
-    this.el.addEventListener("contextmenu", onCtx, { capture: true });
-    window.addEventListener("contextmenu", onCtx, { capture: true });
     if ((_a = options == null ? void 0 : options.suppressContextMenu) != null ? _a : true) {
-      this.el.addEventListener("contextmenu", (e) => e.preventDefault());
+      this.onCtx = (e) => e.preventDefault();
+      this.el.addEventListener("contextmenu", this.onCtx, { capture: true });
+      window.addEventListener("contextmenu", this.onCtx, { capture: true });
     }
     const scrollOpts = options == null ? void 0 : options.scrollZoom;
     if (scrollOpts) {
@@ -31276,26 +31733,42 @@ class HandlerManager {
       this.scroll.enable();
     }
     const mpOpts = (_b = options == null ? void 0 : options.mousePan) != null ? _b : {};
-    this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, {
+    const basePan = {
       onChange: options == null ? void 0 : options.onChange,
       rubberbandStrength: options == null ? void 0 : options.rubberbandStrength,
       ...typeof mpOpts === "object" ? mpOpts : {}
-    });
+    };
+    if ((options == null ? void 0 : options.inertiaPanFriction) != null) basePan.inertiaPanFriction = options.inertiaPanFriction;
+    this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, basePan);
     this.mousePan.enable();
-    const mrpOpts = (_c = options == null ? void 0 : options.mouseRotatePitch) != null ? _c : {};
-    this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, {
-      onChange: options == null ? void 0 : options.onChange,
-      anchorTightness: options == null ? void 0 : options.anchorTightness,
-      ...typeof mrpOpts === "object" ? mrpOpts : {}
-    });
-    this.mouseRotatePitch.enable();
+    if (options == null ? void 0 : options.rightButtonPan) {
+      const basePanSecondary = {
+        onChange: options == null ? void 0 : options.onChange,
+        rubberbandStrength: options == null ? void 0 : options.rubberbandStrength,
+        ...typeof mpOpts === "object" ? mpOpts : {},
+        button: 2
+      };
+      if ((options == null ? void 0 : options.inertiaPanFriction) != null) basePanSecondary.inertiaPanFriction = options.inertiaPanFriction;
+      this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, basePanSecondary);
+      this.mousePanSecondary.enable();
+    } else {
+      const mrpOpts = (_c = options == null ? void 0 : options.mouseRotatePitch) != null ? _c : {};
+      const mrpBase = {
+        onChange: options == null ? void 0 : options.onChange,
+        ...typeof mrpOpts === "object" ? mrpOpts : {}
+      };
+      if ((options == null ? void 0 : options.anchorTightness) != null) mrpBase.anchorTightness = options.anchorTightness;
+      this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, mrpBase);
+      this.mouseRotatePitch.enable();
+    }
     const touchOpts = (_d = options == null ? void 0 : options.touch) != null ? _d : {};
-    this.touch = new TouchMultiHandler(
-      this.el,
-      this.transform,
-      this.helper,
-      typeof touchOpts === "object" ? { anchorTightness: options == null ? void 0 : options.anchorTightness, rubberbandStrength: options == null ? void 0 : options.rubberbandStrength, ...touchOpts } : { onChange: options == null ? void 0 : options.onChange, rubberbandStrength: options == null ? void 0 : options.rubberbandStrength, anchorTightness: options == null ? void 0 : options.anchorTightness }
-    );
+    const touchBase = typeof touchOpts === "object" ? { ...touchOpts } : { onChange: options == null ? void 0 : options.onChange };
+    if ((options == null ? void 0 : options.anchorTightness) != null) touchBase.anchorTightness = options.anchorTightness;
+    if ((options == null ? void 0 : options.rubberbandStrength) != null) touchBase.rubberbandStrength = options.rubberbandStrength;
+    if ((options == null ? void 0 : options.inertiaPanFriction) != null) touchBase.inertiaPanFriction = options.inertiaPanFriction;
+    if ((options == null ? void 0 : options.inertiaZoomFriction) != null) touchBase.inertiaZoomFriction = options.inertiaZoomFriction;
+    if ((options == null ? void 0 : options.inertiaRotateFriction) != null) touchBase.inertiaRotateFriction = options.inertiaRotateFriction;
+    this.touch = new TouchMultiHandler(this.el, this.transform, this.helper, touchBase);
     this.touch.enable();
     const kbOpts = (_e = options == null ? void 0 : options.keyboard) != null ? _e : {};
     this.keyboard = new KeyboardHandler(
@@ -31322,7 +31795,8 @@ class HandlerManager {
     );
     this.boxZoom.enable();
     const sg = (_h = options == null ? void 0 : options.safariGestures) != null ? _h : false;
-    if (sg) {
+    const touchCapable = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+    if (sg && !touchCapable) {
       this.safariGestures = new SafariGestureHandler(
         this.el,
         this.transform,
@@ -31333,15 +31807,26 @@ class HandlerManager {
     }
   }
   dispose() {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+    if (this.onCtx) {
+      this.el.removeEventListener("contextmenu", this.onCtx, { capture: true });
+      window.removeEventListener("contextmenu", this.onCtx, { capture: true });
+      this.onCtx = void 0;
+    }
     (_a = this.scroll) == null ? void 0 : _a.destroy();
     (_b = this.mousePan) == null ? void 0 : _b.destroy();
-    (_c = this.mouseRotatePitch) == null ? void 0 : _c.destroy();
-    (_d = this.touch) == null ? void 0 : _d.destroy();
-    (_e = this.keyboard) == null ? void 0 : _e.destroy();
-    (_f = this.dblclick) == null ? void 0 : _f.destroy();
-    (_g = this.boxZoom) == null ? void 0 : _g.destroy();
-    (_h = this.safariGestures) == null ? void 0 : _h.destroy();
+    (_c = this.mousePanSecondary) == null ? void 0 : _c.destroy();
+    (_d = this.mouseRotatePitch) == null ? void 0 : _d.destroy();
+    (_e = this.touch) == null ? void 0 : _e.destroy();
+    (_f = this.keyboard) == null ? void 0 : _f.destroy();
+    (_g = this.dblclick) == null ? void 0 : _g.destroy();
+    (_h = this.boxZoom) == null ? void 0 : _h.destroy();
+    (_i = this.safariGestures) == null ? void 0 : _i.destroy();
+  }
+  // Runtime control: enable/disable touch debug overlay
+  setTouchDebugOverlay(enabled) {
+    var _a;
+    (_a = this.touch) == null ? void 0 : _a.setShowDebugOverlay(enabled);
   }
 }
 function computeFlyParams(w0, w1, u1, rho) {
@@ -31373,7 +31858,7 @@ function uAt(params, s) {
 }
 class CameraController extends Evented {
   constructor(opts) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
     super();
     this._moving = false;
     this._animHandle = null;
@@ -31386,6 +31871,9 @@ class CameraController extends Evented {
     this._dragging = false;
     this._constraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0, maxPitch: 85 };
     this._softClamping = false;
+    this._suppressEvents = false;
+    this._isInternalUpdate = false;
+    this._useExternalLoop = false;
     if (typeof window === "undefined") {
       this._camera = opts.camera;
       this._dom = {};
@@ -31394,48 +31882,83 @@ class CameraController extends Evented {
         camera: opts.camera,
         width: (_a = opts.width) != null ? _a : 0,
         height: (_b = opts.height) != null ? _b : 0,
-        devicePixelRatio: opts.devicePixelRatio
+        devicePixelRatio: opts.devicePixelRatio,
+        upAxis: opts.upAxis,
+        projection: typeof opts.projection === "object" ? opts.projection : void 0,
+        baseScale: opts.baseScale
       });
       this._bearingSnap = (_c = opts.bearingSnap) != null ? _c : 7;
+      this._suppressEvents = (_d = opts.suppressEvents) != null ? _d : false;
+      this._useExternalLoop = (_e = opts.useExternalAnimationLoop) != null ? _e : false;
       return;
     }
     this._camera = opts.camera;
     this._dom = opts.domElement;
     this._helper = new PlanarCameraHelper();
+    this._suppressEvents = (_f = opts.suppressEvents) != null ? _f : false;
+    this._useExternalLoop = (_g = opts.useExternalAnimationLoop) != null ? _g : false;
     this.transform = new ThreePlanarTransform({
       camera: opts.camera,
-      width: (_d = opts.width) != null ? _d : this._dom.clientWidth,
-      height: (_e = opts.height) != null ? _e : this._dom.clientHeight,
-      devicePixelRatio: opts.devicePixelRatio
+      width: (_h = opts.width) != null ? _h : this._dom.clientWidth,
+      height: (_i = opts.height) != null ? _i : this._dom.clientHeight,
+      devicePixelRatio: opts.devicePixelRatio,
+      upAxis: opts.upAxis,
+      projection: typeof opts.projection === "object" ? opts.projection : void 0,
+      baseScale: opts.baseScale
     });
-    this._bearingSnap = (_f = opts.bearingSnap) != null ? _f : 7;
-    this._bearingSnapEps = (_g = opts.bearingSnapEpsilon) != null ? _g : 1e-3;
+    this._bearingSnap = (_j = opts.bearingSnap) != null ? _j : 7;
+    this._bearingSnapEps = (_k = opts.bearingSnapEpsilon) != null ? _k : 1e-3;
     this._constraints = {
-      minZoom: (_h = opts.minZoom) != null ? _h : -Infinity,
-      maxZoom: (_i = opts.maxZoom) != null ? _i : Infinity,
-      minPitch: (_j = opts.minPitch) != null ? _j : 0,
-      maxPitch: (_k = opts.maxPitch) != null ? _k : 85,
+      minZoom: (_l = opts.minZoom) != null ? _l : -Infinity,
+      maxZoom: (_m = opts.maxZoom) != null ? _m : Infinity,
+      minPitch: (_n = opts.minPitch) != null ? _n : 0,
+      maxPitch: (_o = opts.maxPitch) != null ? _o : 85,
       panBounds: opts.panBounds
     };
     this.transform.setConstraints(this._constraints);
     this._handlers = new HandlerManager(this._dom, this.transform, this._helper, {
-      scrollZoom: (_m = (_l = opts.handlers) == null ? void 0 : _l.scrollZoom) != null ? _m : { around: "center" },
-      onChange: (ev) => this._externalChange(ev)
+      scrollZoom: (_q = (_p = opts.handlers) == null ? void 0 : _p.scrollZoom) != null ? _q : { around: "center" },
+      onChange: (delta) => this._externalChange(delta)
     });
+    if (opts.observeResize && typeof ResizeObserver !== "undefined") {
+      this._resizeObserver = new ResizeObserver(() => {
+        this.setViewport({
+          width: this._dom.clientWidth,
+          height: this._dom.clientHeight
+        });
+      });
+      this._resizeObserver.observe(this._dom);
+    }
   }
   dispose() {
-    var _a;
+    var _a, _b;
     if (this._animHandle != null) {
       caf(this._animHandle);
       this._animHandle = null;
     }
     if (this._easeAbort) this._easeAbort.abort();
     (_a = this._handlers) == null ? void 0 : _a.dispose();
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = void 0;
+    }
     if (this._moveEndTimer != null) {
-      window.clearTimeout(this._moveEndTimer);
+      (_b = globalThis.clearTimeout) == null ? void 0 : _b.call(globalThis, this._moveEndTimer);
       this._moveEndTimer = null;
     }
     this._endAllAxes();
+  }
+  // Internal fire method that respects event suppression
+  _fire(type, data) {
+    if (this._suppressEvents || this._isInternalUpdate) {
+      return;
+    }
+    this.fire(type, data);
+  }
+  // Enable/disable the mobile touch debug overlay at runtime
+  setTouchDebugOverlay(enabled) {
+    var _a, _b;
+    (_b = (_a = this._handlers) == null ? void 0 : _a.setTouchDebugOverlay) == null ? void 0 : _b.call(_a, enabled);
   }
   setViewport(view) {
     this.transform.setViewport(view);
@@ -31462,16 +31985,16 @@ class CameraController extends Evented {
     return this._moving;
   }
   isZooming() {
-    return false;
+    return this._zooming;
   }
   isRotating() {
-    return false;
+    return this._rotating;
   }
   isPitching() {
-    return false;
+    return this._pitching;
   }
   isRolling() {
-    return false;
+    return this._rolling;
   }
   setCenter(center) {
     this.transform.setCenter(center);
@@ -31509,7 +32032,9 @@ class CameraController extends Evented {
     this._emitRender();
     return this;
   }
-  jumpTo(options) {
+  jumpTo(options, methodOpts) {
+    const wasSuppressed = this._isInternalUpdate;
+    if (methodOpts == null ? void 0 : methodOpts.silent) this._isInternalUpdate = true;
     if (options.center) this.transform.setCenter(options.center);
     if (typeof options.zoom === "number") this.transform.setZoom(options.zoom);
     if (typeof options.bearing === "number") this.transform.setBearing(options.bearing);
@@ -31517,6 +32042,7 @@ class CameraController extends Evented {
     if (typeof options.roll === "number") this.transform.setRoll(options.roll);
     if (options.padding) this.transform.setPadding(options.padding);
     this._emitRender();
+    this._isInternalUpdate = wasSuppressed;
     return this;
   }
   panBy(offset, _opts) {
@@ -31555,7 +32081,7 @@ class CameraController extends Evented {
     return this.rollTo(this.getRoll() + delta, opts);
   }
   easeTo(options) {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g;
     const essential = (_a = options.essential) != null ? _a : false;
     const animate = (_b = options.animate) != null ? _b : true;
     if (!essential && browser.reducedMotion()) {
@@ -31597,7 +32123,8 @@ class CameraController extends Evented {
       zoom: target.zoom !== start.zoom,
       rotate: target.bearing !== start.bearing,
       pitch: target.pitch !== start.pitch,
-      roll: target.roll !== start.roll
+      roll: target.roll !== start.roll,
+      pan: !!(options.center || options.offset || options.around === "pointer")
     };
     this._startMoveLifecycle();
     this._axisStart(axes);
@@ -31605,26 +32132,42 @@ class CameraController extends Evented {
     this._easeAbort = new AbortController();
     const signal = this._easeAbort.signal;
     const t0 = browser.now();
+    const anchorPt = options.aroundPoint;
+    const useAnchor = options.around === "pointer" && !!anchorPt;
+    const tight = Math.max(0, Math.min(1, (_g = options.anchorTightness) != null ? _g : 1));
     const loop = () => {
-      var _a2, _b2;
       const now2 = browser.now();
       const k = Math.min(1, (now2 - t0) / duration);
       const e = easing(k);
-      this.transform.setCenter({
-        x: start.center.x + (target.center.x - start.center.x) * e,
-        y: start.center.y + (target.center.y - start.center.y) * e,
-        z: start.center.z + (((_a2 = target.center.z) != null ? _a2 : 0) - ((_b2 = start.center.z) != null ? _b2 : 0)) * e
+      const groundBefore = useAnchor ? this.transform.groundFromScreen(anchorPt) : null;
+      this.transform.deferApply(() => {
+        var _a2, _b2;
+        const startZ = (_a2 = start.center.z) != null ? _a2 : 0;
+        const targetZ = (_b2 = target.center.z) != null ? _b2 : 0;
+        this.transform.setCenter({
+          x: start.center.x + (target.center.x - start.center.x) * e,
+          y: start.center.y + (target.center.y - start.center.y) * e,
+          z: startZ + (targetZ - startZ) * e
+        });
+        this.transform.setZoom(start.zoom + (target.zoom - start.zoom) * e);
+        this.transform.setBearing(start.bearing + (target.bearing - start.bearing) * e);
+        this.transform.setPitch(start.pitch + (target.pitch - start.pitch) * e);
+        this.transform.setRoll(start.roll + (target.roll - start.roll) * e);
+        this.transform.setPadding({
+          top: start.padding.top + (target.padding.top - start.padding.top) * e,
+          right: start.padding.right + (target.padding.right - start.padding.right) * e,
+          bottom: start.padding.bottom + (target.padding.bottom - start.padding.bottom) * e,
+          left: start.padding.left + (target.padding.left - start.padding.left) * e
+        });
       });
-      this.transform.setZoom(start.zoom + (target.zoom - start.zoom) * e);
-      this.transform.setBearing(start.bearing + (target.bearing - start.bearing) * e);
-      this.transform.setPitch(start.pitch + (target.pitch - start.pitch) * e);
-      this.transform.setRoll(start.roll + (target.roll - start.roll) * e);
-      this.transform.setPadding({
-        top: start.padding.top + (target.padding.top - start.padding.top) * e,
-        right: start.padding.right + (target.padding.right - start.padding.right) * e,
-        bottom: start.padding.bottom + (target.padding.bottom - start.padding.bottom) * e,
-        left: start.padding.left + (target.padding.left - start.padding.left) * e
-      });
+      if (groundBefore) {
+        const groundAfter = this.transform.groundFromScreen(anchorPt);
+        if (groundAfter) {
+          const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+          const dgz = (groundBefore.gz - groundAfter.gz) * tight;
+          if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
+        }
+      }
       this._axisEmitDuring(axes);
       this._emitRender();
       if (k < 1 && !signal.aborted) {
@@ -31701,7 +32244,6 @@ class CameraController extends Evented {
       const signal2 = this._easeAbort.signal;
       const t02 = browser.now();
       const loop2 = () => {
-        var _a2;
         const now2 = browser.now();
         const k = Math.min(1, (now2 - t02) / duration);
         const e = easing2(k);
@@ -31726,11 +32268,14 @@ class CameraController extends Evented {
         if (k < 1 && !signal2.aborted) {
           this._animHandle = raf(loop2);
         } else {
-          this.transform.setZoom(endZoom);
-          this.transform.setBearing(endBearing);
-          this.transform.setPitch(endPitch);
-          this.transform.setRoll(endRoll);
-          this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: (_a2 = endCenter.z) != null ? _a2 : startCenter.z });
+          this.transform.deferApply(() => {
+            var _a2;
+            this.transform.setZoom(endZoom);
+            this.transform.setBearing(endBearing);
+            this.transform.setPitch(endPitch);
+            this.transform.setRoll(endRoll);
+            this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: (_a2 = endCenter.z) != null ? _a2 : startCenter.z });
+          });
           if (endBearing !== startBearing) this._applyBearingSnap();
           this._applySoftPanBounds();
           this._axisEnd({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
@@ -31753,7 +32298,6 @@ class CameraController extends Evented {
     let traveled = 0;
     let last = t0;
     const loop = () => {
-      var _a2;
       const now2 = browser.now();
       const k = Math.min(1, (now2 - t0) / duration);
       const e = easing(k);
@@ -31761,10 +32305,12 @@ class CameraController extends Evented {
       const b = startBearing + (endBearing - startBearing) * e;
       const p = startPitch + (endPitch - startPitch) * e;
       const r = startRoll + (endRoll - startRoll) * e;
-      this.transform.setZoom(z);
-      this.transform.setBearing(b);
-      this.transform.setPitch(p);
-      this.transform.setRoll(r);
+      this.transform.deferApply(() => {
+        this.transform.setZoom(z);
+        this.transform.setBearing(b);
+        this.transform.setPitch(p);
+        this.transform.setRoll(r);
+      });
       const dt = (now2 - last) / 1e3;
       last = now2;
       const scale = Math.pow(2, z);
@@ -31778,11 +32324,14 @@ class CameraController extends Evented {
       if (k < 1 && traveled < worldDist && !signal.aborted) {
         this._animHandle = raf(loop);
       } else {
-        this.transform.setZoom(endZoom);
-        this.transform.setBearing(endBearing);
-        this.transform.setPitch(endPitch);
-        this.transform.setRoll(endRoll);
-        this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: (_a2 = endCenter.z) != null ? _a2 : startCenter.z });
+        this.transform.deferApply(() => {
+          var _a2;
+          this.transform.setZoom(endZoom);
+          this.transform.setBearing(endBearing);
+          this.transform.setPitch(endPitch);
+          this.transform.setRoll(endRoll);
+          this.transform.setCenter({ x: endCenter.x, y: endCenter.y, z: (_a2 = endCenter.z) != null ? _a2 : startCenter.z });
+        });
         if (endBearing !== startBearing) this._applyBearingSnap();
         this._applySoftPanBounds();
         this._axisEnd({ zoom: endZoom !== startZoom, rotate: endBearing !== startBearing, pitch: endPitch !== startPitch, roll: endRoll !== startRoll, pan: worldDist > 0 });
@@ -31800,33 +32349,47 @@ class CameraController extends Evented {
   cameraForBounds(bounds, options) {
     return new PlanarCameraHelper().cameraForBoxAndBearing(this.transform, bounds, options);
   }
+  // State snapshot methods for programmatic control without events
+  getStateSnapshot() {
+    return {
+      center: this.getCenter(),
+      zoom: this.getZoom(),
+      bearing: this.getBearing(),
+      pitch: this.getPitch(),
+      roll: this.getRoll(),
+      padding: this.getPadding()
+    };
+  }
+  setStateSnapshot(state, methodOpts) {
+    return this.jumpTo(state, methodOpts);
+  }
   _emitRender() {
-    this.fire("renderFrame", {});
+    this._fire("renderFrame", {});
   }
   _startMoveLifecycle() {
     if (!this._moving) {
       this._moving = true;
-      this.fire("movestart", {});
+      this._fire("movestart", {});
     }
-    this.fire("move", {});
+    this._fire("move", {});
   }
   _endMoveLifecycle() {
     if (this._moving) {
       this._moving = false;
-      this.fire("moveend", {});
+      this._fire("moveend", {});
     }
   }
   _externalChange(delta) {
-    var _a;
+    var _a, _b, _c;
     const axes = (_a = delta == null ? void 0 : delta.axes) != null ? _a : {};
     this._startMoveLifecycle();
     this._axisStart(axes, delta == null ? void 0 : delta.originalEvent);
     this._axisEmitDuring(axes, delta == null ? void 0 : delta.originalEvent);
     this._emitRender();
     if (this._moveEndTimer != null) {
-      window.clearTimeout(this._moveEndTimer);
+      (_b = globalThis.clearTimeout) == null ? void 0 : _b.call(globalThis, this._moveEndTimer);
     }
-    this._moveEndTimer = window.setTimeout(() => {
+    this._moveEndTimer = (_c = globalThis.setTimeout) == null ? void 0 : _c.call(globalThis, () => {
       if (axes.rotate) this._applyBearingSnap(delta == null ? void 0 : delta.originalEvent);
       this._applySoftPanBounds();
       this._axisEnd(axes, delta == null ? void 0 : delta.originalEvent);
@@ -31837,75 +32400,75 @@ class CameraController extends Evented {
   _axisStart(axes, originalEvent) {
     if (axes.zoom && !this._zooming) {
       this._zooming = true;
-      this.fire("zoomstart", { originalEvent });
+      this._fire("zoomstart", { originalEvent });
     }
     if (axes.rotate && !this._rotating) {
       this._rotating = true;
-      this.fire("rotatestart", { originalEvent });
+      this._fire("rotatestart", { originalEvent });
     }
     if (axes.pitch && !this._pitching) {
       this._pitching = true;
-      this.fire("pitchstart", { originalEvent });
+      this._fire("pitchstart", { originalEvent });
     }
     if (axes.roll && !this._rolling) {
       this._rolling = true;
-      this.fire("rollstart", { originalEvent });
+      this._fire("rollstart", { originalEvent });
     }
     if (axes.pan && !this._dragging) {
       this._dragging = true;
-      this.fire("dragstart", { originalEvent });
+      this._fire("dragstart", { originalEvent });
     }
   }
   _axisEmitDuring(axes, originalEvent) {
-    if (axes.zoom) this.fire("zoom", { originalEvent });
-    if (axes.rotate) this.fire("rotate", { originalEvent });
-    if (axes.pitch) this.fire("pitch", { originalEvent });
-    if (axes.roll) this.fire("roll", { originalEvent });
-    if (axes.pan) this.fire("drag", { originalEvent });
+    if (axes.zoom) this._fire("zoom", { originalEvent });
+    if (axes.rotate) this._fire("rotate", { originalEvent });
+    if (axes.pitch) this._fire("pitch", { originalEvent });
+    if (axes.roll) this._fire("roll", { originalEvent });
+    if (axes.pan) this._fire("drag", { originalEvent });
   }
   _axisEnd(axes, originalEvent) {
     if (axes.zoom && this._zooming) {
       this._zooming = false;
-      this.fire("zoomend", { originalEvent });
+      this._fire("zoomend", { originalEvent });
     }
     if (axes.rotate && this._rotating) {
       this._rotating = false;
-      this.fire("rotateend", { originalEvent });
+      this._fire("rotateend", { originalEvent });
     }
     if (axes.pitch && this._pitching) {
       this._pitching = false;
-      this.fire("pitchend", { originalEvent });
+      this._fire("pitchend", { originalEvent });
     }
     if (axes.roll && this._rolling) {
       this._rolling = false;
-      this.fire("rollend", { originalEvent });
+      this._fire("rollend", { originalEvent });
     }
     if (axes.pan && this._dragging) {
       this._dragging = false;
-      this.fire("dragend", { originalEvent });
+      this._fire("dragend", { originalEvent });
     }
   }
   _endAllAxes() {
     if (this._zooming) {
       this._zooming = false;
-      this.fire("zoomend", {});
+      this._fire("zoomend", {});
     }
     if (this._rotating) {
       this._applyBearingSnap();
       this._rotating = false;
-      this.fire("rotateend", {});
+      this._fire("rotateend", {});
     }
     if (this._pitching) {
       this._pitching = false;
-      this.fire("pitchend", {});
+      this._fire("pitchend", {});
     }
     if (this._rolling) {
       this._rolling = false;
-      this.fire("rollend", {});
+      this._fire("rollend", {});
     }
     if (this._dragging) {
       this._dragging = false;
-      this.fire("dragend", {});
+      this._fire("dragend", {});
     }
   }
   _applyBearingSnap(originalEvent) {
@@ -31914,12 +32477,13 @@ class CameraController extends Evented {
       const b = this.getBearing();
       if (Math.abs(b) <= snap + this._bearingSnapEps) {
         this.transform.setBearing(0);
-        this.fire("rotate", { originalEvent });
+        this._fire("rotate", { originalEvent });
         this._emitRender();
       }
     }
   }
   _applySoftPanBounds() {
+    var _a;
     if (this._softClamping) return;
     const bounds = this._constraints.panBounds;
     if (!bounds) return;
@@ -31932,353 +32496,29 @@ class CameraController extends Evented {
     if (clamped.x !== c.x || clamped.y !== c.y) {
       this._softClamping = true;
       this.easeTo({ center: clamped, duration: 180, easing: defaultEasing, essential: true });
-      window.setTimeout(() => {
+      (_a = globalThis.setTimeout) == null ? void 0 : _a.call(globalThis, () => {
         this._softClamping = false;
       }, 220);
     }
   }
 }
-const canvas = document.getElementById("c");
-const overlay = document.getElementById("overlay");
-let renderer = new WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio || 1);
-const scene = new Scene();
-scene.background = new Color(1118481);
-const camera = new PerspectiveCamera(60, 1, 0.1, 1e5);
-const grid = new GridHelper(1e3, 100, 4473924, 2236962);
-scene.add(grid);
-const gizmoGroup = new Group();
-scene.add(gizmoGroup);
-function makeArrow(dir, color, len = 80) {
-  return new ArrowHelper(dir.clone().normalize(), new Vector3(), len, color, 12, 6);
-}
-const worldXArrow = makeArrow(new Vector3(1, 0, 0), 16711680);
-const worldZArrow = makeArrow(new Vector3(0, 0, 1), 255);
-const camRightArrow = makeArrow(new Vector3(1, 0, 0), 16711935);
-const camFwdArrow = makeArrow(new Vector3(0, 0, 1), 16755200);
-gizmoGroup.add(worldXArrow, worldZArrow, camRightArrow, camFwdArrow);
-const anchorSphere = new Mesh(
-  new SphereGeometry(3, 16, 16),
-  new MeshBasicMaterial({ color: 16776960 })
-);
-scene.add(anchorSphere);
-const velArrow = makeArrow(new Vector3(1, 0, 0), 65280, 60);
-scene.add(velArrow);
-const boxGeo = new BoxGeometry(20, 20, 20);
-for (let i = 0; i < 30; i++) {
-  const m = new MeshStandardMaterial({ color: new Color().setHSL(i / 30, 0.6, 0.5) });
-  const mesh = new Mesh(boxGeo, m);
-  mesh.position.set((Math.random() - 0.5) * 500, 10, (Math.random() - 0.5) * 500);
-  scene.add(mesh);
-}
-const light = new DirectionalLight(16777215, 1);
-light.position.set(100, 200, 100);
-scene.add(light);
-scene.add(new AmbientLight(4210752));
-let controller;
-let currentHandlers = {
-  around: true,
-  coop: false,
-  keyboard: true,
-  dblclick: true,
-  boxzoom: true,
-  rubber: 0.5,
-  invertZoom: false,
-  invertPitch: false,
-  invertTwist: false,
-  invertPanY: false,
-  recenterOnDown: false,
-  invertInertiaY: false,
-  invertInertiaX: false,
-  anchorTightness: 1,
-  antialias: true
+export {
+  AmbientLight as A,
+  BoxGeometry as B,
+  Color as C,
+  DirectionalLight as D,
+  GridHelper as G,
+  Mesh as M,
+  PerspectiveCamera as P,
+  Scene as S,
+  THREE as T,
+  Vector3 as V,
+  WebGLRenderer as W,
+  Group as a,
+  SphereGeometry as b,
+  MeshBasicMaterial as c,
+  MeshStandardMaterial as d,
+  ArrowHelper as e,
+  CameraController as f
 };
-function buildController() {
-  if (controller) controller.dispose();
-  rebuildRenderer(currentHandlers.antialias);
-  controller = new CameraController({
-    camera,
-    domElement: renderer.domElement,
-    handlers: {
-      scrollZoom: {
-        around: currentHandlers.around ? "pointer" : "center",
-        cooperative: currentHandlers.coop,
-        onCoopGestureHint: showCoopHint,
-        zoomSign: currentHandlers.invertZoom ? -1 : 1,
-        anchorTightness: currentHandlers.anchorTightness
-      },
-      mousePan: {
-        panYSign: currentHandlers.invertPanY ? -1 : 1,
-        recenterOnPointerDown: currentHandlers.recenterOnDown,
-        inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
-        inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
-        anchorTightness: currentHandlers.anchorTightness
-      },
-      mouseRotatePitch: {
-        pitchSign: currentHandlers.invertPitch ? -1 : 1,
-        rotateSign: currentHandlers.invertTwist ? -1 : 1,
-        recenterOnPointerDown: currentHandlers.recenterOnDown && currentHandlers.around,
-        anchorTightness: currentHandlers.anchorTightness
-      },
-      touch: {
-        panYSign: currentHandlers.invertPanY ? -1 : 1,
-        recenterOnGestureStart: currentHandlers.recenterOnDown,
-        anchorTightness: currentHandlers.anchorTightness
-      },
-      safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
-      keyboard: currentHandlers.keyboard,
-      dblclick: currentHandlers.dblclick,
-      boxZoom: currentHandlers.boxzoom,
-      rubberbandStrength: currentHandlers.rubber
-    },
-    bearingSnap: 7
-  });
-  controller.jumpTo({ center: { x: 0, y: 0 }, zoom: 4, bearing: 0, pitch: 45 });
-  controller.on("renderFrame", () => updateOverlay());
-  controller.on("move", () => updateOverlay());
-}
-buildController();
-const toolbar = {
-  zoomIn: document.getElementById("btn-zoom-in"),
-  zoomOut: document.getElementById("btn-zoom-out"),
-  rotateLeft: document.getElementById("btn-rotate-left"),
-  rotateRight: document.getElementById("btn-rotate-right"),
-  pitchUp: document.getElementById("btn-pitch-up"),
-  pitchDown: document.getElementById("btn-pitch-down"),
-  rubber: document.getElementById("rubberband"),
-  aroundPointer: document.getElementById("around-pointer"),
-  cooperative: document.getElementById("cooperative"),
-  keyboard: document.getElementById("keyboard"),
-  dblclick: document.getElementById("dblclick"),
-  boxzoom: document.getElementById("boxzoom"),
-  antialias: document.getElementById("antialias"),
-  invertZoom: document.getElementById("invert-zoom"),
-  invertPitch: document.getElementById("invert-pitch"),
-  invertTwist: document.getElementById("invert-twist"),
-  invertPanY: document.getElementById("invert-pany"),
-  recenterOnDown: document.getElementById("recenter-down"),
-  invertInertiaY: document.getElementById("invert-inertia-y"),
-  invertInertiaX: document.getElementById("invert-inertia-x"),
-  anchorTight: document.getElementById("anchor-tight"),
-  showDebug: document.getElementById("show-debug"),
-  fly: document.getElementById("btn-fly"),
-  fit: document.getElementById("btn-fit")
-};
-toolbar.zoomIn.addEventListener("click", () => controller.zoomIn(0.5, { around: toolbar.aroundPointer.checked ? "pointer" : "center" }));
-toolbar.zoomOut.addEventListener("click", () => controller.zoomOut(0.5, { around: toolbar.aroundPointer.checked ? "pointer" : "center" }));
-toolbar.rotateLeft.addEventListener("click", () => controller.rotateBy(-10, { around: toolbar.aroundPointer.checked ? "pointer" : "center" }));
-toolbar.rotateRight.addEventListener("click", () => controller.rotateBy(10, { around: toolbar.aroundPointer.checked ? "pointer" : "center" }));
-toolbar.pitchUp.addEventListener("click", () => controller.pitchBy(5, { around: toolbar.aroundPointer.checked ? "pointer" : "center" }));
-toolbar.pitchDown.addEventListener("click", () => controller.pitchBy(-5, { around: toolbar.aroundPointer.checked ? "pointer" : "center" }));
-toolbar.rubber.addEventListener("input", () => {
-  currentHandlers.rubber = parseFloat(toolbar.rubber.value);
-  buildController();
-});
-toolbar.aroundPointer.addEventListener("change", () => {
-  currentHandlers.around = toolbar.aroundPointer.checked;
-  buildController();
-});
-toolbar.cooperative.addEventListener("change", () => {
-  currentHandlers.coop = toolbar.cooperative.checked;
-  buildController();
-});
-toolbar.keyboard.addEventListener("change", () => {
-  currentHandlers.keyboard = toolbar.keyboard.checked;
-  buildController();
-});
-toolbar.dblclick.addEventListener("change", () => {
-  currentHandlers.dblclick = toolbar.dblclick.checked;
-  buildController();
-});
-toolbar.boxzoom.addEventListener("change", () => {
-  currentHandlers.boxzoom = toolbar.boxzoom.checked;
-  buildController();
-});
-toolbar.antialias.addEventListener("change", () => {
-  currentHandlers.antialias = toolbar.antialias.checked;
-  buildController();
-});
-toolbar.invertZoom.addEventListener("change", () => {
-  currentHandlers.invertZoom = toolbar.invertZoom.checked;
-  buildController();
-});
-toolbar.invertPitch.addEventListener("change", () => {
-  currentHandlers.invertPitch = toolbar.invertPitch.checked;
-  buildController();
-});
-toolbar.invertTwist.addEventListener("change", () => {
-  currentHandlers.invertTwist = toolbar.invertTwist.checked;
-  buildController();
-});
-toolbar.invertPanY.addEventListener("change", () => {
-  currentHandlers.invertPanY = toolbar.invertPanY.checked;
-  buildController();
-});
-toolbar.recenterOnDown.addEventListener("change", () => {
-  currentHandlers.recenterOnDown = toolbar.recenterOnDown.checked;
-  buildController();
-});
-toolbar.invertInertiaY.addEventListener("change", () => {
-  currentHandlers.invertInertiaY = toolbar.invertInertiaY.checked;
-  buildController();
-});
-toolbar.invertInertiaX.addEventListener("change", () => {
-  currentHandlers.invertInertiaX = toolbar.invertInertiaX.checked;
-  buildController();
-});
-toolbar.anchorTight.addEventListener("input", () => {
-  currentHandlers.anchorTightness = parseFloat(toolbar.anchorTight.value);
-  buildController();
-});
-toolbar.showDebug.addEventListener("change", () => {
-  updateDebugVisibility(toolbar.showDebug.checked);
-});
-toolbar.fly.addEventListener("click", () => {
-  const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };
-  controller.flyTo({ center: target, zoom: 7, bearing: Math.random() * 360 - 180, pitch: 50, curve: 1.4, speed: 1.2, maxDuration: 2500 });
-});
-toolbar.fit.addEventListener("click", () => {
-  const bounds = { min: { x: -150, y: -80 }, max: { x: 150, y: 80 } };
-  controller.fitBounds(bounds, { padding: { top: 20, right: 60, bottom: 20, left: 60 }, offset: { x: 80, y: -40 } });
-});
-function resize() {
-  const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-  controller.setViewport({ width: rect.width, height: rect.height, devicePixelRatio: dpr });
-  camera.aspect = rect.width / rect.height;
-  camera.updateProjectionMatrix();
-  renderer.setPixelRatio(dpr);
-  renderer.setSize(rect.width, rect.height, false);
-}
-window.addEventListener("resize", resize);
-resize();
-controller.on("renderFrame", () => updateOverlay());
-controller.on("move", () => updateOverlay());
-function updateOverlay() {
-  const c = controller.getCenter();
-  overlay.textContent = `center: ${c.x.toFixed(2)}, ${c.y.toFixed(2)}
-zoom: ${controller.getZoom().toFixed(2)}
-bearing: ${controller.getBearing().toFixed(2)}
-pitch: ${controller.getPitch().toFixed(2)}
-roll: ${controller.getRoll().toFixed(2)}`;
-  const center3 = new Vector3(c.x, 0, c.y);
-  worldXArrow.position.copy(center3);
-  worldZArrow.position.copy(center3);
-  camRightArrow.position.copy(center3);
-  camFwdArrow.position.copy(center3);
-  const br = controller.getBearing() * Math.PI / 180;
-  const right = new Vector3(Math.cos(br), 0, Math.sin(br));
-  const fwd = new Vector3(-Math.sin(br), 0, Math.cos(br));
-  camRightArrow.setDirection(right);
-  camFwdArrow.setDirection(fwd);
-}
-function frame() {
-  const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-  const needResize = Math.abs(canvas.width - Math.floor(rect.width * dpr)) > 1 || Math.abs(canvas.height - Math.floor(rect.height * dpr)) > 1;
-  if (needResize) {
-    controller.setViewport({ width: rect.width, height: rect.height, devicePixelRatio: dpr });
-    camera.aspect = rect.width / rect.height;
-    camera.updateProjectionMatrix();
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(rect.width, rect.height, false);
-  }
-  renderer.render(scene, camera);
-  requestAnimationFrame(frame);
-}
-frame();
-window.THREE = THREE;
-window.controller = controller;
-function rebuildRenderer(aa) {
-  try {
-    renderer.dispose();
-  } catch {
-  }
-  renderer = new WebGLRenderer({ canvas, antialias: aa });
-  const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-  renderer.setPixelRatio(dpr);
-  renderer.setSize(rect.width, rect.height, false);
-}
-let coopTimer = null;
-function showCoopHint() {
-  const el = document.getElementById("coop-hint");
-  el.removeAttribute("hidden");
-  if (coopTimer) window.clearTimeout(coopTimer);
-  coopTimer = window.setTimeout(() => {
-    el.setAttribute("hidden", "");
-  }, 1400);
-}
-const selectRect = document.getElementById("select-rect");
-let selecting = false;
-let startX = 0, startY = 0;
-renderer.domElement.addEventListener("pointerdown", (e) => {
-  if (!toolbar.boxzoom.checked) return;
-  if (!e.shiftKey || e.button !== 0) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  startX = e.clientX - rect.left;
-  startY = e.clientY - rect.top;
-  selecting = true;
-  selectRect.style.left = `${startX}px`;
-  selectRect.style.top = `${startY}px`;
-  selectRect.style.width = "0px";
-  selectRect.style.height = "0px";
-  selectRect.removeAttribute("hidden");
-});
-let lastCenter = new Vector3(controller.getCenter().x, 0, controller.getCenter().y);
-let lastTime = performance.now();
-canvas.addEventListener("pointermove", (e) => {
-  var _a, _b, _c;
-  const rect = canvas.getBoundingClientRect();
-  const pt = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  const gp = (_c = (_b = (_a = controller.transform).groundFromScreen) == null ? void 0 : _b.call(_a, pt)) != null ? _c : null;
-  if (gp) anchorSphere.position.set(gp.gx, 0, gp.gz);
-});
-controller.on("renderFrame", () => {
-  const now2 = performance.now();
-  const dt = Math.max(1 / 120, (now2 - lastTime) / 1e3);
-  lastTime = now2;
-  const c = controller.getCenter();
-  const curr = new Vector3(c.x, 0, c.y);
-  const delta = curr.clone().sub(lastCenter);
-  lastCenter.copy(curr);
-  const speed = delta.length() / dt;
-  const dir = delta.lengthSq() > 1e-9 ? delta.clone().normalize() : new Vector3(1, 0, 0);
-  velArrow.position.copy(curr);
-  velArrow.setDirection(dir);
-  velArrow.setLength(Math.min(200, speed * 50), 12, 6);
-});
-function updateDebugVisibility(show) {
-  [gizmoGroup, anchorSphere, velArrow].forEach((obj) => obj.visible = show);
-}
-updateDebugVisibility(false);
-window.addEventListener("pointermove", (e) => {
-  if (!selecting) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  const left = Math.min(startX, x);
-  const top = Math.min(startY, y);
-  const w = Math.abs(x - startX);
-  const h = Math.abs(y - startY);
-  selectRect.style.left = `${left}px`;
-  selectRect.style.top = `${top}px`;
-  selectRect.style.width = `${w}px`;
-  selectRect.style.height = `${h}px`;
-});
-window.addEventListener("pointerup", (e) => {
-  if (!selecting) return;
-  selecting = false;
-  selectRect.setAttribute("hidden", "");
-  const rect = renderer.domElement.getBoundingClientRect();
-  const endX = e.clientX - rect.left;
-  const endY = e.clientY - rect.top;
-  const x0 = Math.min(startX, endX), y0 = Math.min(startY, endY);
-  const x1 = Math.max(startX, endX), y1 = Math.max(startY, endY);
-  const w0 = controller.transform.screenToWorld({ x: x0, y: y0 });
-  const w1 = controller.transform.screenToWorld({ x: x1, y: y1 });
-  if (w0 && w1) {
-    controller.fitBounds({ min: { x: Math.min(w0.x, w1.x), y: Math.min(w0.y, w1.y) }, max: { x: Math.max(w0.x, w1.x), y: Math.max(w0.y, w1.y) } }, { padding: { top: 10, right: 10, bottom: 10, left: 10 } });
-  }
-});
-//# sourceMappingURL=index-BgpA5muc.js.map
+//# sourceMappingURL=cameraController-BaZfOMX1.js.map

@@ -20,6 +20,12 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       target: 'es2019',
       chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        input: {
+          main: 'index.html',
+          zup: 'zup.html',
+        },
+      },
     },
   };
 });

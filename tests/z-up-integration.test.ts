@@ -27,7 +27,8 @@ describe('Z-Up Coordinate System', () => {
       upAxis: 'z'
     });
 
-    controller.jumpTo({ center: { x: 0, y: 0, z: 0 }, zoom: 15 });
+    // Use small non-zero pitch to test standard up vector (pitch=0 triggers special handling)
+    controller.jumpTo({ center: { x: 0, y: 0, z: 0 }, zoom: 15, pitch: 0.1 });
 
     // Camera should be above ground (positive Z)
     expect(camera.position.z).toBeGreaterThan(0);
@@ -48,7 +49,8 @@ describe('Z-Up Coordinate System', () => {
       upAxis: 'y' // explicit Y-up
     });
 
-    controller.jumpTo({ center: { x: 0, y: 0, z: 0 }, zoom: 15 });
+    // Use small non-zero pitch to test standard up vector (pitch=0 triggers special handling)
+    controller.jumpTo({ center: { x: 0, y: 0, z: 0 }, zoom: 15, pitch: 0.1 });
 
     // Camera should be above ground (positive Y)
     expect(camera.position.y).toBeGreaterThan(0);

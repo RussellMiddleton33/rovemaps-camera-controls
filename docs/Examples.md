@@ -1,7 +1,14 @@
 ## Examples
 
+### Live Demos
+- **Y-up demo**: [/demo/](/demo/) - Standard Y-up coordinate system
+- **Z-up demo**: [/demo/zup.html](/demo/zup.html) - Z-up coordinate system for GIS applications
+
 ### Vite demo site
 - Located at `examples/site/`
+- Two versions available:
+  - `index.html` - Y-up coordinate system (standard Three.js)
+  - `zup.html` - Z-up coordinate system (GIS-friendly)
 - Showcases:
   - Pointer-around zoom, rotate, pitch
   - Rubberband strength slider
@@ -13,7 +20,8 @@ Run locally:
 ```
 cd examples/site
 npm i
-npm run dev
+npm run dev       # Opens Y-up demo
+# Then navigate to http://localhost:5173/zup.html for Z-up demo
 ```
 
 ### Minimal Three.js scene

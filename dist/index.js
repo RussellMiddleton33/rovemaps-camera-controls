@@ -191,7 +191,7 @@ var ThreePlanarTransform = class {
     this._pitch = 0;
     // deg
     this._roll = 0;
-    this._constraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0.01, maxPitch: 85 };
+    this._constraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0, maxPitch: 85 };
     // pooled objects to avoid allocs in hot path
     this._tmpVec3a = new Vector3();
     this._tmpVec3b = new Vector3();
@@ -350,7 +350,7 @@ var ThreePlanarTransform = class {
   groundFromScreen(screen) {
     const hit = this.screenToWorld(screen);
     if (!hit) return null;
-    return { gx: hit.x, gz: hit.z };
+    return this._upAxis === "z" ? { gx: hit.x, gz: hit.y } : { gx: hit.x, gz: hit.z };
   }
   adjustCenterByGroundDelta(dgx, dgz) {
     this._center = { x: this._center.x + dgx, y: this._center.y + dgz, z: this._center.z };
@@ -395,17 +395,17 @@ var ThreePlanarTransform = class {
       const s = Math.pow(2, this._zoom);
       const visibleWorldHeight = this._height / s;
       const dist = visibleWorldHeight / 2 / Math.tan(fovRad / 2);
-      const bearingRad = -this._bearing * Math.PI / 180;
+      const bearingRad = (this._upAxis === "z" ? 1 : -1) * (this._bearing * Math.PI) / 180;
       const pitchRad = this._pitch * Math.PI / 180;
       if (this._upAxis === "z") {
         const horiz = dist * Math.sin(pitchRad);
         const z = dist * Math.cos(pitchRad);
-        const ox = horiz * Math.sin(bearingRad);
+        const ox = -horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
         (_b = (_a = cam.position) == null ? void 0 : _a.set) == null ? void 0 : _b.call(_a, targetX + ox, targetY + oy, targetZ + z);
         const eps = 1e-6;
         if (Math.abs(pitchRad) <= eps) {
-          (_d = (_c = cam.up) == null ? void 0 : _c.set) == null ? void 0 : _d.call(_c, Math.sin(bearingRad), Math.cos(bearingRad), 0);
+          (_d = (_c = cam.up) == null ? void 0 : _c.set) == null ? void 0 : _d.call(_c, -Math.sin(bearingRad), Math.cos(bearingRad), 0);
         } else {
           (_f = (_e = cam.up) == null ? void 0 : _e.set) == null ? void 0 : _f.call(_e, 0, 0, 1);
         }
@@ -2122,7 +2122,7 @@ var CameraController = class extends Evented {
     this._pitching = false;
     this._rolling = false;
     this._dragging = false;
-    this._constraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0.01, maxPitch: 85 };
+    this._constraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0, maxPitch: 85 };
     this._softClamping = false;
     this._suppressEvents = false;
     this._isInternalUpdate = false;
@@ -2164,7 +2164,7 @@ var CameraController = class extends Evented {
     this._constraints = {
       minZoom: (_l = opts.minZoom) != null ? _l : -Infinity,
       maxZoom: (_m = opts.maxZoom) != null ? _m : Infinity,
-      minPitch: (_n = opts.minPitch) != null ? _n : 0.01,
+      minPitch: (_n = opts.minPitch) != null ? _n : 0,
       maxPitch: (_o = opts.maxPitch) != null ? _o : 85,
       panBounds: opts.panBounds
     };

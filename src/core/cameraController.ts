@@ -83,7 +83,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
   private _pitching = false;
   private _rolling = false;
   private _dragging = false;
-  private _constraints: TransformConstraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0.01, maxPitch: 85 };
+  private _constraints: TransformConstraints = { minZoom: -Infinity, maxZoom: Infinity, minPitch: 0, maxPitch: 85 };
   private _softClamping = false;
   private _suppressEvents: boolean = false;
   private _isInternalUpdate: boolean = false;
@@ -135,7 +135,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
     this._constraints = {
       minZoom: opts.minZoom ?? -Infinity,
       maxZoom: opts.maxZoom ?? Infinity,
-      minPitch: opts.minPitch ?? 0.01,
+      minPitch: opts.minPitch ?? 0,
       maxPitch: opts.maxPitch ?? 85,
       panBounds: opts.panBounds,
     };
