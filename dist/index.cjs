@@ -379,7 +379,7 @@ var ThreePlanarTransform = class {
     this._scheduleApply();
   }
   _applyToCamera() {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B;
     const cam = this._camera;
     if (!cam) return;
     let targetX, targetY, targetZ;
@@ -399,42 +399,35 @@ var ThreePlanarTransform = class {
       const dist = visibleWorldHeight / 2 / Math.tan(fovRad / 2);
       const bearingRad = (this._upAxis === "z" ? 1 : -1) * (this._bearing * Math.PI) / 180;
       const pitchRad = this._pitch * Math.PI / 180;
+      const EPS = 0.01;
+      const pitchEff = Math.max(EPS, Math.abs(pitchRad)) * Math.sign(pitchRad || 1);
       if (this._upAxis === "z") {
-        const horiz = dist * Math.sin(pitchRad);
-        const z = dist * Math.cos(pitchRad);
+        const horiz = dist * Math.sin(pitchEff);
+        const z = dist * Math.cos(pitchEff);
         const ox = -horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
         (_b = (_a = cam.position) == null ? void 0 : _a.set) == null ? void 0 : _b.call(_a, targetX + ox, targetY + oy, targetZ + z);
-        const eps = 1e-6;
-        if (Math.abs(pitchRad) <= eps) {
-          (_d = (_c = cam.up) == null ? void 0 : _c.set) == null ? void 0 : _d.call(_c, -Math.sin(bearingRad), Math.cos(bearingRad), 0);
-        } else {
-          (_f = (_e = cam.up) == null ? void 0 : _e.set) == null ? void 0 : _f.call(_e, 0, 0, 1);
-        }
+        (_d = (_c = cam.up) == null ? void 0 : _c.set) == null ? void 0 : _d.call(_c, 0, 0, 1);
+        (_e = cam.lookAt) == null ? void 0 : _e.call(cam, targetX, targetY, targetZ);
       } else {
-        const horiz = dist * Math.sin(pitchRad);
-        const y = dist * Math.cos(pitchRad);
+        const horiz = dist * Math.sin(pitchEff);
+        const y = dist * Math.cos(pitchEff);
         const ox = horiz * Math.sin(bearingRad);
         const oz = horiz * Math.cos(bearingRad);
-        (_h = (_g = cam.position) == null ? void 0 : _g.set) == null ? void 0 : _h.call(_g, targetX + ox, targetY + y, targetZ + oz);
-        const eps = 1e-6;
-        if (Math.abs(pitchRad) <= eps) {
-          (_j = (_i = cam.up) == null ? void 0 : _i.set) == null ? void 0 : _j.call(_i, Math.sin(bearingRad), 0, Math.cos(bearingRad));
-        } else {
-          (_l = (_k = cam.up) == null ? void 0 : _k.set) == null ? void 0 : _l.call(_k, 0, 1, 0);
-        }
+        (_g = (_f = cam.position) == null ? void 0 : _f.set) == null ? void 0 : _g.call(_f, targetX + ox, targetY + y, targetZ + oz);
+        (_i = (_h = cam.up) == null ? void 0 : _h.set) == null ? void 0 : _i.call(_h, 0, 1, 0);
+        (_j = cam.lookAt) == null ? void 0 : _j.call(cam, targetX, targetY, targetZ);
       }
-      (_m = cam.lookAt) == null ? void 0 : _m.call(cam, targetX, targetY, targetZ);
       if (this._roll) {
         const rollRad = this._roll * Math.PI / 180;
-        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_n = cam.quaternion) != null ? _n : this._tmpVec3b.set(0, 0, -1));
-        (_o = cam.rotateOnWorldAxis) == null ? void 0 : _o.call(cam, dir, rollRad);
+        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_k = cam.quaternion) != null ? _k : this._tmpVec3b.set(0, 0, -1));
+        (_l = cam.rotateOnWorldAxis) == null ? void 0 : _l.call(cam, dir, rollRad);
       }
       if (this._projDirty) {
-        (_p = cam.updateProjectionMatrix) == null ? void 0 : _p.call(cam);
+        (_m = cam.updateProjectionMatrix) == null ? void 0 : _m.call(cam);
         this._projDirty = false;
       }
-      (_q = cam.updateMatrixWorld) == null ? void 0 : _q.call(cam);
+      (_n = cam.updateMatrixWorld) == null ? void 0 : _n.call(cam);
     } else if ("isOrthographicCamera" in cam && cam.isOrthographicCamera) {
       const s = Math.pow(2, this._zoom);
       const halfW = this._width / (2 * s);
@@ -446,39 +439,32 @@ var ThreePlanarTransform = class {
       const baseDist = 1e3;
       const bearingRad = -this._bearing * Math.PI / 180;
       const pitchRad = this._pitch * Math.PI / 180;
+      const EPS = 0.01;
+      const pitchEff = Math.max(EPS, Math.abs(pitchRad)) * Math.sign(pitchRad || 1);
       if (this._upAxis === "z") {
-        const horiz = baseDist * Math.sin(pitchRad);
-        const z = baseDist * Math.cos(pitchRad);
+        const horiz = baseDist * Math.sin(pitchEff);
+        const z = baseDist * Math.cos(pitchEff);
         const ox = horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
-        (_s = (_r = cam.position) == null ? void 0 : _r.set) == null ? void 0 : _s.call(_r, targetX + ox, targetY + oy, targetZ + z);
-        const eps = 1e-6;
-        if (Math.abs(pitchRad) <= eps) {
-          (_u = (_t = cam.up) == null ? void 0 : _t.set) == null ? void 0 : _u.call(_t, Math.sin(bearingRad), Math.cos(bearingRad), 0);
-        } else {
-          (_w = (_v = cam.up) == null ? void 0 : _v.set) == null ? void 0 : _w.call(_v, 0, 0, 1);
-        }
+        (_p = (_o = cam.position) == null ? void 0 : _o.set) == null ? void 0 : _p.call(_o, targetX + ox, targetY + oy, targetZ + z);
+        (_r = (_q = cam.up) == null ? void 0 : _q.set) == null ? void 0 : _r.call(_q, 0, 0, 1);
+        (_s = cam.lookAt) == null ? void 0 : _s.call(cam, targetX, targetY, targetZ);
       } else {
-        const horiz = baseDist * Math.sin(pitchRad);
-        const y = baseDist * Math.cos(pitchRad);
+        const horiz = baseDist * Math.sin(pitchEff);
+        const y = baseDist * Math.cos(pitchEff);
         const ox = horiz * Math.sin(bearingRad);
         const oz = horiz * Math.cos(bearingRad);
-        (_y = (_x = cam.position) == null ? void 0 : _x.set) == null ? void 0 : _y.call(_x, targetX + ox, targetY + y, targetZ + oz);
-        const eps = 1e-6;
-        if (Math.abs(pitchRad) <= eps) {
-          (_A = (_z = cam.up) == null ? void 0 : _z.set) == null ? void 0 : _A.call(_z, Math.sin(bearingRad), 0, Math.cos(bearingRad));
-        } else {
-          (_C = (_B = cam.up) == null ? void 0 : _B.set) == null ? void 0 : _C.call(_B, 0, 1, 0);
-        }
+        (_u = (_t = cam.position) == null ? void 0 : _t.set) == null ? void 0 : _u.call(_t, targetX + ox, targetY + y, targetZ + oz);
+        (_w = (_v = cam.up) == null ? void 0 : _v.set) == null ? void 0 : _w.call(_v, 0, 1, 0);
+        (_x = cam.lookAt) == null ? void 0 : _x.call(cam, targetX, targetY, targetZ);
       }
-      (_D = cam.lookAt) == null ? void 0 : _D.call(cam, targetX, targetY, targetZ);
       if (this._roll) {
         const rollRad = this._roll * Math.PI / 180;
-        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_E = cam.quaternion) != null ? _E : this._tmpVec3b.set(0, 0, -1));
-        (_F = cam.rotateOnWorldAxis) == null ? void 0 : _F.call(cam, dir, rollRad);
+        const dir = this._tmpVec3a.set(0, 0, -1).applyQuaternion((_y = cam.quaternion) != null ? _y : this._tmpVec3b.set(0, 0, -1));
+        (_z = cam.rotateOnWorldAxis) == null ? void 0 : _z.call(cam, dir, rollRad);
       }
-      (_G = cam.updateProjectionMatrix) == null ? void 0 : _G.call(cam);
-      (_H = cam.updateMatrixWorld) == null ? void 0 : _H.call(cam);
+      (_A = cam.updateProjectionMatrix) == null ? void 0 : _A.call(cam);
+      (_B = cam.updateMatrixWorld) == null ? void 0 : _B.call(cam);
     }
   }
   _scheduleApply() {

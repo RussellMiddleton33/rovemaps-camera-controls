@@ -241,11 +241,16 @@ export class ThreePlanarTransform implements ITransform {
       const bearingRad = (this._upAxis === 'z' ? 1 : -1) * (this._bearing * Math.PI) / 180;
       const pitchRad = (this._pitch * Math.PI) / 180;
 
+      // Clamp pitch away from exactly 0 to avoid gimbal lock (like Spherical.makeSafe())
+      // Using a small epsilon - need to be large enough to avoid lookAt degeneracy
+      const EPS = 0.01; // ~0.57 degrees, small but prevents gimbal lock
+      const pitchEff = Math.max(EPS, Math.abs(pitchRad)) * Math.sign(pitchRad || 1);
+
       if (this._upAxis === 'z') {
         // Z-up: Camera orbits in 3D with Z as vertical axis
         // Pitch=0 is bird's eye (looking straight down), Pitch=90 is horizontal
-        const horiz = dist * Math.sin(pitchRad); // Horizontal distance from target
-        const z = dist * Math.cos(pitchRad);     // Height above ground
+        const horiz = dist * Math.sin(pitchEff); // Horizontal distance from target
+        const z = dist * Math.cos(pitchEff);     // Height above ground
 
         // Bearing rotates around Z axis (horizontal plane)
         // Negate ox to match rotation direction of Y-up (handedness correction)
@@ -253,35 +258,19 @@ export class ThreePlanarTransform implements ITransform {
         const oy = horiz * Math.cos(bearingRad);
 
         cam.position?.set?.(targetX + ox, targetY + oy, targetZ + z);
-
-        // Handle top-down singularity: set up vector perpendicular to view direction
-        const eps = 1e-6;
-        if (Math.abs(pitchRad) <= eps) {
-          // At pitch=0, looking straight down: up points in bearing direction
-          // Negate to match handedness correction applied to position
-          cam.up?.set?.(-Math.sin(bearingRad), Math.cos(bearingRad), 0);
-        } else {
-          cam.up?.set?.(0, 0, 1);
-        }
+        cam.up?.set?.(0, 0, 1);
+        cam.lookAt?.(targetX, targetY, targetZ);
       } else {
         // Y-up: Camera orbits in 3D with Y as vertical axis
-        const horiz = dist * Math.sin(pitchRad);
-        const y = dist * Math.cos(pitchRad);
+        const horiz = dist * Math.sin(pitchEff);
+        const y = dist * Math.cos(pitchEff);
         const ox = horiz * Math.sin(bearingRad);
         const oz = horiz * Math.cos(bearingRad);
 
         cam.position?.set?.(targetX + ox, targetY + y, targetZ + oz);
-
-        // Handle top-down singularity
-        const eps = 1e-6;
-        if (Math.abs(pitchRad) <= eps) {
-          cam.up?.set?.(Math.sin(bearingRad), 0, Math.cos(bearingRad));
-        } else {
-          cam.up?.set?.(0, 1, 0);
-        }
+        cam.up?.set?.(0, 1, 0);
+        cam.lookAt?.(targetX, targetY, targetZ);
       }
-
-      cam.lookAt?.(targetX, targetY, targetZ);
 
       // Apply roll about forward axis
       if (this._roll) {
@@ -307,39 +296,32 @@ export class ThreePlanarTransform implements ITransform {
       const bearingRad = (-this._bearing * Math.PI) / 180;
       const pitchRad = (this._pitch * Math.PI) / 180;
 
+      // Clamp pitch away from exactly 0 to avoid gimbal lock (like Spherical.makeSafe())
+      // Using a small epsilon - need to be large enough to avoid lookAt degeneracy
+      const EPS = 0.01; // ~0.57 degrees, small but prevents gimbal lock
+      const pitchEff = Math.max(EPS, Math.abs(pitchRad)) * Math.sign(pitchRad || 1);
+
       if (this._upAxis === 'z') {
         // Z-up orthographic
-        const horiz = baseDist * Math.sin(pitchRad);
-        const z = baseDist * Math.cos(pitchRad);
+        const horiz = baseDist * Math.sin(pitchEff);
+        const z = baseDist * Math.cos(pitchEff);
         const ox = horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
 
         cam.position?.set?.(targetX + ox, targetY + oy, targetZ + z);
-
-        const eps = 1e-6;
-        if (Math.abs(pitchRad) <= eps) {
-          cam.up?.set?.(Math.sin(bearingRad), Math.cos(bearingRad), 0);
-        } else {
-          cam.up?.set?.(0, 0, 1);
-        }
+        cam.up?.set?.(0, 0, 1);
+        cam.lookAt?.(targetX, targetY, targetZ);
       } else {
         // Y-up orthographic
-        const horiz = baseDist * Math.sin(pitchRad);
-        const y = baseDist * Math.cos(pitchRad);
+        const horiz = baseDist * Math.sin(pitchEff);
+        const y = baseDist * Math.cos(pitchEff);
         const ox = horiz * Math.sin(bearingRad);
         const oz = horiz * Math.cos(bearingRad);
 
         cam.position?.set?.(targetX + ox, targetY + y, targetZ + oz);
-
-        const eps = 1e-6;
-        if (Math.abs(pitchRad) <= eps) {
-          cam.up?.set?.(Math.sin(bearingRad), 0, Math.cos(bearingRad));
-        } else {
-          cam.up?.set?.(0, 1, 0);
-        }
+        cam.up?.set?.(0, 1, 0);
+        cam.lookAt?.(targetX, targetY, targetZ);
       }
-
-      cam.lookAt?.(targetX, targetY, targetZ);
 
       if (this._roll) {
         const rollRad = (this._roll * Math.PI) / 180;
