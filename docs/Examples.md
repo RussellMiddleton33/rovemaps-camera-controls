@@ -1,8 +1,8 @@
 ## Examples
 
 ### Live Demos
-- **Y-up demo**: [/demo/](/demo/) - Standard Y-up coordinate system
-- **Z-up demo**: [/demo/zup.html](/demo/zup.html) - Z-up coordinate system for GIS applications
+- **Y-up demo**: https://russellmiddleton33.github.io/rovemaps-camera-controls/demo/
+- **Z-up demo**: https://russellmiddleton33.github.io/rovemaps-camera-controls/demo/zup.html
 
 ### Vite demo site
 - Located at `examples/site/`
