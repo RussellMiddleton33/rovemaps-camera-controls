@@ -66,7 +66,7 @@
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "jsdom": "^27.0.0",
+    "happy-dom": "^19.0.2",
     "prettier": "^3.3.3",
     "rimraf": "^5.0.5",
     "three": "^0.158.0",
