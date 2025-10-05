@@ -293,7 +293,7 @@ export class ThreePlanarTransform implements ITransform {
 
       // Place camera above ground with pitch and bearing
       const baseDist = 1000; // arbitrary; irrelevant for projection, but needed for near/far
-      const bearingRad = (-this._bearing * Math.PI) / 180;
+      const bearingRad = (this._upAxis === 'z' ? 1 : -1) * (this._bearing * Math.PI) / 180;
       const pitchRad = (this._pitch * Math.PI) / 180;
 
       // Clamp pitch away from exactly 0 to avoid gimbal lock (like Spherical.makeSafe())
@@ -305,7 +305,7 @@ export class ThreePlanarTransform implements ITransform {
         // Z-up orthographic
         const horiz = baseDist * Math.sin(pitchEff);
         const z = baseDist * Math.cos(pitchEff);
-        const ox = horiz * Math.sin(bearingRad);
+        const ox = -horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
 
         cam.position?.set?.(targetX + ox, targetY + oy, targetZ + z);
