@@ -180,7 +180,9 @@ export class ThreePlanarTransform implements ITransform {
   groundFromScreen(screen: { x: number; y: number }) {
     const hit = this.screenToWorld(screen);
     if (!hit) return null;
-    return { gx: hit.x, gz: hit.z };
+    // Y-up: ground is XZ plane (y=0), so gx=hit.x, gz=hit.z
+    // Z-up: ground is XY plane (z=0), so gx=hit.x, gz=hit.y
+    return this._upAxis === 'z' ? { gx: hit.x, gz: hit.y } : { gx: hit.x, gz: hit.z };
   }
 
   adjustCenterByGroundDelta(dgx: number, dgz: number) {
@@ -235,7 +237,8 @@ export class ThreePlanarTransform implements ITransform {
       const dist = (visibleWorldHeight / 2) / Math.tan(fovRad / 2);
 
       // Negate bearing so increasing bearing rotates view clockwise (not camera orbit)
-      const bearingRad = (-this._bearing * Math.PI) / 180;
+      // Note: Z-up uses positive bearing to correct for handedness difference
+      const bearingRad = (this._upAxis === 'z' ? 1 : -1) * (this._bearing * Math.PI) / 180;
       const pitchRad = (this._pitch * Math.PI) / 180;
 
       if (this._upAxis === 'z') {
@@ -245,16 +248,18 @@ export class ThreePlanarTransform implements ITransform {
         const z = dist * Math.cos(pitchRad);     // Height above ground
 
         // Bearing rotates around Z axis (horizontal plane)
-        const ox = horiz * Math.sin(bearingRad);
+        // Negate ox to match rotation direction of Y-up (handedness correction)
+        const ox = -horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
 
         cam.position?.set?.(targetX + ox, targetY + oy, targetZ + z);
 
-        // Handle top-down singularity
+        // Handle top-down singularity: set up vector perpendicular to view direction
         const eps = 1e-6;
         if (Math.abs(pitchRad) <= eps) {
-          // Up vector aligned with "north" rotated by bearing
-          cam.up?.set?.(Math.sin(bearingRad), Math.cos(bearingRad), 0);
+          // At pitch=0, looking straight down: up points in bearing direction
+          // Negate to match handedness correction applied to position
+          cam.up?.set?.(-Math.sin(bearingRad), Math.cos(bearingRad), 0);
         } else {
           cam.up?.set?.(0, 0, 1);
         }

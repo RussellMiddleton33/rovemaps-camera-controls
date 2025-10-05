@@ -14,7 +14,6 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: ['three'],
-      exclude: ['three'],
     },
     build: {
       minify: false,
