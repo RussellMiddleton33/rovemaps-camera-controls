@@ -435,14 +435,14 @@ var ThreePlanarTransform = class {
       cam.top = halfH;
       cam.bottom = -halfH;
       const baseDist = 1e3;
-      const bearingRad = -this._bearing * Math.PI / 180;
+      const bearingRad = (this._upAxis === "z" ? 1 : -1) * (this._bearing * Math.PI) / 180;
       const pitchRad = this._pitch * Math.PI / 180;
       const EPS = 0.01;
       const pitchEff = Math.max(EPS, Math.abs(pitchRad)) * Math.sign(pitchRad || 1);
       if (this._upAxis === "z") {
         const horiz = baseDist * Math.sin(pitchEff);
         const z = baseDist * Math.cos(pitchEff);
-        const ox = horiz * Math.sin(bearingRad);
+        const ox = -horiz * Math.sin(bearingRad);
         const oy = horiz * Math.cos(bearingRad);
         (_p = (_o = cam.position) == null ? void 0 : _o.set) == null ? void 0 : _p.call(_o, targetX + ox, targetY + oy, targetZ + z);
         (_r = (_q = cam.up) == null ? void 0 : _q.set) == null ? void 0 : _r.call(_q, 0, 0, 1);
