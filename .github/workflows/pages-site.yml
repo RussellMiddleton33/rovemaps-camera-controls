@@ -42,7 +42,7 @@ jobs:
           cp -r examples/site/dist/* public/demo/
           touch public/.nojekyll
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: public
 
