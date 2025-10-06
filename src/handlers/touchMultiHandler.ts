@@ -316,9 +316,12 @@ export class TouchMultiHandler {
     const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= (this.opts.rotateThresholdDeg ?? 0.5);
 
     // Determine primary mode for pan vs zoom/rotate
+    // Track whether we just entered zoomRotate this frame to bias first-frame behavior
+    let justEnteredZoomRotate = false;
     if (this.mode === 'idle') {
       if (zoomStrong || rotateStrong || pitchStrong) {
         this.mode = 'zoomRotate';
+        justEnteredZoomRotate = true;
       }
     }
 
@@ -377,8 +380,13 @@ export class TouchMultiHandler {
       axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
       // Apply zoom/rotate (pitch already applied above independently)
-      const dRot = (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) ? (-dDeg * (this.opts.rotateSign ?? 1)) : 0;
+      let dRot = (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) ? (-dDeg * (this.opts.rotateSign ?? 1)) : 0;
       const dZoom = this.opts.enableZoom ? dzCand : 0;
+      // First-frame bias: if we just entered zoomRotate and there is any meaningful zoom signal,
+      // suppress rotation for this initial frame to avoid a tiny rotate blip before zoom engages.
+      if (justEnteredZoomRotate && Math.abs(dZoom) > 0.003) {
+        dRot = 0;
+      }
       if (dZoom) { this.vz = dZoom / dt; axes.zoom = true; }
       if (dRot) { this.vb = dRot / dt; axes.rotate = true; }
       else { this.vb = 0; } // Clear rotation velocity when not rotating to prevent unwanted inertia

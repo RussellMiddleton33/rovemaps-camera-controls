@@ -1212,9 +1212,11 @@ var TouchMultiHandler = class {
       if (this.opts.allowedSingleTouchTimeMs < 999 && !this.allowPitchThisGesture) pitchStrong = false;
       const zoomStrong = this.opts.enableZoom && Math.abs(dzCand) >= ((_D = this.opts.zoomThreshold) != null ? _D : 0.04);
       const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= ((_E = this.opts.rotateThresholdDeg) != null ? _E : 0.5);
+      let justEnteredZoomRotate = false;
       if (this.mode === "idle") {
         if (zoomStrong || rotateStrong || pitchStrong) {
           this.mode = "zoomRotate";
+          justEnteredZoomRotate = true;
         }
       }
       const axes = {};
@@ -1267,8 +1269,11 @@ var TouchMultiHandler = class {
         this.vpy = this.vpy * (1 - alpha) + vdy * alpha;
         axes.pan = true;
       } else if (this.mode === "zoomRotate") {
-        const dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? -dDeg * ((_R = this.opts.rotateSign) != null ? _R : 1) : 0;
+        let dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? -dDeg * ((_R = this.opts.rotateSign) != null ? _R : 1) : 0;
         const dZoom = this.opts.enableZoom ? dzCand : 0;
+        if (justEnteredZoomRotate && Math.abs(dZoom) > 3e-3) {
+          dRot = 0;
+        }
         if (dZoom) {
           this.vz = dZoom / dt;
           axes.zoom = true;
