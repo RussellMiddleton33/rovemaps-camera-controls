@@ -35,8 +35,11 @@
         <label><input id="invert-inertia-x" type="checkbox" /> Invert Inertia X</label>
         <label><input id="show-debug" type="checkbox" /> Show Debug Gizmos</label>
         <label>Max Pitch ° <input id="max-pitch" type="number" min="1" max="89" step="1" value="80"/></label>
-        <label>Max Zoom <input id="max-zoom" type="number" min="0" max="24" step="0.5" value="12"/></label>
+        <label>Max Zoom <input id="max-zoom" type="number" min="0" max="24" step="0.5" value="3"/></label>
         <label>Min Zoom <input id="min-zoom" type="number" min="-24" max="24" step="0.5" value="0"/></label>
+        <label>Touch Rotate Start ° <input id="touch-rot-start" type="number" min="0" max="10" step="0.1" value="1.0"/></label>
+        <label>Touch Rotate Continue ° <input id="touch-rot-cont" type="number" min="0" max="10" step="0.1" value="0.5"/></label>
+        <label>Touch Rotate Debounce ms <input id="touch-rot-debounce" type="number" min="0" max="500" step="10" value="100"/></label>
       <button id="btn-fly">FlyTo Demo</button>
       <button id="btn-fit">Fit Bounds</button>
       <button id="btn-fit-red">Fit Red</button>

@@ -95,7 +95,7 @@ export class TouchMultiHandler {
       // MapLibre-like, reduce accidental mode switching on touch
       rotateThresholdDeg: 0.5,
       // Hysteresis and debounce defaults
-      rotateStartThresholdDeg: 1.8,
+      rotateStartThresholdDeg: 1.0,
       rotateContinueThresholdDeg: 0.5,
       rotateDebounceMs: 100,
       // Lower pitch threshold for MapLibre-like responsiveness

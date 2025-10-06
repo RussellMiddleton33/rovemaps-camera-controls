@@ -74,9 +74,13 @@ let currentHandlers = {
   anchorTightness: 1,
   antialias: true,
   maxPitch: 80,
-  maxZoom: 12,
+  maxZoom: 3,
   minZoom: 0,
   rightDragPan: true,
+  // Touch rotation tuning
+  touchRotateStart: 1.0,
+  touchRotateContinue: 0.5,
+  touchRotateDebounce: 100,
 };
 
 function buildController() {
@@ -113,6 +117,13 @@ function buildController() {
         cooperative: currentHandlers.coop,
         onCoopGestureHint: showCoopHint,
         zoomSign: currentHandlers.invertZoom ? -1 : 1,
+        anchorTightness: currentHandlers.anchorTightness,
+      },
+      touch: {
+        ...touchProfile,
+        rotateStartThresholdDeg: currentHandlers.touchRotateStart,
+        rotateContinueThresholdDeg: currentHandlers.touchRotateContinue,
+        rotateDebounceMs: currentHandlers.touchRotateDebounce,
         anchorTightness: currentHandlers.anchorTightness,
       },
       rightButtonPan: currentHandlers.rightDragPan,
@@ -153,7 +164,7 @@ function buildController() {
   if (prev) {
     controller.jumpTo({ center: prev.center, zoom: prev.zoom, bearing: prev.bearing, pitch: prev.pitch, roll: prev.roll, padding: prev.padding });
   } else {
-    controller.jumpTo({ center: { x: 0, y: 0 }, zoom: 4, bearing: 0, pitch: 45 });
+    controller.jumpTo({ center: { x: 0, y: 0 }, zoom: 1.5, bearing: 0, pitch: 45 });
   }
   controller.on('renderFrame', () => updateOverlay());
   controller.on('move', () => updateOverlay());
@@ -190,6 +201,9 @@ const toolbar = {
   maxZoom: document.getElementById('max-zoom') as HTMLInputElement,
   minZoom: document.getElementById('min-zoom') as HTMLInputElement,
   mobileProfile: document.getElementById('mobile-profile') as HTMLInputElement,
+  touchRotStart: document.getElementById('touch-rot-start') as HTMLInputElement,
+  touchRotCont: document.getElementById('touch-rot-cont') as HTMLInputElement,
+  touchRotDebounce: document.getElementById('touch-rot-debounce') as HTMLInputElement,
 };
 
 // Sync initial UI state with defaults so toggling works as expected
@@ -222,6 +236,9 @@ toolbar.maxPitch.addEventListener('change', () => { currentHandlers.maxPitch = M
 toolbar.maxZoom.addEventListener('change', () => { currentHandlers.maxZoom = parseFloat(toolbar.maxZoom.value); buildController(); });
 toolbar.minZoom.addEventListener('change', () => { currentHandlers.minZoom = parseFloat(toolbar.minZoom.value); buildController(); });
 toolbar.mobileProfile.addEventListener('change', () => { currentHandlers.mobileProfile = toolbar.mobileProfile.checked; buildController(); });
+toolbar.touchRotStart.addEventListener('change', () => { currentHandlers.touchRotateStart = parseFloat(toolbar.touchRotStart.value); buildController(); });
+toolbar.touchRotCont.addEventListener('change', () => { currentHandlers.touchRotateContinue = parseFloat(toolbar.touchRotCont.value); buildController(); });
+toolbar.touchRotDebounce.addEventListener('change', () => { currentHandlers.touchRotateDebounce = parseFloat(toolbar.touchRotDebounce.value); buildController(); });
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };

@@ -7,6 +7,7 @@ import type { ITransform, Padding, TransformConstraints, Bounds2D, MethodOptions
 import { browser, raf, caf } from '../util/browser';
 import { defaultEasing } from '../util/easing';
 import { HandlerManager, type HandlerManagerOptions } from '../handlers/handlerManager';
+import type { HandlerDelta } from '../handlers/types';
 import { computeFlyParams, uAt, widthAt } from '../util/flight';
 
 export type Projection = 'planar'; // future: 'spherical'
@@ -202,11 +203,13 @@ export class CameraController extends Evented<CameraMoveEvents> {
     };
     this.transform.setConstraints(this._constraints);
 
-    // Handlers (Pointer/Wheel/Touch will be added as we implement)
-    this._handlers = new HandlerManager(this._dom, this.transform, this._helper, {
+    // Handlers: pass through all provided handler options and ensure onChange is wired.
+    const handlerOptions: HandlerManagerOptions = {
+      ...(opts.handlers ?? {}),
       scrollZoom: opts.handlers?.scrollZoom ?? { around: 'center' },
-      onChange: (delta) => this._externalChange(delta),
-    });
+      onChange: (delta: HandlerDelta) => this._externalChange(delta),
+    } as any;
+    this._handlers = new HandlerManager(this._dom, this.transform, this._helper, handlerOptions);
 
     // Setup resize observer if requested
     if (opts.observeResize && typeof ResizeObserver !== 'undefined') {

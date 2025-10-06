@@ -39,7 +39,10 @@ All events include `{ originalEvent?: Event }` when gesture-driven.
 
 - `scrollZoom?: { around?: 'center'|'pointer', maxDeltaPerEvent?: number, preventDefault?: boolean, onWheelModeChange?, onChange?, cooperative?: boolean, onCoopGestureHint? } | boolean`
   - `zoomInertia?: boolean` (default false) to enable post-wheel momentum-like zoom.
-- `touch?: { enablePan?: boolean, enableZoom?: boolean, enableRotate?: boolean, enablePitch?: boolean, around?: 'center'|'pinch', pitchPerPx?: number, rotateThresholdDeg?: number, pitchThresholdPx?: number, zoomThreshold?: number, rubberbandStrength?: number } | boolean`
+- `touch?: { enablePan?: boolean, enableZoom?: boolean, enableRotate?: boolean, enablePitch?: boolean, around?: 'center'|'pinch', pitchPerPx?: number, rotateThresholdDeg?: number, rotateStartThresholdDeg?: number, rotateContinueThresholdDeg?: number, rotateDebounceMs?: number, pitchThresholdPx?: number, zoomThreshold?: number, rubberbandStrength?: number } | boolean`
+  - `rotateStartThresholdDeg` (default: 1.0): Degrees required to START rotation during a pinch; higher = less sensitive.
+  - `rotateContinueThresholdDeg` (default: 0.5 or `rotateThresholdDeg` if provided): Degrees required to CONTINUE rotation once it has started.
+  - `rotateDebounceMs` (default: 100): Suppresses rotation for the first N ms of a two‑finger gesture to allow zoom to establish first.
 - `keyboard?: { panStepPx?: number, zoomDelta?: number, rotateStepDeg?: number, pitchStepDeg?: number, preventDefault?: boolean } | boolean`
 - `dblclick?: { zoomDelta?: number, invertWithShift?: boolean, around?: 'center'|'pointer' } | boolean`
 - `boxZoom?: { triggerModifier?: 'shift', minAreaPx?: number } | boolean`

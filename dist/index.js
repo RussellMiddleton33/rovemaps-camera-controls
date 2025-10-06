@@ -1405,7 +1405,7 @@ var TouchMultiHandler = class {
       // MapLibre-like, reduce accidental mode switching on touch
       rotateThresholdDeg: 0.5,
       // Hysteresis and debounce defaults
-      rotateStartThresholdDeg: 1.8,
+      rotateStartThresholdDeg: 1,
       rotateContinueThresholdDeg: 0.5,
       rotateDebounceMs: 100,
       // Lower pitch threshold for MapLibre-like responsiveness
@@ -2182,7 +2182,7 @@ function uAt(params, s) {
 // src/core/cameraController.ts
 var CameraController = class extends Evented {
   constructor(opts) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
     super();
     this._moving = false;
     this._animHandle = null;
@@ -2241,10 +2241,12 @@ var CameraController = class extends Evented {
       panBounds: opts.panBounds
     };
     this.transform.setConstraints(this._constraints);
-    this._handlers = new HandlerManager(this._dom, this.transform, this._helper, {
-      scrollZoom: (_q = (_p = opts.handlers) == null ? void 0 : _p.scrollZoom) != null ? _q : { around: "center" },
+    const handlerOptions = {
+      ...(_p = opts.handlers) != null ? _p : {},
+      scrollZoom: (_r = (_q = opts.handlers) == null ? void 0 : _q.scrollZoom) != null ? _r : { around: "center" },
       onChange: (delta) => this._externalChange(delta)
-    });
+    };
+    this._handlers = new HandlerManager(this._dom, this.transform, this._helper, handlerOptions);
     if (opts.observeResize && typeof ResizeObserver !== "undefined") {
       this._resizeObserver = new ResizeObserver(() => {
         this.setViewport({
