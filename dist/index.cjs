@@ -2035,7 +2035,7 @@ var SafariGestureHandler = class {
 // src/handlers/handlerManager.ts
 var HandlerManager = class {
   constructor(el, transform, helper, options) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
     this.el = el;
     this.transform = transform;
     this.helper = helper;
@@ -2061,8 +2061,6 @@ var HandlerManager = class {
       ...typeof mpOpts === "object" ? mpOpts : {}
     };
     if ((options == null ? void 0 : options.inertiaPanFriction) != null) basePan.inertiaPanFriction = options.inertiaPanFriction;
-    this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, basePan);
-    this.mousePan.enable();
     if (options == null ? void 0 : options.rightButtonPan) {
       const basePanSecondary = {
         onChange: options == null ? void 0 : options.onChange,
@@ -2073,8 +2071,19 @@ var HandlerManager = class {
       if ((options == null ? void 0 : options.inertiaPanFriction) != null) basePanSecondary.inertiaPanFriction = options.inertiaPanFriction;
       this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, basePanSecondary);
       this.mousePanSecondary.enable();
-    } else {
       const mrpOpts = (_c = options == null ? void 0 : options.mouseRotatePitch) != null ? _c : {};
+      const mrpBase = {
+        onChange: options == null ? void 0 : options.onChange,
+        rotateButton: 0,
+        ...typeof mrpOpts === "object" ? mrpOpts : {}
+      };
+      if ((options == null ? void 0 : options.anchorTightness) != null) mrpBase.anchorTightness = options.anchorTightness;
+      this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, mrpBase);
+      this.mouseRotatePitch.enable();
+    } else {
+      this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, basePan);
+      this.mousePan.enable();
+      const mrpOpts = (_d = options == null ? void 0 : options.mouseRotatePitch) != null ? _d : {};
       const mrpBase = {
         onChange: options == null ? void 0 : options.onChange,
         ...typeof mrpOpts === "object" ? mrpOpts : {}
@@ -2083,7 +2092,7 @@ var HandlerManager = class {
       this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, mrpBase);
       this.mouseRotatePitch.enable();
     }
-    const touchOpts = (_d = options == null ? void 0 : options.touch) != null ? _d : {};
+    const touchOpts = (_e = options == null ? void 0 : options.touch) != null ? _e : {};
     const touchBase = typeof touchOpts === "object" ? { ...touchOpts } : { onChange: options == null ? void 0 : options.onChange };
     if ((options == null ? void 0 : options.anchorTightness) != null) touchBase.anchorTightness = options.anchorTightness;
     if ((options == null ? void 0 : options.rubberbandStrength) != null) touchBase.rubberbandStrength = options.rubberbandStrength;
@@ -2092,7 +2101,7 @@ var HandlerManager = class {
     if ((options == null ? void 0 : options.inertiaRotateFriction) != null) touchBase.inertiaRotateFriction = options.inertiaRotateFriction;
     this.touch = new TouchMultiHandler(this.el, this.transform, this.helper, touchBase);
     this.touch.enable();
-    const kbOpts = (_e = options == null ? void 0 : options.keyboard) != null ? _e : {};
+    const kbOpts = (_f = options == null ? void 0 : options.keyboard) != null ? _f : {};
     this.keyboard = new KeyboardHandler(
       this.el,
       this.transform,
@@ -2100,7 +2109,7 @@ var HandlerManager = class {
       typeof kbOpts === "object" ? kbOpts : { onChange: options == null ? void 0 : options.onChange }
     );
     this.keyboard.enable();
-    const dblOpts = (_f = options == null ? void 0 : options.dblclick) != null ? _f : {};
+    const dblOpts = (_g = options == null ? void 0 : options.dblclick) != null ? _g : {};
     this.dblclick = new DblclickHandler(
       this.el,
       this.transform,
@@ -2108,7 +2117,7 @@ var HandlerManager = class {
       typeof dblOpts === "object" ? dblOpts : { onChange: options == null ? void 0 : options.onChange }
     );
     this.dblclick.enable();
-    const boxOpts = (_g = options == null ? void 0 : options.boxZoom) != null ? _g : {};
+    const boxOpts = (_h = options == null ? void 0 : options.boxZoom) != null ? _h : {};
     this.boxZoom = new BoxZoomHandler(
       this.el,
       this.transform,
@@ -2116,9 +2125,10 @@ var HandlerManager = class {
       typeof boxOpts === "object" ? boxOpts : { onChange: options == null ? void 0 : options.onChange }
     );
     this.boxZoom.enable();
-    const sg = (_h = options == null ? void 0 : options.safariGestures) != null ? _h : false;
+    const sg = (_i = options == null ? void 0 : options.safariGestures) != null ? _i : false;
+    const gestureSupported = typeof window !== "undefined" && ("ongesturestart" in window || typeof window.GestureEvent !== "undefined");
     const touchCapable = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    if (sg && !touchCapable) {
+    if (sg && gestureSupported && !touchCapable) {
       this.safariGestures = new SafariGestureHandler(
         this.el,
         this.transform,

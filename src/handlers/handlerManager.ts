@@ -77,10 +77,11 @@ export class HandlerManager {
       ...(typeof mpOpts === 'object' ? mpOpts : {}),
     };
     if (options?.inertiaPanFriction != null) basePan.inertiaPanFriction = options.inertiaPanFriction;
-    this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, basePan);
-    this.mousePan.enable();
-    // Optional: right button pans instead of rotate/pitch
+    // Mouse bindings depend on rightButtonPan mode:
+    // - Default (rightButtonPan = false): left pans, right rotates/pitches
+    // - Swapped  (rightButtonPan = true): right pans, left rotates/pitches
     if (options?.rightButtonPan) {
+      // Right button pans
       const basePanSecondary: any = {
         onChange: options?.onChange,
         rubberbandStrength: options?.rubberbandStrength,
@@ -90,7 +91,22 @@ export class HandlerManager {
       if (options?.inertiaPanFriction != null) basePanSecondary.inertiaPanFriction = options.inertiaPanFriction;
       this.mousePanSecondary = new MousePanHandler(this.el, this.transform, this.helper, basePanSecondary);
       this.mousePanSecondary.enable();
+      // Left button rotates/pitches
+      const mrpOpts = options?.mouseRotatePitch ?? {};
+      const mrpBase: any = {
+        onChange: options?.onChange,
+        rotateButton: 0,
+        ...(typeof mrpOpts === 'object' ? mrpOpts : {}),
+      };
+      if (options?.anchorTightness != null) mrpBase.anchorTightness = options.anchorTightness;
+      this.mouseRotatePitch = new MouseRotatePitchHandler(this.el, this.transform, this.helper, mrpBase);
+      this.mouseRotatePitch.enable();
+      // Do NOT create the default left-button pan in this mode
     } else {
+      // Default: left pans
+      this.mousePan = new MousePanHandler(this.el, this.transform, this.helper, basePan);
+      this.mousePan.enable();
+      // Right button rotates/pitches
       const mrpOpts = options?.mouseRotatePitch ?? {};
       const mrpBase: any = {
         onChange: options?.onChange,
@@ -139,10 +155,10 @@ export class HandlerManager {
     this.boxZoom.enable();
     // Safari gesture handler (optional)
     const sg = options?.safariGestures ?? false;
-    // Enable Safari gesture handler only on non-touch devices (desktop Safari trackpad),
-    // to avoid conflicts with touch pinch/rotate on mobile.
+    // Desktop-only Safari gestures: enable when gesture events exist and the device is not touch-capable.
+    const gestureSupported = typeof window !== 'undefined' && (('ongesturestart' in window) || (typeof (window as any).GestureEvent !== 'undefined'));
     const touchCapable = typeof window !== 'undefined' && (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
-    if (sg && !touchCapable) {
+    if (sg && gestureSupported && !touchCapable) {
       this.safariGestures = new SafariGestureHandler(
         this.el,
         this.transform,

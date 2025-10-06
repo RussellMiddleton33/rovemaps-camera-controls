@@ -76,7 +76,7 @@ let currentHandlers = {
   maxPitch: 80,
   maxZoom: 3,
   minZoom: 0,
-  rightDragPan: true,
+  rightDragPan: false,
   // Touch rotation tuning
   touchRotateStart: 1.0,
   touchRotateContinue: 0.5,
@@ -125,6 +125,11 @@ function buildController() {
         rotateContinueThresholdDeg: currentHandlers.touchRotateContinue,
         rotateDebounceMs: currentHandlers.touchRotateDebounce,
         anchorTightness: currentHandlers.anchorTightness,
+        panYSign: currentHandlers.invertPanY ? -1 : 1,
+        recenterOnGestureStart: currentHandlers.recenterOnDown,
+        inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
+        inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
+        rotateSign: currentHandlers.invertTwist ? -1 : 1,
       },
       rightButtonPan: currentHandlers.rightDragPan,
       mousePan: {
@@ -141,16 +146,7 @@ function buildController() {
         recenterOnPointerDown: currentHandlers.recenterOnDown && currentHandlers.around,
         anchorTightness: currentHandlers.anchorTightness,
       },
-      touch: {
-        panYSign: currentHandlers.invertPanY ? -1 : 1,
-        recenterOnGestureStart: currentHandlers.recenterOnDown,
-        anchorTightness: currentHandlers.anchorTightness,
-        inertiaPanYSign: currentHandlers.invertInertiaY ? -1 : 1,
-        inertiaPanXSign: currentHandlers.invertInertiaX ? -1 : 1,
-        // Make touch rotation respect the invert twist toggle
-        rotateSign: currentHandlers.invertTwist ? -1 : 1,
-        ...(touchProfile as any),
-      },
+      // removed duplicate touch block (merged above)
       // Safari trackpad twist: now uses consistent sign convention with other handlers
       safariGestures: { enabled: true, rotateSign: currentHandlers.invertTwist ? -1 : 1, zoomSign: currentHandlers.invertZoom ? -1 : 1 },
       keyboard: currentHandlers.keyboard,
