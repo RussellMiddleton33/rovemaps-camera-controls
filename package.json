@@ -61,7 +61,7 @@
     "three": ">=0.153"
   },
   "devDependencies": {
-    "@types/node": "^20.11.30",
+    "@types/node": "^24.7.0",
     "@types/three": "^0.158.3",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
