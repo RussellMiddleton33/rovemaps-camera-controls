@@ -251,6 +251,9 @@ interface TouchMultiOptions {
     enablePitch?: boolean;
     pitchPerPx?: number;
     rotateThresholdDeg?: number;
+    rotateStartThresholdDeg?: number;
+    rotateContinueThresholdDeg?: number;
+    rotateDebounceMs?: number;
     pitchThresholdPx?: number;
     zoomThreshold?: number;
     onChange?: (delta: HandlerDelta) => void;

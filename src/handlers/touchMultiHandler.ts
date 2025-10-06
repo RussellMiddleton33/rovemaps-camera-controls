@@ -10,7 +10,11 @@ export interface TouchMultiOptions {
   enableRotate?: boolean;
   enablePitch?: boolean;
   pitchPerPx?: number; // deg per px of average vertical movement
-  rotateThresholdDeg?: number; // deg per frame to consider rotate significant
+  rotateThresholdDeg?: number; // legacy: deg per frame to consider rotate significant (used as continue threshold if specific values not provided)
+  // New: rotation hysteresis + debounce controls
+  rotateStartThresholdDeg?: number; // deg to START rotation (default ~1.8°)
+  rotateContinueThresholdDeg?: number; // deg to CONTINUE rotation (default 0.5° or rotateThresholdDeg)
+  rotateDebounceMs?: number; // suppress rotation for first N ms of a two-finger gesture (default 100ms)
   pitchThresholdPx?: number; // px average vertical to switch to pitch mode
   zoomThreshold?: number; // zoom units threshold to enter zoom mode (approx log2 scale)
   onChange?: (delta: HandlerDelta) => void;
@@ -74,6 +78,9 @@ export class TouchMultiHandler {
   private firstTouchDownTs = 0;
   private allowPitchThisGesture = true;
   private debugOverlay: HTMLDivElement | null = null;
+  // Rotation hysteresis/debounce state
+  private rotationUnlockAtTs = 0; // timestamp after which rotation may apply
+  private rotationStarted = false; // whether rotation has begun (hysteresis)
 
   constructor(el: HTMLElement, transform: ITransform, helper: ICameraHelper, opts?: TouchMultiOptions) {
     this.el = el;
@@ -87,6 +94,10 @@ export class TouchMultiHandler {
       pitchPerPx: 0.5, // match MapLibre sensitivity
       // MapLibre-like, reduce accidental mode switching on touch
       rotateThresholdDeg: 0.5,
+      // Hysteresis and debounce defaults
+      rotateStartThresholdDeg: 1.8,
+      rotateContinueThresholdDeg: 0.5,
+      rotateDebounceMs: 100,
       // Lower pitch threshold for MapLibre-like responsiveness
       pitchThresholdPx: 5,
       zoomThreshold: 0.04,
@@ -191,6 +202,9 @@ export class TouchMultiHandler {
     this.active = true;
     this.lastTs = performance.now();
     this.mode = 'idle';
+    // Reset rotation state for hysteresis and set debounce window
+    this.rotationStarted = false;
+    this.rotationUnlockAtTs = performance.now() + Math.max(0, this.opts.rotateDebounceMs ?? 0);
     // Optional pitch gating (effectively disabled by default with 999ms threshold)
     this.allowPitchThisGesture = (performance.now() - this.firstTouchDownTs) <= this.opts.allowedSingleTouchTimeMs;
     // Seed ground center so first movement immediately pans (grab feel)
@@ -313,7 +327,10 @@ export class TouchMultiHandler {
     // Optional timing gate (disabled by default for better UX)
     if (this.opts.allowedSingleTouchTimeMs < 999 && !this.allowPitchThisGesture) pitchStrong = false;
     const zoomStrong = this.opts.enableZoom && (Math.abs(dzCand) >= (this.opts.zoomThreshold ?? 0.04));
-    const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= (this.opts.rotateThresholdDeg ?? 0.5);
+    // Rotation hysteresis for detection: higher threshold to start, lower to continue
+    const rotStart = (this.opts.rotateStartThresholdDeg ?? 1.8);
+    const rotCont = (this.opts.rotateContinueThresholdDeg ?? (this.opts.rotateThresholdDeg ?? 0.5));
+    const rotateStrong = this.opts.enableRotate && (this.rotationStarted ? Math.abs(dDeg) >= rotCont : Math.abs(dDeg) >= rotStart);
 
     // Determine primary mode for pan vs zoom/rotate
     // Track whether we just entered zoomRotate this frame to bias first-frame behavior
@@ -380,13 +397,23 @@ export class TouchMultiHandler {
       axes.pan = true;
     } else if (this.mode === 'zoomRotate') {
       // Apply zoom/rotate (pitch already applied above independently)
-      let dRot = (this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg) ? (-dDeg * (this.opts.rotateSign ?? 1)) : 0;
+      // Rotation gating with debounce + hysteresis
+      const nowTs = now;
+      const withinDebounce = nowTs < this.rotationUnlockAtTs;
+      const rotStartApply = (this.opts.rotateStartThresholdDeg ?? 1.8);
+      const rotContApply = (this.opts.rotateContinueThresholdDeg ?? (this.opts.rotateThresholdDeg ?? 0.5));
+      let dRot = 0;
+      if (this.opts.enableRotate) {
+        const allowRotate = !withinDebounce && (this.rotationStarted ? Math.abs(dDeg) >= rotContApply : Math.abs(dDeg) >= rotStartApply);
+        if (allowRotate) dRot = (-dDeg * (this.opts.rotateSign ?? 1));
+      }
       const dZoom = this.opts.enableZoom ? dzCand : 0;
       // First-frame bias: if we just entered zoomRotate and there is any meaningful zoom signal,
       // suppress rotation for this initial frame to avoid a tiny rotate blip before zoom engages.
       if (justEnteredZoomRotate && Math.abs(dZoom) > 0.003) {
         dRot = 0;
       }
+      if (dRot) this.rotationStarted = true;
       if (dZoom) { this.vz = dZoom / dt; axes.zoom = true; }
       if (dRot) { this.vb = dRot / dt; axes.rotate = true; }
       else { this.vb = 0; } // Clear rotation velocity when not rotating to prevent unwanted inertia
@@ -483,6 +510,9 @@ export class TouchMultiHandler {
           this.lastSingleGround = null;
           this.mode = 'idle';
         }
+        // Reset rotation state on gesture end
+        this.rotationStarted = false;
+        this.rotationUnlockAtTs = 0;
       }
     }
     if (this.pts.size === 0 && this.unbindMoveUp) {

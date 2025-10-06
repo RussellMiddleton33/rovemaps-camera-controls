@@ -1050,6 +1050,7 @@ var MouseRotatePitchHandler = class {
 
 // src/handlers/touchMultiHandler.ts
 var TouchMultiHandler = class {
+  // whether rotation has begun (hysteresis)
   constructor(el, transform, helper, opts) {
     this.unbindDown = null;
     this.unbindMoveUp = null;
@@ -1091,6 +1092,10 @@ var TouchMultiHandler = class {
     this.firstTouchDownTs = 0;
     this.allowPitchThisGesture = true;
     this.debugOverlay = null;
+    // Rotation hysteresis/debounce state
+    this.rotationUnlockAtTs = 0;
+    // timestamp after which rotation may apply
+    this.rotationStarted = false;
     this.onDown = (e) => {
       var _a, _b, _c, _d, _e, _f, _g;
       for (let i = 0; i < e.touches.length; i++) {
@@ -1115,7 +1120,7 @@ var TouchMultiHandler = class {
       }
     };
     this.onMove = (e) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X;
       this.pts.clear();
       for (let i = 0; i < e.touches.length; i++) {
         const t = e.touches.item(i);
@@ -1211,7 +1216,9 @@ var TouchMultiHandler = class {
       let pitchStrong = this.opts.enablePitch && movedA && movedB && verticalA && verticalB && sameDir;
       if (this.opts.allowedSingleTouchTimeMs < 999 && !this.allowPitchThisGesture) pitchStrong = false;
       const zoomStrong = this.opts.enableZoom && Math.abs(dzCand) >= ((_D = this.opts.zoomThreshold) != null ? _D : 0.04);
-      const rotateStrong = this.opts.enableRotate && Math.abs(dDeg) >= ((_E = this.opts.rotateThresholdDeg) != null ? _E : 0.5);
+      const rotStart = (_E = this.opts.rotateStartThresholdDeg) != null ? _E : 1.8;
+      const rotCont = (_G = this.opts.rotateContinueThresholdDeg) != null ? _G : (_F = this.opts.rotateThresholdDeg) != null ? _F : 0.5;
+      const rotateStrong = this.opts.enableRotate && (this.rotationStarted ? Math.abs(dDeg) >= rotCont : Math.abs(dDeg) >= rotStart);
       let justEnteredZoomRotate = false;
       if (this.mode === "idle") {
         if (zoomStrong || rotateStrong || pitchStrong) {
@@ -1230,12 +1237,12 @@ var TouchMultiHandler = class {
       const ptr = this.opts.around === "pinch" ? center : null;
       const groundBefore = ptr ? this.transform.groundFromScreen(ptr) : null;
       if (this.mode === "pan" && this.opts.enablePan) {
-        const gp = (_H = (_G = (_F = this.transform).groundFromScreen) == null ? void 0 : _G.call(_F, center)) != null ? _H : null;
+        const gp = (_J = (_I = (_H = this.transform).groundFromScreen) == null ? void 0 : _I.call(_H, center)) != null ? _J : null;
         if (gp) {
           if (this.lastGroundCenter) {
-            let dgx = (this.lastGroundCenter.gx - gp.gx) * ((_I = this.opts.panXSign) != null ? _I : 1);
-            let dgz = (this.lastGroundCenter.gz - gp.gz) * ((_J = this.opts.panYSign) != null ? _J : 1);
-            const bounds = (_L = (_K = this.transform).getPanBounds) == null ? void 0 : _L.call(_K);
+            let dgx = (this.lastGroundCenter.gx - gp.gx) * ((_K = this.opts.panXSign) != null ? _K : 1);
+            let dgz = (this.lastGroundCenter.gz - gp.gz) * ((_L = this.opts.panYSign) != null ? _L : 1);
+            const bounds = (_N = (_M = this.transform).getPanBounds) == null ? void 0 : _N.call(_M);
             if (bounds) {
               const nx = this.transform.center.x + dgx;
               const ny = this.transform.center.y + dgz;
@@ -1246,7 +1253,7 @@ var TouchMultiHandler = class {
               dgx *= damp(overX);
               dgz *= damp(overY);
             }
-            (_N = (_M = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _N.call(_M, dgx, dgz);
+            (_P = (_O = this.transform).adjustCenterByGroundDelta) == null ? void 0 : _P.call(_O, dgx, dgz);
             if (dt > 0) {
               const alphaG = 0.3;
               const igx = dgx / dt;
@@ -1255,7 +1262,7 @@ var TouchMultiHandler = class {
               this.gvz = this.gvz * (1 - alphaG) + igz * alphaG;
             }
           }
-          const after = (_Q = (_P = (_O = this.transform).groundFromScreen) == null ? void 0 : _P.call(_O, center)) != null ? _Q : null;
+          const after = (_S = (_R = (_Q = this.transform).groundFromScreen) == null ? void 0 : _R.call(_Q, center)) != null ? _S : null;
           this.lastGroundCenter = after != null ? after : gp;
         } else {
           this.helper.handleMapControlsPan(this.transform, dxPan, dyPan);
@@ -1269,11 +1276,20 @@ var TouchMultiHandler = class {
         this.vpy = this.vpy * (1 - alpha) + vdy * alpha;
         axes.pan = true;
       } else if (this.mode === "zoomRotate") {
-        let dRot = this.opts.enableRotate && Math.abs(dDeg) >= this.opts.rotateThresholdDeg ? -dDeg * ((_R = this.opts.rotateSign) != null ? _R : 1) : 0;
+        const nowTs = now;
+        const withinDebounce = nowTs < this.rotationUnlockAtTs;
+        const rotStartApply = (_T = this.opts.rotateStartThresholdDeg) != null ? _T : 1.8;
+        const rotContApply = (_V = this.opts.rotateContinueThresholdDeg) != null ? _V : (_U = this.opts.rotateThresholdDeg) != null ? _U : 0.5;
+        let dRot = 0;
+        if (this.opts.enableRotate) {
+          const allowRotate = !withinDebounce && (this.rotationStarted ? Math.abs(dDeg) >= rotContApply : Math.abs(dDeg) >= rotStartApply);
+          if (allowRotate) dRot = -dDeg * ((_W = this.opts.rotateSign) != null ? _W : 1);
+        }
         const dZoom = this.opts.enableZoom ? dzCand : 0;
         if (justEnteredZoomRotate && Math.abs(dZoom) > 3e-3) {
           dRot = 0;
         }
+        if (dRot) this.rotationStarted = true;
         if (dZoom) {
           this.vz = dZoom / dt;
           axes.zoom = true;
@@ -1295,7 +1311,7 @@ var TouchMultiHandler = class {
       if (ptr && groundBefore) {
         const groundAfter = this.transform.groundFromScreen(ptr);
         if (groundAfter) {
-          const tight = Math.max(0, Math.min(1, (_S = this.opts.anchorTightness) != null ? _S : 1));
+          const tight = Math.max(0, Math.min(1, (_X = this.opts.anchorTightness) != null ? _X : 1));
           let dgx = (groundBefore.gx - groundAfter.gx) * tight;
           let dgz = (groundBefore.gz - groundAfter.gz) * tight;
           const maxShift = 500;
@@ -1369,6 +1385,8 @@ var TouchMultiHandler = class {
             this.lastSingleGround = null;
             this.mode = "idle";
           }
+          this.rotationStarted = false;
+          this.rotationUnlockAtTs = 0;
         }
       }
       if (this.pts.size === 0 && this.unbindMoveUp) {
@@ -1388,6 +1406,10 @@ var TouchMultiHandler = class {
       // match MapLibre sensitivity
       // MapLibre-like, reduce accidental mode switching on touch
       rotateThresholdDeg: 0.5,
+      // Hysteresis and debounce defaults
+      rotateStartThresholdDeg: 1.8,
+      rotateContinueThresholdDeg: 0.5,
+      rotateDebounceMs: 100,
       // Lower pitch threshold for MapLibre-like responsiveness
       pitchThresholdPx: 5,
       zoomThreshold: 0.04,
@@ -1458,7 +1480,7 @@ var TouchMultiHandler = class {
     };
   }
   startGesture(_e) {
-    var _a, _b, _c, _d, _e2, _f, _g, _h, _i, _j, _k, _l;
+    var _a, _b, _c, _d, _e2, _f, _g, _h, _i, _j, _k, _l, _m;
     const pts = [...this.pts.values()];
     const [p0, p1] = pts.sort((a, b) => a.id - b.id);
     if (!p0 || !p1) return;
@@ -1474,16 +1496,18 @@ var TouchMultiHandler = class {
     this.active = true;
     this.lastTs = performance.now();
     this.mode = "idle";
+    this.rotationStarted = false;
+    this.rotationUnlockAtTs = performance.now() + Math.max(0, (_a = this.opts.rotateDebounceMs) != null ? _a : 0);
     this.allowPitchThisGesture = performance.now() - this.firstTouchDownTs <= this.opts.allowedSingleTouchTimeMs;
     const rect = this.el.getBoundingClientRect();
     const vv = window.visualViewport;
-    const centerEl = { x: this.lastCenter.x + ((_a = vv == null ? void 0 : vv.offsetLeft) != null ? _a : 0) - (rect.left + ((_b = vv == null ? void 0 : vv.offsetLeft) != null ? _b : 0)), y: this.lastCenter.y + ((_c = vv == null ? void 0 : vv.offsetTop) != null ? _c : 0) - (rect.top + ((_d = vv == null ? void 0 : vv.offsetTop) != null ? _d : 0)) };
+    const centerEl = { x: this.lastCenter.x + ((_b = vv == null ? void 0 : vv.offsetLeft) != null ? _b : 0) - (rect.left + ((_c = vv == null ? void 0 : vv.offsetLeft) != null ? _c : 0)), y: this.lastCenter.y + ((_d = vv == null ? void 0 : vv.offsetTop) != null ? _d : 0) - (rect.top + ((_e2 = vv == null ? void 0 : vv.offsetTop) != null ? _e2 : 0)) };
     this.lastCenterEl = centerEl;
-    const gp = (_g = (_f = (_e2 = this.transform).groundFromScreen) == null ? void 0 : _f.call(_e2, centerEl)) != null ? _g : null;
+    const gp = (_h = (_g = (_f = this.transform).groundFromScreen) == null ? void 0 : _g.call(_f, centerEl)) != null ? _h : null;
     this.lastGroundCenter = gp;
     if (this.opts.recenterOnGestureStart && this.opts.around === "pinch") {
-      const gp2 = (_j = (_i = (_h = this.transform).groundFromScreen) == null ? void 0 : _i.call(_h, centerEl)) != null ? _j : null;
-      if (gp2) (_l = (_k = this.transform).setGroundCenter) == null ? void 0 : _l.call(_k, gp2);
+      const gp2 = (_k = (_j = (_i = this.transform).groundFromScreen) == null ? void 0 : _j.call(_i, centerEl)) != null ? _k : null;
+      if (gp2) (_m = (_l = this.transform).setGroundCenter) == null ? void 0 : _m.call(_l, gp2);
     }
     if (this.inertiaHandle != null) {
       cancelAnimationFrame(this.inertiaHandle);

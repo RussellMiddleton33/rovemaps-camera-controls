@@ -90,6 +90,9 @@ git push origin HEAD:main
   # Push version tag to GitHub
   git push && git push --tags
 
+  # Force Current Branch to Main
+  git push --force-with-lease origin main
+
 ## Roadmap
 
 - M6: Optional spherical/globe projection
