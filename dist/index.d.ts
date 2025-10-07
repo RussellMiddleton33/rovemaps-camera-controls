@@ -323,6 +323,7 @@ interface HandlerManagerOptions {
     safariGestures?: SafariGestureOptions | boolean;
     anchorTightness?: number;
     rightButtonPan?: boolean;
+    autoTouchProfile?: boolean;
     inertiaPanFriction?: number;
     inertiaZoomFriction?: number;
     inertiaRotateFriction?: number;

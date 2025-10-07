@@ -28,6 +28,7 @@ export interface CameraControllerOptions {
   bearingSnap?: number;
   bearingSnapEpsilon?: number;
   handlers?: HandlerManagerOptions;
+  softPanBounds?: boolean; // If true, gently nudge back inside panBounds after moves
 
   // Constraints
   minZoom?: number;
@@ -151,6 +152,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
   private _resizeObserver?: ResizeObserver;
   private _useExternalLoop: boolean = false;
   private _activeAnimation: AnimationState | null = null;
+  private _softPanBoundsEnabled: boolean = false;
 
   constructor(opts: CameraControllerOptions) {
     super();
@@ -170,9 +172,11 @@ export class CameraController extends Evented<CameraMoveEvents> {
         projection: typeof opts.projection === 'object' ? opts.projection : undefined,
         baseScale: opts.baseScale,
       });
-      this._bearingSnap = opts.bearingSnap ?? 7;
+      // Disable bearing snap by default; only enable when explicitly configured
+      this._bearingSnap = opts.bearingSnap ?? 0;
       this._suppressEvents = opts.suppressEvents ?? false;
       this._useExternalLoop = opts.useExternalAnimationLoop ?? false;
+      this._softPanBoundsEnabled = opts.softPanBounds ?? false;
       return;
     }
 
@@ -191,8 +195,10 @@ export class CameraController extends Evented<CameraMoveEvents> {
       projection: typeof opts.projection === 'object' ? opts.projection : undefined,
       baseScale: opts.baseScale,
     });
-    this._bearingSnap = opts.bearingSnap ?? 7;
+    // Disable bearing snap by default; only enable when explicitly configured
+    this._bearingSnap = opts.bearingSnap ?? 0;
     this._bearingSnapEps = opts.bearingSnapEpsilon ?? 0.001;
+    this._softPanBoundsEnabled = opts.softPanBounds ?? false;
     // Constraints
     this._constraints = {
       minZoom: opts.minZoom ?? -Infinity,
@@ -413,6 +419,17 @@ export class CameraController extends Evented<CameraMoveEvents> {
   }
 
   flyTo(options: { center?: { x: number; y: number; z?: number }; zoom?: number; bearing?: number; pitch?: number; roll?: number; maxDuration?: number } & FlyToOptions) {
+    // TODO(flyTo-zoom-path): When a target zoom is provided, derive a unified path that
+    // couples center and zoom over time to the final zoom instead of computing a path that
+    // implicitly assumes similar start/end zoom and then snapping/clamping zoom at the end.
+    // Concretely:
+    //  - Pre-clamp the requested zoom to constraints at START, so the model solves toward
+    //    the achievable end zoom (avoids end-of-flight clamp jump).
+    //  - Evolve zoom continuously: z(t) = z0 + (z1 - z0) * e(t), and solve path params from
+    //    w(t) accordingly, or switch to a simpler center interpolation that is consistent with
+    //    the time-eased zoom path. This removes visual mismatch between center arc and zoom.
+    //  - Keep the time reparameterization (u(s)/u_end ~= e) so center progress matches easing.
+    //  - Add an option to preserve current zoom explicitly (default behavior when zoom omitted).
     const startCenter = this.getCenter();
     const endCenter = options.center ?? startCenter;
     const startZoom = this.getZoom();
@@ -435,7 +452,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
     // Determine duration
     let duration = options.duration;
     if (duration == null) {
-      if (options.screenSpeed && options.screenSpeed > 0) {
+      if (options.useScreenSpeed && options.screenSpeed && options.screenSpeed > 0) {
         duration = (pxDist / options.screenSpeed) * 1000;
       } else if (options.speed && options.speed > 0) {
         duration = (pxDist / (options.speed * 100)) * 1000;
@@ -446,7 +463,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
     }
 
     // If screenSpeed provided, run a constant-pixel-speed center motion with eased zoom/angles
-    const useScreenSpeed = !!options.screenSpeed && options.screenSpeed! > 0 && pxDist > 0;
+    const useScreenSpeed = !!options.useScreenSpeed && !!options.screenSpeed && options.screenSpeed! > 0 && pxDist > 0;
     if (!useScreenSpeed) {
       // Van Wijk & Nuij-like path with hyperbolic functions
       const rho = Math.max(0.01, Math.min(5, options.curve ?? 1.42));
@@ -459,6 +476,8 @@ export class CameraController extends Evented<CameraMoveEvents> {
       }
       const params = computeFlyParams(w0, w1, u1, rho);
       const S = params.S;
+      // Compute actual path ground distance at end from the model to normalize fu correctly
+      const uEnd = Math.abs(uAt(params, S));
       // If duration not provided, derive from S and speed
       if (options.duration == null) {
         const v = options.speed && options.speed > 0 ? options.speed : 1.2;
@@ -496,7 +515,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
           S,
           w0,
           w1,
-          u1,
+          u1: uEnd,
           rho,
           params,
           dirX: 0,
@@ -544,6 +563,18 @@ export class CameraController extends Evented<CameraMoveEvents> {
     const dirX = worldDist > 0 ? dx / worldDist : 0;
     const dirY = worldDist > 0 ? dy / worldDist : 0;
 
+    // If duration was constrained (explicit or by maxDuration), adjust screenSpeed so center arrives exactly at end.
+    // Use the same pxDist heuristic used for initial duration estimation (based on start scale).
+    let effectiveScreenSpeed = options.screenSpeed!;
+    if (duration != null && duration > 0) {
+      const desiredSec = duration / 1000;
+      const naturalSec = pxDist / options.screenSpeed!;
+      // If the desired duration differs by >1% or was explicitly provided, adjust speed.
+      if (options.duration != null || Math.abs(desiredSec - naturalSec) / naturalSec > 0.01) {
+        effectiveScreenSpeed = pxDist / desiredSec;
+      }
+    }
+
     // Store animation state
     this._activeAnimation = {
       type: 'fly',
@@ -555,7 +586,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
       axes,
       flyParams: {
         useScreenSpeed: true,
-        screenSpeed: options.screenSpeed,
+        screenSpeed: effectiveScreenSpeed,
         S: 0, // not used for screenSpeed path
         w0: 0,
         w1: 0,
@@ -656,54 +687,65 @@ export class CameraController extends Evented<CameraMoveEvents> {
     const anim = this._activeAnimation;
     const k = Math.min(1, (now - anim.t0) / anim.duration);
     const e = anim.easing(k);
+    const __DBG = false;
 
     if (anim.type === 'ease') {
       // easeTo animation
-      const groundBefore = anim.anchorPt ? this.transform.groundFromScreen(anim.anchorPt) : null;
-
-      this.transform.deferApply(() => {
-        const startZ = anim.start.center.z ?? 0;
-        const targetZ = anim.target.center.z ?? 0;
-        this.transform.setCenter({
-          x: anim.start.center.x + (anim.target.center.x - anim.start.center.x) * e,
-          y: anim.start.center.y + (anim.target.center.y - anim.start.center.y) * e,
-          z: startZ + (targetZ - startZ) * e,
+      const done = !(this._easeAbort && !this._easeAbort.signal.aborted) || k >= 1;
+      if (done) {
+        // Apply final values directly to avoid last-frame nudge
+        this.transform.deferApply(() => {
+          this.transform.setCenter({ x: anim.target.center.x, y: anim.target.center.y, z: anim.target.center.z ?? anim.start.center.z });
+          this.transform.setZoom(anim.target.zoom);
+          this.transform.setBearing(anim.target.bearing);
+          this.transform.setPitch(anim.target.pitch);
+          this.transform.setRoll(anim.target.roll);
+          this.transform.setPadding({ ...anim.target.padding });
         });
-        this.transform.setZoom(anim.start.zoom + (anim.target.zoom - anim.start.zoom) * e);
-        this.transform.setBearing(anim.start.bearing + (anim.target.bearing - anim.start.bearing) * e);
-        this.transform.setPitch(anim.start.pitch + (anim.target.pitch - anim.start.pitch) * e);
-        this.transform.setRoll(anim.start.roll + (anim.target.roll - anim.start.roll) * e);
-        this.transform.setPadding({
-          top: anim.start.padding.top + (anim.target.padding.top - anim.start.padding.top) * e,
-          right: anim.start.padding.right + (anim.target.padding.right - anim.start.padding.right) * e,
-          bottom: anim.start.padding.bottom + (anim.target.padding.bottom - anim.start.padding.bottom) * e,
-          left: anim.start.padding.left + (anim.target.padding.left - anim.start.padding.left) * e,
-        });
-      });
-
-      if (groundBefore && anim.anchorPt) {
-        const groundAfter = this.transform.groundFromScreen(anim.anchorPt);
-        if (groundAfter) {
-          const tight = anim.anchorTightness ?? 1;
-          const dgx = (groundBefore.gx - groundAfter.gx) * tight;
-          const dgz = (groundBefore.gz - groundAfter.gz) * tight;
-          if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
-        }
-      }
-
-      this._axisEmitDuring(anim.axes);
-      this._emitRender();
-
-      if (k < 1 && this._easeAbort && !this._easeAbort.signal.aborted) {
-        return true; // Continue
-      } else {
-        // Complete
         if (anim.axes.rotate) this._applyBearingSnap();
         this._applySoftPanBounds();
+        this._axisEmitDuring(anim.axes);
+        this._emitRender();
         this._axisEnd(anim.axes);
         this._endMoveLifecycle();
         this._activeAnimation = null;
         return false;
+      } else {
+        const groundBefore = anim.anchorPt ? this.transform.groundFromScreen(anim.anchorPt) : null;
+
+        this.transform.deferApply(() => {
+          const startZ = anim.start.center.z ?? 0;
+          const targetZ = anim.target.center.z ?? 0;
+          this.transform.setCenter({
+            x: anim.start.center.x + (anim.target.center.x - anim.start.center.x) * e,
+            y: anim.start.center.y + (anim.target.center.y - anim.start.center.y) * e,
+            z: startZ + (targetZ - startZ) * e,
+          });
+          this.transform.setZoom(anim.start.zoom + (anim.target.zoom - anim.start.zoom) * e);
+          this.transform.setBearing(anim.start.bearing + (anim.target.bearing - anim.start.bearing) * e);
+          this.transform.setPitch(anim.start.pitch + (anim.target.pitch - anim.start.pitch) * e);
+          this.transform.setRoll(anim.start.roll + (anim.target.roll - anim.start.roll) * e);
+          this.transform.setPadding({
+            top: anim.start.padding.top + (anim.target.padding.top - anim.start.padding.top) * e,
+            right: anim.start.padding.right + (anim.target.padding.right - anim.start.padding.right) * e,
+            bottom: anim.start.padding.bottom + (anim.target.padding.bottom - anim.start.padding.bottom) * e,
+            left: anim.start.padding.left + (anim.target.padding.left - anim.start.padding.left) * e,
+          });
+        });
+
+        if (groundBefore && anim.anchorPt) {
+          const groundAfter = this.transform.groundFromScreen(anim.anchorPt);
+          if (groundAfter) {
+            const tight = anim.anchorTightness ?? 1;
+            const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+            const dgz = (groundBefore.gz - groundAfter.gz) * tight;
+            if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
+          }
+        }
+
+        this._axisEmitDuring(anim.axes);
+        this._emitRender();
+        return true; // Continue
       }
     } else if (anim.type === 'fly' && anim.flyParams) {
       // flyTo animation
@@ -715,12 +757,6 @@ export class CameraController extends Evented<CameraMoveEvents> {
         const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
         const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
         const r = fp.startRoll + (fp.endRoll - fp.startRoll) * e;
-        this.transform.deferApply(() => {
-          this.transform.setZoom(z);
-          this.transform.setBearing(b);
-          this.transform.setPitch(p);
-          this.transform.setRoll(r);
-        });
 
         // Constant screen speed center motion
         const dt = (now - (fp.last ?? anim.t0)) / 1000;
@@ -731,15 +767,11 @@ export class CameraController extends Evented<CameraMoveEvents> {
         fp.traveled = traveled;
         const cx = fp.startCenter.x + fp.dirX * traveled;
         const cy = fp.startCenter.y + fp.dirY * traveled;
-        this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
 
-        this._axisEmitDuring(anim.axes);
-        this._emitRender();
-
-        if (k < 1 && traveled < fp.worldDist && this._easeAbort && !this._easeAbort.signal.aborted) {
-          return true; // Continue
-        } else {
-          // Ensure final state
+        const EPS = 1e-6;
+        const done = !(this._easeAbort && !this._easeAbort.signal.aborted) || !(k < 1) || traveled >= fp.worldDist - EPS;
+        if (done) {
+          // Final state only
           this.transform.deferApply(() => {
             this.transform.setZoom(fp.endZoom);
             this.transform.setBearing(fp.endBearing);
@@ -749,37 +781,59 @@ export class CameraController extends Evented<CameraMoveEvents> {
           });
           if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
           this._applySoftPanBounds();
+          // no-op
+          this._axisEmitDuring(anim.axes);
+          this._emitRender();
           this._axisEnd(anim.axes);
           this._endMoveLifecycle();
           this._activeAnimation = null;
           return false;
+        } else {
+          // Intermediate state (batch all changes in one apply to avoid two-phase nudge)
+          this.transform.deferApply(() => {
+            this.transform.setZoom(z);
+            this.transform.setBearing(b);
+            this.transform.setPitch(p);
+            this.transform.setRoll(r);
+            this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
+          });
+          // If within sub-pixel of target, finish early to avoid last-frame nudge (DPR-aware; tunable via globals)
+          {
+            const base = (globalThis as any).FINISH_EPS_PX;
+            const useDpr = (globalThis as any).FINISH_EPS_USE_DPR ?? true;
+            const baseThresh = typeof base === 'number' && isFinite(base) ? base : 0.0;
+            const dpr = useDpr ? (this.transform as any).devicePixelRatio ?? 1 : 1;
+            const pxThresh = baseThresh * dpr;
+            const dx = fp.endCenter.x - cx;
+            const dy = fp.endCenter.y - cy;
+            const pxDist = Math.hypot(dx, dy) * Math.pow(2, z);
+            if (pxDist < pxThresh) {
+              this.transform.deferApply(() => {
+                this.transform.setZoom(fp.endZoom);
+                this.transform.setBearing(fp.endBearing);
+                this.transform.setPitch(fp.endPitch);
+                this.transform.setRoll(fp.endRoll);
+                this.transform.setCenter({ x: fp.endCenter.x, y: fp.endCenter.y, z: fp.endCenter.z ?? fp.startCenter.z });
+              });
+              if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
+              this._applySoftPanBounds();
+              this._axisEmitDuring(anim.axes);
+              this._emitRender();
+              this._axisEnd(anim.axes);
+              this._endMoveLifecycle();
+              this._activeAnimation = null;
+              return false;
+            }
+          }
+          this._axisEmitDuring(anim.axes);
+          this._emitRender();
+          return true;
         }
       } else {
         // Van Wijk path
-        const s = fp.S * e;
-        const w = widthAt(fp.params, s);
-        const scaleRatio = fp.w0 / w;
-        const z = fp.startZoom + Math.log2(scaleRatio);
-        const u = uAt(fp.params, s);
-        const fu = Math.max(0, Math.min(1, u / fp.u1));
-        const cx = fp.startCenter.x + (fp.endCenter.x - fp.startCenter.x) * (fu / (fp.worldDist || 1));
-        const cy = fp.startCenter.y + (fp.endCenter.y - fp.startCenter.y) * (fu / (fp.worldDist || 1));
-        const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
-        const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
-        const rr = fp.startRoll + (fp.endRoll - fp.startRoll) * e;
-
-        this.transform.setZoom(z);
-        this.transform.setBearing(b);
-        this.transform.setPitch(p);
-        this.transform.setRoll(rr);
-        this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
-
-        this._axisEmitDuring(anim.axes);
-        this._emitRender();
-
-        if (k < 1 && this._easeAbort && !this._easeAbort.signal.aborted) {
-          return true; // Continue
-        } else {
+        const done = !(this._easeAbort && !this._easeAbort.signal.aborted) || k >= 1;
+        if (done) {
+          // Final state only
           this.transform.deferApply(() => {
             this.transform.setZoom(fp.endZoom);
             this.transform.setBearing(fp.endBearing);
@@ -787,12 +841,78 @@ export class CameraController extends Evented<CameraMoveEvents> {
             this.transform.setRoll(fp.endRoll);
             this.transform.setCenter({ x: fp.endCenter.x, y: fp.endCenter.y, z: fp.endCenter.z ?? fp.startCenter.z });
           });
+          // no-op
           if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
           this._applySoftPanBounds();
+          // no-op
+          this._axisEmitDuring(anim.axes);
+          this._emitRender();
           this._axisEnd(anim.axes);
           this._endMoveLifecycle();
           this._activeAnimation = null;
           return false;
+        } else {
+          // Reparameterize the path by eased time: find s such that u(s)/u1 ~= e
+          const target = e;
+          const signS = fp.S >= 0 ? 1 : -1;
+          let lo = 0, hi = Math.abs(fp.S);
+          for (let i = 0; i < 22; i++) {
+            const mid = (lo + hi) * 0.5;
+            const sMid = signS * mid;
+            const umid = Math.abs(uAt(fp.params, sMid)) / fp.u1;
+            if (umid < target) lo = mid; else hi = mid;
+          }
+          const s = signS * hi;
+          const w = widthAt(fp.params, s);
+          const scaleRatio = fp.w0 / w;
+          const z = fp.startZoom + Math.log2(scaleRatio);
+          const u = uAt(fp.params, s);
+          const fu = Math.max(0, Math.min(1, Math.abs(u) / fp.u1));
+          // Interpolate center directly by fu (now matched to eased time)
+          const cx = fp.startCenter.x + (fp.endCenter.x - fp.startCenter.x) * fu;
+          const cy = fp.startCenter.y + (fp.endCenter.y - fp.startCenter.y) * fu;
+          const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
+          const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
+          const rr = fp.startRoll + (fp.endRoll - fp.startRoll) * e;
+
+          this.transform.deferApply(() => {
+            this.transform.setZoom(z);
+            this.transform.setBearing(b);
+            this.transform.setPitch(p);
+            this.transform.setRoll(rr);
+            this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
+          });
+          // If within sub-pixel of target, finish early to avoid last-frame nudge (DPR-aware; tunable via globals)
+          {
+            const base = (globalThis as any).FINISH_EPS_PX;
+            const useDpr = (globalThis as any).FINISH_EPS_USE_DPR ?? true;
+            const baseThresh = typeof base === 'number' && isFinite(base) ? base : 0.0;
+            const dpr = useDpr ? (this.transform as any).devicePixelRatio ?? 1 : 1;
+            const pxThresh = baseThresh * dpr;
+            const dx = fp.endCenter.x - cx;
+            const dy = fp.endCenter.y - cy;
+            const pxDist = Math.hypot(dx, dy) * Math.pow(2, z);
+            if (pxDist < pxThresh) {
+              this.transform.deferApply(() => {
+                this.transform.setZoom(fp.endZoom);
+                this.transform.setBearing(fp.endBearing);
+                this.transform.setPitch(fp.endPitch);
+                this.transform.setRoll(fp.endRoll);
+                this.transform.setCenter({ x: fp.endCenter.x, y: fp.endCenter.y, z: fp.endCenter.z ?? fp.startCenter.z });
+              });
+              if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
+              this._applySoftPanBounds();
+              this._axisEmitDuring(anim.axes);
+              this._emitRender();
+              this._axisEnd(anim.axes);
+              this._endMoveLifecycle();
+              this._activeAnimation = null;
+              return false;
+            }
+          }
+          this._axisEmitDuring(anim.axes);
+          this._emitRender();
+          return true;
         }
       }
     }
@@ -883,7 +1003,7 @@ export class CameraController extends Evented<CameraMoveEvents> {
   }
 
   private _applySoftPanBounds() {
-    if (this._softClamping) return;
+    if (!this._softPanBoundsEnabled || this._softClamping) return;
     const bounds = this._constraints.panBounds;
     if (!bounds) return;
     const c = this.getCenter();

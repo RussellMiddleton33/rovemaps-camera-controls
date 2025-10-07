@@ -323,6 +323,15 @@ describe('External Animation Loop', () => {
     });
 
     it('should apply bearing snap on rotation completion', () => {
+      // Enable bearing snap explicitly for this test
+      controller.dispose();
+      controller = new CameraController({
+        camera,
+        domElement,
+        useExternalAnimationLoop: true,
+        bearingSnap: 7,
+        bearingSnapEpsilon: 0.5,
+      });
       controller.easeTo({
         bearing: 3, // Within snap range (default 7 degrees)
         duration: 50

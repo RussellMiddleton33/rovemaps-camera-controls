@@ -23,7 +23,7 @@
   "author": "Russell Middleton",
   "repository": {
     "type": "git",
-    "url": "https://github.com/russellmiddleton33/rovemaps-camera-controls.git"
+    "url": "git+https://github.com/russellmiddleton33/rovemaps-camera-controls.git"
   },
   "bugs": {
     "url": "https://github.com/russellmiddleton33/rovemaps-camera-controls/issues"

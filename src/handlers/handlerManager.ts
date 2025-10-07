@@ -24,6 +24,8 @@ export interface HandlerManagerOptions {
   safariGestures?: SafariGestureOptions | boolean;
   anchorTightness?: number; // global default for anchor-based corrections
   rightButtonPan?: boolean; // if true, right button pans instead of rotate/pitch
+  // Auto-apply touch-friendly defaults on touch-capable devices (does not override explicit options)
+  autoTouchProfile?: boolean; // default: true
 
   // Inertia friction settings (higher = faster decay, less glide)
   inertiaPanFriction?: number; // friction for mouse/trackpad pan inertia (default: 6 for mouse, 12 for touch)
@@ -124,6 +126,14 @@ export class HandlerManager {
     if (options?.inertiaPanFriction != null) touchBase.inertiaPanFriction = options.inertiaPanFriction;
     if (options?.inertiaZoomFriction != null) touchBase.inertiaZoomFriction = options.inertiaZoomFriction;
     if (options?.inertiaRotateFriction != null) touchBase.inertiaRotateFriction = options.inertiaRotateFriction;
+    // Auto touch profile: apply conservative thresholds on touch devices unless explicitly provided
+    const autoTouch = options?.autoTouchProfile !== false; // default true
+    const isTouch = typeof window !== 'undefined' && (("ontouchstart" in window) || (navigator.maxTouchPoints > 0));
+    if (autoTouch && isTouch) {
+      if (touchBase.rotateThresholdDeg == null) touchBase.rotateThresholdDeg = 0.5;
+      if (touchBase.pitchThresholdPx == null) touchBase.pitchThresholdPx = 12;
+      if (touchBase.zoomThreshold == null) touchBase.zoomThreshold = 0.04;
+    }
     this.touch = new TouchMultiHandler(this.el, this.transform, this.helper, touchBase);
     this.touch.enable();
     // Keyboard handler (default enabled)

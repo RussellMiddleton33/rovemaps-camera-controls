@@ -22,6 +22,16 @@ const controller = createController({ camera, domElement, width, height });
 controller.jumpTo({ center: { x: 0, y: 0 }, zoom: 2 });
 ```
 
+Config highlights:
+- `bearingSnap`: default 0 (no snap). Set a positive degrees value to enable snap-to-0 when ending a rotate.
+- `panBounds`: undefined by default (no bounds). Provide world bounds to constrain panning.
+- `softPanBounds`: false by default. When true and `panBounds` is set, gently eases the camera back inside bounds after moves.
+
+flyTo behavior:
+- Default path: Van Wijk-style flight using `{ curve, speed, maxDuration }`. We reparameterize by eased time so the center progresses smoothly to the target without a last-frame snap.
+- Constant screen speed (opt-in): `{ useScreenSpeed: true, screenSpeed }` moves at pixels/sec while easing zoom/angles.
+- Zoom handling: If you do not pass `zoom`, the current zoom is preserved. If you pass `zoom`, it may be clamped to `minZoom`/`maxZoom` at the end; omit it to avoid clamp-induced snaps.
+
 SSR/Next.js:
 
 ```ts
@@ -110,4 +120,3 @@ MIT
 
 
 **Open Issues (Touch)**
-

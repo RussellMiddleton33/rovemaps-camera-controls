@@ -78,7 +78,7 @@ Subsystem boundaries:
 
 - src/core/cameraController.ts
     - What: Main controller; MapLibre-style API (jumpTo, easeTo, flyTo, fitBounds), event lifecycle, constraints,
-animation, bearing snap, soft pan clamping.
+      animation. Optional bearing snap (disabled by default) and optional soft pan clamping (opt-in via `softPanBounds`).
     - Public API:
     - Constructor(opts: `CameraControllerOptions`) (src/core/cameraController.ts:14–29, 74–113, 114–118).
     - Query: `getCenter/Zoom/Bearing/Pitch/Roll/Padding` (src/core/cameraController.ts:139–144).
@@ -231,7 +231,8 @@ lifecycle (src/core/cameraController.ts:246–249; tests/cancelation.test.ts ver
 
 - Controller options
     - View: width/height/devicePixelRatio, projection:'planar' (src/core/cameraController.ts:14–21).
-    - Constraints: minZoom/maxZoom, minPitch/maxPitch, panBounds, bearingSnap, bearingSnapEpsilon (src/core/
+    - Constraints: minZoom/maxZoom, minPitch/maxPitch, optional panBounds, optional soft clamping (softPanBounds),
+      optional bearingSnap/bearingSnapEpsilon (bearing snap disabled by default) (src/core/
 cameraController.ts:21–28, 102–111).
 - HandlerManager options
     - Global: rubberbandStrength, anchorTightness, per-axis inertia frictions, rightButtonPan, suppressContextMenu

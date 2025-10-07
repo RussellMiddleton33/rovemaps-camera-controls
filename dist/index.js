@@ -2097,6 +2097,13 @@ var HandlerManager = class {
     if ((options == null ? void 0 : options.inertiaPanFriction) != null) touchBase.inertiaPanFriction = options.inertiaPanFriction;
     if ((options == null ? void 0 : options.inertiaZoomFriction) != null) touchBase.inertiaZoomFriction = options.inertiaZoomFriction;
     if ((options == null ? void 0 : options.inertiaRotateFriction) != null) touchBase.inertiaRotateFriction = options.inertiaRotateFriction;
+    const autoTouch = (options == null ? void 0 : options.autoTouchProfile) !== false;
+    const isTouch = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+    if (autoTouch && isTouch) {
+      if (touchBase.rotateThresholdDeg == null) touchBase.rotateThresholdDeg = 0.5;
+      if (touchBase.pitchThresholdPx == null) touchBase.pitchThresholdPx = 12;
+      if (touchBase.zoomThreshold == null) touchBase.zoomThreshold = 0.04;
+    }
     this.touch = new TouchMultiHandler(this.el, this.transform, this.helper, touchBase);
     this.touch.enable();
     const kbOpts = (_f = options == null ? void 0 : options.keyboard) != null ? _f : {};
@@ -2798,8 +2805,8 @@ var CameraController = class extends Evented {
         const z = fp.startZoom + Math.log2(scaleRatio);
         const u = uAt(fp.params, s);
         const fu = Math.max(0, Math.min(1, u / fp.u1));
-        const cx = fp.startCenter.x + (fp.endCenter.x - fp.startCenter.x) * (fu / (fp.worldDist || 1));
-        const cy = fp.startCenter.y + (fp.endCenter.y - fp.startCenter.y) * (fu / (fp.worldDist || 1));
+        const cx = fp.startCenter.x + (fp.endCenter.x - fp.startCenter.x) * fu;
+        const cy = fp.startCenter.y + (fp.endCenter.y - fp.startCenter.y) * fu;
         const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
         const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
         const rr = fp.startRoll + (fp.endRoll - fp.startRoll) * e;

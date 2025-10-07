@@ -43,10 +43,14 @@ All events include `{ originalEvent?: Event }` when gesture-driven.
   - `rotateStartThresholdDeg` (default: 1.0): Degrees required to START rotation during a pinch; higher = less sensitive.
   - `rotateContinueThresholdDeg` (default: 0.5 or `rotateThresholdDeg` if provided): Degrees required to CONTINUE rotation once it has started.
   - `rotateDebounceMs` (default: 100): Suppresses rotation for the first N ms of a two‑finger gesture to allow zoom to establish first.
+  
+  Auto-profile:
+  - `autoTouchProfile?: boolean` (default: `true` on HandlerManager options): When true and a touch-capable device is detected, applies conservative touch defaults unless explicitly overridden: `rotateThresholdDeg: 0.5`, `pitchThresholdPx: 12`, `zoomThreshold: 0.04`.
 - `keyboard?: { panStepPx?: number, zoomDelta?: number, rotateStepDeg?: number, pitchStepDeg?: number, preventDefault?: boolean } | boolean`
 - `dblclick?: { zoomDelta?: number, invertWithShift?: boolean, around?: 'center'|'pointer' } | boolean`
 - `boxZoom?: { triggerModifier?: 'shift', minAreaPx?: number } | boolean`
 - `rubberbandStrength?: number` (global damping strength for pan rubberband)
+ - `autoTouchProfile?: boolean` (default: `true`) — apply touch-friendly defaults on touch-capable devices; set to `false` to disable.
 
 ### Method Option Details
 
