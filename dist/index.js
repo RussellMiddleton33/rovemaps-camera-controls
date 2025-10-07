@@ -212,6 +212,8 @@ var ThreePlanarTransform = class {
     this._deferDepth = 0;
     this._needsApply = false;
     this._projDirty = true;
+    // Preserve a stable sign for near-zero pitch to avoid last-frame nudges
+    this._pitchLastSign = 1;
     var _a, _b, _c, _d, _e, _f, _g, _h, _i;
     this._camera = opts.camera;
     this._width = opts.width;
@@ -2199,7 +2201,7 @@ function uAt(params, s) {
 // src/core/cameraController.ts
 var CameraController = class extends Evented {
   constructor(opts) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
     super();
     this._moving = false;
     this._animHandle = null;
@@ -2216,6 +2218,7 @@ var CameraController = class extends Evented {
     this._isInternalUpdate = false;
     this._useExternalLoop = false;
     this._activeAnimation = null;
+    this._softPanBoundsEnabled = false;
     if (typeof window === "undefined") {
       this._camera = opts.camera;
       this._dom = {};
@@ -2229,38 +2232,40 @@ var CameraController = class extends Evented {
         projection: typeof opts.projection === "object" ? opts.projection : void 0,
         baseScale: opts.baseScale
       });
-      this._bearingSnap = (_c = opts.bearingSnap) != null ? _c : 7;
+      this._bearingSnap = (_c = opts.bearingSnap) != null ? _c : 0;
       this._suppressEvents = (_d = opts.suppressEvents) != null ? _d : false;
       this._useExternalLoop = (_e = opts.useExternalAnimationLoop) != null ? _e : false;
+      this._softPanBoundsEnabled = (_f = opts.softPanBounds) != null ? _f : false;
       return;
     }
     this._camera = opts.camera;
     this._dom = opts.domElement;
     this._helper = new PlanarCameraHelper();
-    this._suppressEvents = (_f = opts.suppressEvents) != null ? _f : false;
-    this._useExternalLoop = (_g = opts.useExternalAnimationLoop) != null ? _g : false;
+    this._suppressEvents = (_g = opts.suppressEvents) != null ? _g : false;
+    this._useExternalLoop = (_h = opts.useExternalAnimationLoop) != null ? _h : false;
     this.transform = new ThreePlanarTransform({
       camera: opts.camera,
-      width: (_h = opts.width) != null ? _h : this._dom.clientWidth,
-      height: (_i = opts.height) != null ? _i : this._dom.clientHeight,
+      width: (_i = opts.width) != null ? _i : this._dom.clientWidth,
+      height: (_j = opts.height) != null ? _j : this._dom.clientHeight,
       devicePixelRatio: opts.devicePixelRatio,
       upAxis: opts.upAxis,
       projection: typeof opts.projection === "object" ? opts.projection : void 0,
       baseScale: opts.baseScale
     });
-    this._bearingSnap = (_j = opts.bearingSnap) != null ? _j : 7;
-    this._bearingSnapEps = (_k = opts.bearingSnapEpsilon) != null ? _k : 1e-3;
+    this._bearingSnap = (_k = opts.bearingSnap) != null ? _k : 0;
+    this._bearingSnapEps = (_l = opts.bearingSnapEpsilon) != null ? _l : 1e-3;
+    this._softPanBoundsEnabled = (_m = opts.softPanBounds) != null ? _m : false;
     this._constraints = {
-      minZoom: (_l = opts.minZoom) != null ? _l : -Infinity,
-      maxZoom: (_m = opts.maxZoom) != null ? _m : Infinity,
-      minPitch: (_n = opts.minPitch) != null ? _n : 0,
-      maxPitch: (_o = opts.maxPitch) != null ? _o : 85,
+      minZoom: (_n = opts.minZoom) != null ? _n : -Infinity,
+      maxZoom: (_o = opts.maxZoom) != null ? _o : Infinity,
+      minPitch: (_p = opts.minPitch) != null ? _p : 0,
+      maxPitch: (_q = opts.maxPitch) != null ? _q : 85,
       panBounds: opts.panBounds
     };
     this.transform.setConstraints(this._constraints);
     const handlerOptions = {
-      ...(_p = opts.handlers) != null ? _p : {},
-      scrollZoom: (_r = (_q = opts.handlers) == null ? void 0 : _q.scrollZoom) != null ? _r : { around: "center" },
+      ...(_r = opts.handlers) != null ? _r : {},
+      scrollZoom: (_t = (_s = opts.handlers) == null ? void 0 : _s.scrollZoom) != null ? _t : { around: "center" },
       onChange: (delta) => this._externalChange(delta)
     };
     this._handlers = new HandlerManager(this._dom, this.transform, this._helper, handlerOptions);
@@ -2525,7 +2530,7 @@ var CameraController = class extends Evented {
     const pxDist = worldDist * startScale;
     let duration = options.duration;
     if (duration == null) {
-      if (options.screenSpeed && options.screenSpeed > 0) {
+      if (options.useScreenSpeed && options.screenSpeed && options.screenSpeed > 0) {
         duration = pxDist / options.screenSpeed * 1e3;
       } else if (options.speed && options.speed > 0) {
         duration = pxDist / (options.speed * 100) * 1e3;
@@ -2534,7 +2539,7 @@ var CameraController = class extends Evented {
       }
       if (options.maxDuration != null) duration = Math.min(duration, options.maxDuration);
     }
-    const useScreenSpeed = !!options.screenSpeed && options.screenSpeed > 0 && pxDist > 0;
+    const useScreenSpeed = !!options.useScreenSpeed && !!options.screenSpeed && options.screenSpeed > 0 && pxDist > 0;
     if (!useScreenSpeed) {
       const rho = Math.max(0.01, Math.min(5, (_e = options.curve) != null ? _e : 1.42));
       const u1 = pxDist;
@@ -2545,6 +2550,7 @@ var CameraController = class extends Evented {
       }
       const params = computeFlyParams(w0, w1, u1, rho);
       const S = params.S;
+      const uEnd = Math.abs(uAt(params, S));
       if (options.duration == null) {
         const v = options.speed && options.speed > 0 ? options.speed : 1.2;
         duration = Math.abs(S) / v * 1e3;
@@ -2577,7 +2583,7 @@ var CameraController = class extends Evented {
           S,
           w0,
           w1,
-          u1,
+          u1: uEnd,
           rho,
           params,
           dirX: 0,
@@ -2618,6 +2624,14 @@ var CameraController = class extends Evented {
     const t0 = browser.now();
     const dirX = worldDist > 0 ? dx / worldDist : 0;
     const dirY = worldDist > 0 ? dy / worldDist : 0;
+    let effectiveScreenSpeed = options.screenSpeed;
+    if (duration != null && duration > 0) {
+      const desiredSec = duration / 1e3;
+      const naturalSec = pxDist / options.screenSpeed;
+      if (options.duration != null || Math.abs(desiredSec - naturalSec) / naturalSec > 0.01) {
+        effectiveScreenSpeed = pxDist / desiredSec;
+      }
+    }
     this._activeAnimation = {
       type: "fly",
       t0,
@@ -2628,7 +2642,7 @@ var CameraController = class extends Evented {
       axes,
       flyParams: {
         useScreenSpeed: true,
-        screenSpeed: options.screenSpeed,
+        screenSpeed: effectiveScreenSpeed,
         S: 0,
         // not used for screenSpeed path
         w0: 0,
@@ -2708,53 +2722,65 @@ var CameraController = class extends Evented {
    * @internal
    */
   _advanceAnimation(now) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     if (!this._activeAnimation) return false;
     const anim = this._activeAnimation;
     const k = Math.min(1, (now - anim.t0) / anim.duration);
     const e = anim.easing(k);
     if (anim.type === "ease") {
-      const groundBefore = anim.anchorPt ? this.transform.groundFromScreen(anim.anchorPt) : null;
-      this.transform.deferApply(() => {
-        var _a2, _b2;
-        const startZ = (_a2 = anim.start.center.z) != null ? _a2 : 0;
-        const targetZ = (_b2 = anim.target.center.z) != null ? _b2 : 0;
-        this.transform.setCenter({
-          x: anim.start.center.x + (anim.target.center.x - anim.start.center.x) * e,
-          y: anim.start.center.y + (anim.target.center.y - anim.start.center.y) * e,
-          z: startZ + (targetZ - startZ) * e
+      const done = !(this._easeAbort && !this._easeAbort.signal.aborted) || k >= 1;
+      if (done) {
+        this.transform.deferApply(() => {
+          var _a2;
+          this.transform.setCenter({ x: anim.target.center.x, y: anim.target.center.y, z: (_a2 = anim.target.center.z) != null ? _a2 : anim.start.center.z });
+          this.transform.setZoom(anim.target.zoom);
+          this.transform.setBearing(anim.target.bearing);
+          this.transform.setPitch(anim.target.pitch);
+          this.transform.setRoll(anim.target.roll);
+          this.transform.setPadding({ ...anim.target.padding });
         });
-        this.transform.setZoom(anim.start.zoom + (anim.target.zoom - anim.start.zoom) * e);
-        this.transform.setBearing(anim.start.bearing + (anim.target.bearing - anim.start.bearing) * e);
-        this.transform.setPitch(anim.start.pitch + (anim.target.pitch - anim.start.pitch) * e);
-        this.transform.setRoll(anim.start.roll + (anim.target.roll - anim.start.roll) * e);
-        this.transform.setPadding({
-          top: anim.start.padding.top + (anim.target.padding.top - anim.start.padding.top) * e,
-          right: anim.start.padding.right + (anim.target.padding.right - anim.start.padding.right) * e,
-          bottom: anim.start.padding.bottom + (anim.target.padding.bottom - anim.start.padding.bottom) * e,
-          left: anim.start.padding.left + (anim.target.padding.left - anim.start.padding.left) * e
-        });
-      });
-      if (groundBefore && anim.anchorPt) {
-        const groundAfter = this.transform.groundFromScreen(anim.anchorPt);
-        if (groundAfter) {
-          const tight = (_a = anim.anchorTightness) != null ? _a : 1;
-          const dgx = (groundBefore.gx - groundAfter.gx) * tight;
-          const dgz = (groundBefore.gz - groundAfter.gz) * tight;
-          if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
-        }
-      }
-      this._axisEmitDuring(anim.axes);
-      this._emitRender();
-      if (k < 1 && this._easeAbort && !this._easeAbort.signal.aborted) {
-        return true;
-      } else {
         if (anim.axes.rotate) this._applyBearingSnap();
         this._applySoftPanBounds();
+        this._axisEmitDuring(anim.axes);
+        this._emitRender();
         this._axisEnd(anim.axes);
         this._endMoveLifecycle();
         this._activeAnimation = null;
         return false;
+      } else {
+        const groundBefore = anim.anchorPt ? this.transform.groundFromScreen(anim.anchorPt) : null;
+        this.transform.deferApply(() => {
+          var _a2, _b2;
+          const startZ = (_a2 = anim.start.center.z) != null ? _a2 : 0;
+          const targetZ = (_b2 = anim.target.center.z) != null ? _b2 : 0;
+          this.transform.setCenter({
+            x: anim.start.center.x + (anim.target.center.x - anim.start.center.x) * e,
+            y: anim.start.center.y + (anim.target.center.y - anim.start.center.y) * e,
+            z: startZ + (targetZ - startZ) * e
+          });
+          this.transform.setZoom(anim.start.zoom + (anim.target.zoom - anim.start.zoom) * e);
+          this.transform.setBearing(anim.start.bearing + (anim.target.bearing - anim.start.bearing) * e);
+          this.transform.setPitch(anim.start.pitch + (anim.target.pitch - anim.start.pitch) * e);
+          this.transform.setRoll(anim.start.roll + (anim.target.roll - anim.start.roll) * e);
+          this.transform.setPadding({
+            top: anim.start.padding.top + (anim.target.padding.top - anim.start.padding.top) * e,
+            right: anim.start.padding.right + (anim.target.padding.right - anim.start.padding.right) * e,
+            bottom: anim.start.padding.bottom + (anim.target.padding.bottom - anim.start.padding.bottom) * e,
+            left: anim.start.padding.left + (anim.target.padding.left - anim.start.padding.left) * e
+          });
+        });
+        if (groundBefore && anim.anchorPt) {
+          const groundAfter = this.transform.groundFromScreen(anim.anchorPt);
+          if (groundAfter) {
+            const tight = (_a = anim.anchorTightness) != null ? _a : 1;
+            const dgx = (groundBefore.gx - groundAfter.gx) * tight;
+            const dgz = (groundBefore.gz - groundAfter.gz) * tight;
+            if (dgx || dgz) this.transform.adjustCenterByGroundDelta(dgx, dgz);
+          }
+        }
+        this._axisEmitDuring(anim.axes);
+        this._emitRender();
+        return true;
       }
     } else if (anim.type === "fly" && anim.flyParams) {
       const fp = anim.flyParams;
@@ -2763,12 +2789,6 @@ var CameraController = class extends Evented {
         const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
         const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
         const r = fp.startRoll + (fp.endRoll - fp.startRoll) * e;
-        this.transform.deferApply(() => {
-          this.transform.setZoom(z);
-          this.transform.setBearing(b);
-          this.transform.setPitch(p);
-          this.transform.setRoll(r);
-        });
         const dt = (now - ((_b = fp.last) != null ? _b : anim.t0)) / 1e3;
         fp.last = now;
         const scale = Math.pow(2, z);
@@ -2777,12 +2797,9 @@ var CameraController = class extends Evented {
         fp.traveled = traveled;
         const cx = fp.startCenter.x + fp.dirX * traveled;
         const cy = fp.startCenter.y + fp.dirY * traveled;
-        this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
-        this._axisEmitDuring(anim.axes);
-        this._emitRender();
-        if (k < 1 && traveled < fp.worldDist && this._easeAbort && !this._easeAbort.signal.aborted) {
-          return true;
-        } else {
+        const EPS = 1e-6;
+        const done = !(this._easeAbort && !this._easeAbort.signal.aborted) || !(k < 1) || traveled >= fp.worldDist - EPS;
+        if (done) {
           this.transform.deferApply(() => {
             var _a2;
             this.transform.setZoom(fp.endZoom);
@@ -2793,33 +2810,55 @@ var CameraController = class extends Evented {
           });
           if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
           this._applySoftPanBounds();
+          this._axisEmitDuring(anim.axes);
+          this._emitRender();
           this._axisEnd(anim.axes);
           this._endMoveLifecycle();
           this._activeAnimation = null;
           return false;
+        } else {
+          this.transform.deferApply(() => {
+            this.transform.setZoom(z);
+            this.transform.setBearing(b);
+            this.transform.setPitch(p);
+            this.transform.setRoll(r);
+            this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
+          });
+          {
+            const base = globalThis.FINISH_EPS_PX;
+            const useDpr = (_e = globalThis.FINISH_EPS_USE_DPR) != null ? _e : true;
+            const baseThresh = typeof base === "number" && isFinite(base) ? base : 0;
+            const dpr = useDpr ? (_f = this.transform.devicePixelRatio) != null ? _f : 1 : 1;
+            const pxThresh = baseThresh * dpr;
+            const dx = fp.endCenter.x - cx;
+            const dy = fp.endCenter.y - cy;
+            const pxDist = Math.hypot(dx, dy) * Math.pow(2, z);
+            if (pxDist < pxThresh) {
+              this.transform.deferApply(() => {
+                var _a2;
+                this.transform.setZoom(fp.endZoom);
+                this.transform.setBearing(fp.endBearing);
+                this.transform.setPitch(fp.endPitch);
+                this.transform.setRoll(fp.endRoll);
+                this.transform.setCenter({ x: fp.endCenter.x, y: fp.endCenter.y, z: (_a2 = fp.endCenter.z) != null ? _a2 : fp.startCenter.z });
+              });
+              if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
+              this._applySoftPanBounds();
+              this._axisEmitDuring(anim.axes);
+              this._emitRender();
+              this._axisEnd(anim.axes);
+              this._endMoveLifecycle();
+              this._activeAnimation = null;
+              return false;
+            }
+          }
+          this._axisEmitDuring(anim.axes);
+          this._emitRender();
+          return true;
         }
       } else {
-        const s = fp.S * e;
-        const w = widthAt(fp.params, s);
-        const scaleRatio = fp.w0 / w;
-        const z = fp.startZoom + Math.log2(scaleRatio);
-        const u = uAt(fp.params, s);
-        const fu = Math.max(0, Math.min(1, u / fp.u1));
-        const cx = fp.startCenter.x + (fp.endCenter.x - fp.startCenter.x) * fu;
-        const cy = fp.startCenter.y + (fp.endCenter.y - fp.startCenter.y) * fu;
-        const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
-        const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
-        const rr = fp.startRoll + (fp.endRoll - fp.startRoll) * e;
-        this.transform.setZoom(z);
-        this.transform.setBearing(b);
-        this.transform.setPitch(p);
-        this.transform.setRoll(rr);
-        this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
-        this._axisEmitDuring(anim.axes);
-        this._emitRender();
-        if (k < 1 && this._easeAbort && !this._easeAbort.signal.aborted) {
-          return true;
-        } else {
+        const done = !(this._easeAbort && !this._easeAbort.signal.aborted) || k >= 1;
+        if (done) {
           this.transform.deferApply(() => {
             var _a2;
             this.transform.setZoom(fp.endZoom);
@@ -2830,10 +2869,72 @@ var CameraController = class extends Evented {
           });
           if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
           this._applySoftPanBounds();
+          this._axisEmitDuring(anim.axes);
+          this._emitRender();
           this._axisEnd(anim.axes);
           this._endMoveLifecycle();
           this._activeAnimation = null;
           return false;
+        } else {
+          const target = e;
+          const signS = fp.S >= 0 ? 1 : -1;
+          let lo = 0, hi = Math.abs(fp.S);
+          for (let i = 0; i < 22; i++) {
+            const mid = (lo + hi) * 0.5;
+            const sMid = signS * mid;
+            const umid = Math.abs(uAt(fp.params, sMid)) / fp.u1;
+            if (umid < target) lo = mid;
+            else hi = mid;
+          }
+          const s = signS * hi;
+          const w = widthAt(fp.params, s);
+          const scaleRatio = fp.w0 / w;
+          const z = fp.startZoom + Math.log2(scaleRatio);
+          const u = uAt(fp.params, s);
+          const fu = Math.max(0, Math.min(1, Math.abs(u) / fp.u1));
+          const cx = fp.startCenter.x + (fp.endCenter.x - fp.startCenter.x) * fu;
+          const cy = fp.startCenter.y + (fp.endCenter.y - fp.startCenter.y) * fu;
+          const b = fp.startBearing + (fp.endBearing - fp.startBearing) * e;
+          const p = fp.startPitch + (fp.endPitch - fp.startPitch) * e;
+          const rr = fp.startRoll + (fp.endRoll - fp.startRoll) * e;
+          this.transform.deferApply(() => {
+            this.transform.setZoom(z);
+            this.transform.setBearing(b);
+            this.transform.setPitch(p);
+            this.transform.setRoll(rr);
+            this.transform.setCenter({ x: cx, y: cy, z: fp.startCenter.z });
+          });
+          {
+            const base = globalThis.FINISH_EPS_PX;
+            const useDpr = (_g = globalThis.FINISH_EPS_USE_DPR) != null ? _g : true;
+            const baseThresh = typeof base === "number" && isFinite(base) ? base : 0;
+            const dpr = useDpr ? (_h = this.transform.devicePixelRatio) != null ? _h : 1 : 1;
+            const pxThresh = baseThresh * dpr;
+            const dx = fp.endCenter.x - cx;
+            const dy = fp.endCenter.y - cy;
+            const pxDist = Math.hypot(dx, dy) * Math.pow(2, z);
+            if (pxDist < pxThresh) {
+              this.transform.deferApply(() => {
+                var _a2;
+                this.transform.setZoom(fp.endZoom);
+                this.transform.setBearing(fp.endBearing);
+                this.transform.setPitch(fp.endPitch);
+                this.transform.setRoll(fp.endRoll);
+                this.transform.setCenter({ x: fp.endCenter.x, y: fp.endCenter.y, z: (_a2 = fp.endCenter.z) != null ? _a2 : fp.startCenter.z });
+              });
+              if (fp.endBearing !== fp.startBearing) this._applyBearingSnap();
+              this._applySoftPanBounds();
+              this._axisEmitDuring(anim.axes);
+              this._emitRender();
+              this._axisEnd(anim.axes);
+              this._endMoveLifecycle();
+              this._activeAnimation = null;
+              return false;
+            }
+          }
+          this._axisEmitDuring(anim.axes);
+          this._emitRender();
+          return true;
         }
       }
     }
@@ -2960,7 +3061,7 @@ var CameraController = class extends Evented {
   }
   _applySoftPanBounds() {
     var _a;
-    if (this._softClamping) return;
+    if (!this._softPanBoundsEnabled || this._softClamping) return;
     const bounds = this._constraints.panBounds;
     if (!bounds) return;
     const c = this.getCenter();

@@ -138,6 +138,7 @@ interface EaseOptions {
 interface FlyToOptions extends EaseOptions {
     curve?: number;
     speed?: number;
+    useScreenSpeed?: boolean;
     screenSpeed?: number;
     maxDuration?: number;
     minZoom?: number;
@@ -342,6 +343,7 @@ interface CameraControllerOptions {
     bearingSnap?: number;
     bearingSnapEpsilon?: number;
     handlers?: HandlerManagerOptions;
+    softPanBounds?: boolean;
     minZoom?: number;
     maxZoom?: number;
     minPitch?: number;
@@ -435,6 +437,7 @@ declare class CameraController extends Evented<CameraMoveEvents> {
     private _resizeObserver?;
     private _useExternalLoop;
     private _activeAnimation;
+    private _softPanBoundsEnabled;
     constructor(opts: CameraControllerOptions);
     dispose(): void;
     private _fire;
