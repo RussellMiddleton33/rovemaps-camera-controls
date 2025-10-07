@@ -14,6 +14,7 @@
 - Pinch (zoom) + rotate: locks mode and preserves centroid when `around: 'pinch'`
 - Two-finger pitch: vertical movement maps to pitch; centroid preserved
 - Rubberband resistance during pan mode and during inertia
+ - Auto profile: when `autoTouchProfile` is enabled (default), touch-capable devices get conservative defaults (`rotateThresholdDeg: 0.5`, `pitchThresholdPx: 12`, `zoomThreshold: 0.04`) unless you override them in `handlers.touch`.
 
 #### Rotation Sensitivity
 - `touch.rotateStartThresholdDeg`: degrees to START rotation; higher = less sensitive (default: `1.0`).

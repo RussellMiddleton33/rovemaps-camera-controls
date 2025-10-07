@@ -39,6 +39,8 @@ export class ThreePlanarTransform implements ITransform {
   private _deferDepth = 0;
   private _needsApply = false;
   private _projDirty = true;
+  // Preserve a stable sign for near-zero pitch to avoid last-frame nudges
+  private _pitchLastSign: 1 | -1 = 1;
 
   private _projection?: import('./interfaces').ProjectionAdapter;
   private _baseScale: number;
@@ -333,7 +335,7 @@ export class ThreePlanarTransform implements ITransform {
 
       // Clamp pitch away from exactly 0 to avoid gimbal lock (like Spherical.makeSafe())
       // Using a small epsilon - need to be large enough to avoid lookAt degeneracy
-      const EPS = 0.01; // ~0.57 degrees, small but prevents gimbal lock
+      const EPS = 0.01; // ~0.57 degrees
       const pitchEff = Math.max(EPS, Math.abs(pitchRad)) * Math.sign(pitchRad || 1);
 
       if (this._upAxis === 'z') {

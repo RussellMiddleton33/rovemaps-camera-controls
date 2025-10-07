@@ -17,6 +17,8 @@ export interface EaseOptions {
 export interface FlyToOptions extends EaseOptions {
   curve?: number;
   speed?: number;
+  // Opt-in constant screen-speed mode; otherwise Van Wijk path is used
+  useScreenSpeed?: boolean;
   screenSpeed?: number;
   maxDuration?: number;
   minZoom?: number;
