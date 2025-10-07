@@ -81,6 +81,7 @@ let currentHandlers = {
   touchRotateStart: 1.0,
   touchRotateContinue: 0.5,
   touchRotateDebounce: 100,
+  mobileProfile: false,
 };
 
 function buildController() {
@@ -154,7 +155,6 @@ function buildController() {
       boxZoom: currentHandlers.boxzoom,
       rubberbandStrength: currentHandlers.rubber,
     },
-    bearingSnap: 7,
   });
   // Restore previous camera if available; otherwise use a sensible default
   if (prev) {
@@ -238,7 +238,15 @@ toolbar.touchRotDebounce.addEventListener('change', () => { currentHandlers.touc
 
 toolbar.fly.addEventListener('click', () => {
   const target = { x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400 };
-  controller.flyTo({ center: target, zoom: 7, bearing: Math.random() * 360 - 180, pitch: 50, curve: 1.4, speed: 1.2, maxDuration: 2500 });
+  const before = controller.getStateSnapshot();
+  controller.once('moveend', () => {
+    const after = controller.getStateSnapshot();
+    requestAnimationFrame(() => {
+      const afterFrame = controller.getStateSnapshot();
+      // no-op
+    });
+  });
+  controller.flyTo({ center: target, bearing: Math.random() * 360 - 180, pitch: 50, curve: 1.4, speed: 1.2, maxDuration: 2500 });
 });
 
 toolbar.fit.addEventListener('click', () => {
@@ -344,19 +352,6 @@ function updateOverlay() {
 }
 
 function frame() {
-  // Guard against DPR or CSS size changes mid-gesture (prevents blurry rendering)
-  const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
-  const needResize =
-    Math.abs(canvas.width - Math.floor(rect.width * dpr)) > 1 ||
-    Math.abs(canvas.height - Math.floor(rect.height * dpr)) > 1;
-  if (needResize) {
-    controller.setViewport({ width: rect.width, height: rect.height, devicePixelRatio: dpr });
-    camera.aspect = rect.width / rect.height;
-    camera.updateProjectionMatrix();
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(rect.width, rect.height, false);
-  }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
@@ -364,7 +359,7 @@ frame();
 
 // Expose for console debugging
 (window as any).THREE = THREE;
-(window as any).controller = controller;
+(window as any).controller = controller!;
 
 function rebuildRenderer(aa: boolean) {
   // Dispose and recreate renderer with AA toggle
@@ -402,7 +397,7 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 });
 
 // Pointer anchor tracking and velocity visualization
-let lastCenter = new THREE.Vector3(controller.getCenter().x, 0, controller.getCenter().y);
+let lastCenter = new THREE.Vector3(controller!.getCenter().x, 0, controller!.getCenter().y);
 let lastTime = performance.now();
 canvas.addEventListener('pointermove', (e) => {
   const rect = canvas.getBoundingClientRect();
@@ -411,7 +406,7 @@ canvas.addEventListener('pointermove', (e) => {
   if (gp) anchorSphere.position.set(gp.gx, 0, gp.gz);
 });
 
-controller.on('renderFrame', () => {
+controller!.on('renderFrame', () => {
   const now = performance.now();
   const dt = Math.max(1 / 120, (now - lastTime) / 1000);
   lastTime = now;
