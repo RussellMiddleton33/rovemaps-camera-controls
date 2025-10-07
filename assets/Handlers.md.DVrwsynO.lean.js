@@ -1,0 +1,1 @@
+import{_ as a,c as i,o,ae as t}from"./chunks/framework.BX0NALm0.js";const u=JSON.parse('{"title":"","description":"","frontmatter":{},"headers":[],"relativePath":"Handlers.md","filePath":"Handlers.md"}'),s={name:"Handlers.md"};function l(r,e,n,d,h,c){return o(),i("div",null,[...e[0]||(e[0]=[t("",15)])])}const k=a(s,[["render",l]]);export{u as __pageData,k as default};

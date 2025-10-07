@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Three RoveMaps Camera Controls — Demo (Z-up)</title>
+    <script type="module" crossorigin src="/rovemaps-camera-controls/demo/assets/zup-D7s9nU4G.js"></script>
+    <link rel="modulepreload" crossorigin href="/rovemaps-camera-controls/demo/assets/cameraController-nU0eHdf0.js">
+    <link rel="stylesheet" crossorigin href="/rovemaps-camera-controls/demo/assets/cameraController-CvqZeRC2.css">
+  </head>
+  <body>
+    <div id="app">
+      <button id="menu-toggle" aria-label="Toggle settings" title="Toggle settings"></button>
+      <div id="toolbar">
+        <div class="toolbar-header">Settings</div>
+        <div class="section-title">Quick Controls</div>
+        <div class="grid">
+          <button id="btn-zoom-in">Zoom In</button>
+          <button id="btn-zoom-out">Zoom Out</button>
+          <button id="btn-rotate-left">Rotate Left</button>
+          <button id="btn-rotate-right">Rotate Right</button>
+          <button id="btn-pitch-up">Pitch Up</button>
+          <button id="btn-pitch-down">Pitch Down</button>
+        </div>
+
+        <div class="section-title">Display & Behavior</div>
+        <div class="grid">
+          <label>Rubberband <input id="rubberband" type="range" min="0" max="1.5" step="0.05" value="0"/></label>
+          <label>Anchor Tightness <input id="anchor-tight" type="range" min="0" max="1" step="0.05" value="1"/></label>
+          <label><input id="around-pointer" type="checkbox" checked /> Around Pointer</label>
+          <label><input id="cooperative" type="checkbox" /> Cooperative Gestures</label>
+          <label><input id="antialias" type="checkbox" checked /> Antialias</label>
+          <label><input id="show-debug" type="checkbox" /> Show Debug Gizmos</label>
+        </div>
+
+        <div class="section-title">Mouse & Keyboard</div>
+        <div class="grid">
+          <label><input id="keyboard" type="checkbox" checked /> Keyboard</label>
+          <label><input id="dblclick" type="checkbox" checked /> Dblclick</label>
+          <label><input id="boxzoom" type="checkbox" checked /> Box Zoom</label>
+          <label><input id="right-drag-pan" type="checkbox" /> Right‑drag pans</label>
+          <label><input id="invert-zoom" type="checkbox" /> Invert Zoom</label>
+          <label><input id="invert-pitch" type="checkbox" /> Invert Pitch</label>
+          <label><input id="invert-twist" type="checkbox" /> Invert Twist</label>
+          <label><input id="invert-pany" type="checkbox" /> Invert Pan Y</label>
+          <label><input id="recenter-down" type="checkbox" /> Center on Down</label>
+          <label><input id="invert-inertia-y" type="checkbox" /> Invert Inertia Y</label>
+          <label><input id="invert-inertia-x" type="checkbox" /> Invert Inertia X</label>
+        </div>
+
+        <div class="section-title">Touch Profile</div>
+        <div class="grid">
+          <label><input id="mobile-profile" type="checkbox" /> Touch Profile</label>
+          <label>Rotate Start ° <input id="touch-rot-start" type="number" min="0" max="10" step="0.1" value="1.0"/></label>
+          <label>Rotate Continue ° <input id="touch-rot-cont" type="number" min="0" max="10" step="0.1" value="0.5"/></label>
+          <label>Rotate Debounce ms <input id="touch-rot-debounce" type="number" min="0" max="500" step="10" value="100"/></label>
+        </div>
+
+        <div class="section-title">Constraints</div>
+        <div class="grid">
+          <label>Max Pitch ° <input id="max-pitch" type="number" min="1" max="89" step="1" value="80"/></label>
+          <label>Max Zoom <input id="max-zoom" type="number" min="0" max="24" step="0.5" value="3"/></label>
+          <label>Min Zoom <input id="min-zoom" type="number" min="-24" max="24" step="0.5" value="0"/></label>
+        </div>
+
+        <div class="section-title">Examples</div>
+        <div class="grid">
+          <button id="btn-fly">FlyTo Demo</button>
+          <button id="btn-fit">Fit Bounds</button>
+          <button id="btn-fit-red">Fit Red</button>
+          <button id="btn-fit-yellow">Fit Yellow</button>
+          <button id="btn-fit-green">Fit Green</button>
+          <button id="btn-fit-cyan">Fit Cyan</button>
+          <button id="btn-fit-blue">Fit Blue</button>
+          <button id="btn-fit-magenta">Fit Magenta</button>
+        </div>
+      </div>
+      <div id="coop-hint" class="hint" hidden>Hold Ctrl (or ⌘) + scroll to zoom</div>
+      <div id="overlay"></div>
+      <canvas id="c"></canvas>
+      <div id="select-rect" hidden></div>
+    </div>
+  </body>
+</html>
