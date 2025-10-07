@@ -92,7 +92,7 @@ git push origin HEAD:main
  Make sure you're logged into npm first (npm whoami to check).
 
  # Update version
-  npm version 0.3.7
+  npm version 0.4.2
 
   # Publish to npm (will auto-run typecheck, tests, and build)
   npm publish
